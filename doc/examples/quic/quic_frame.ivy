@@ -48,10 +48,35 @@ object frame = {
 
         # Stream frames are a variant of frame
 
+   	# The first byte in the stream has an offset of 0.  The largest offset
+   	# delivered on a stream - the sum of the offset and data length -
+   	# cannot exceed 2^62-1, as it is not possible to provide flow control
+   	# credit for that data.  Receipt of a frame that exceeds this limit
+   	# MUST be treated as a connection error of type FRAME_ENCODING_ERROR or
+   	# FLOW_CONTROL_ERROR. TOCHECK
+
         variant this of frame = struct {
         
+	    # The OFF bit (0x04) in the frame type is set to indicate that there
+      	    # is an Offset field present.  When set to 1, the Offset field is
+      	    # present.  When set to 0, the Offset field is absent and the Stream
+      	    # Data starts at an offset of 0 (that is, the frame contains the
+      	    # first bytes of the stream, or the end of a stream that includes no
+      	    # data).
+
             off : bool,        # is there an offset field
+
+    	    # The LEN bit (0x02) in the frame type is set to indicate that there
+    	    # is a Length field present.  If this bit is set to 0, the Length
+     	    # field is absent and the Stream Data field extends to the end of
+     	    # the packet.  If this bit is set to 1, the Length field is present.
+
             len : bool,        # is there a length field
+
+ 	    # The FIN bit (0x01) of the frame type is set only on frames that
+  	    # contain the final size of the stream.  Setting this bit indicates
+  	    # that the frame marks the end of the stream
+
             fin : bool,        # is this the final offset
 
             id : stream_id,            # the stream ID
@@ -61,6 +86,29 @@ object frame = {
         }
     }
 
+    
+    # (0x00) 
+    object padding = {
+
+        # PADDING frame frames are a variant of frame and contains nothing
+
+        variant this of frame = struct {
+        
+        }
+    }
+
+    # (0x01)
+    object ping = {
+
+        # Ping frames contain no data
+
+        variant this of frame = struct {
+
+        }
+    }
+
+
+    # (0x02 and 0x03) TOCHECK
     object ack = {
 
         object block = {
@@ -83,9 +131,10 @@ object frame = {
         }
     }
 
+    # (0x04) RESET_STREAM Frame
     object rst_stream = {
 
-        # Rst_stream frames are a variant of frame
+        # RESET_STREAM frames are a variant of frame
 
         variant this of frame = struct {
         
@@ -96,48 +145,18 @@ object frame = {
         }
     }
 
-    object max_stream_id = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
-
-        # Max_stream_id frames are a variant of frame.
-
-        variant this of frame = struct {
+    # (0x05)
+    object stop_sending = {
         
-            id              : stream_id  # maximum stream id
-            
-        }
-    }
-
-    object connection_close = {
-        
-        # Connection close frames are a variant of frame.
-
-        variant this of frame = struct {
-            err_code               : error_code, # the error code
-            frame_type             : error_code, # TODO: not the real type
-            reason_phrase_length   : stream_pos, # number of bytes in reason phrase
-            reason_phrase          : stream_data # bytes of reason phrase
-        }
-    }
-
-    object max_stream_data = {
-        
-        # Max stream data frames are a variant of frame.
+        # Stop sending frames are a variant of frame.
 
         variant this of frame = struct {
             id                : stream_id,  # the stream id
-            pos               : stream_pos  # max number of bytes
+            err_code          : error_code  # the error code
         }
     }
 
-    object stream_id_blocked = { # TODO: handle bidi and uni cases
-        
-        # Stream id blocked frames are a variant of frame.
-
-        variant this of frame = struct {
-            id                : stream_id  # the stream id
-        }
-    }
-
+    # (0x06)
     object crypto = {
 
         # Crypto frames are a variant of frame
@@ -150,25 +169,118 @@ object frame = {
         }
     }
 
-    object ping = {
+    # (0x07)
+    object new_token = {
 
-        # Ping frames contain no data
+        # New token frames are a variant of frame.
 
         variant this of frame = struct {
+            length : stream_pos,                  # length of the token
+            data : stream_data                    # the token
         }
     }
 
-    object application_close = {
+    # (0x10) The MAX_DATA frame is used in flow control to inform the
+    # peer of the maximum amount of data that can be sent on the connection
+    # as a whole.
         
-        # Application close frames are a variant of frame.
+    object max_data = {
+        
+        # Max data frames are a variant of frame.
 
         variant this of frame = struct {
-            err_code               : error_code, # the error code
-            reason_phrase_length   : stream_pos, # number of bytes in reason phrase
-            reason_phrase          : stream_data # bytes of reason phrase
+            pos               : stream_pos  # max number of bytes
         }
     }
 
+    # (0x11) The MAX_STREAM_DATA frame is used in flow control to
+    # inform a peer of the maximum amount of data that can be sent on a
+    # stream.
+
+    object max_stream_data = {
+        
+        # Max stream data frames are a variant of frame.
+
+        variant this of frame = struct {
+            id                : stream_id,  # the stream id
+            pos               : stream_pos  # max number of bytes
+        }
+    }
+
+
+	
+    # (0x12 and 0x13) Outdated, not present since draft 16, now MAX_STREAMS
+    object max_stream_id = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
+
+        # Max_stream_id frames are a variant of frame.
+
+        variant this of frame = struct {
+        
+            id              : stream_id  # maximum stream id
+            
+        }
+    }
+
+    # 2 Possibility, either we put the type directly as param
+    # Or we make 2 object for bidirectionnal and unidirectionnal (choose this solution) 
+
+    object max_stream_uni = { 
+
+        # max_stream 0x13 frames are a variant of frame
+
+        variant this of frame = struct {
+        
+            id              : stream_id  # maximum stream (id)
+            
+        }
+
+    }
+
+    object max_stream_bid = { 
+
+        # max_stream 0x12 frames are a variant of frame TOCHECK
+
+        variant this of frame = struct {
+        
+            id1              : stream_id  # maximum stream of sender 1(id)
+            id2              : stream_id  # maximum stream of sender 2(id)
+            
+        }
+
+    }
+
+    # (0x14) DATA_BLOCKED FRAME 
+    object blocked = {
+        
+        # Blocked frames are a variant of frame.
+
+        variant this of frame = struct {
+            pos               : stream_pos  # max number of bytes
+        }
+    }
+
+    # (0x15) Now STREAM_DATA_BLOCKED Frame
+    object stream_blocked = {
+        
+        # STREAM_DATA_BLOCKED frames are a variant of frame.
+
+        variant this of frame = struct {
+            id                : stream_id,  # the stream id
+            pos               : stream_pos  # max number of bytes
+        }
+    }
+
+    # (0x16 or 0x17) Now STREAMS_BLOCKED Frames TODO
+    object stream_id_blocked = { # TODO: handle bidi and uni cases
+        
+        # Stream id blocked frames are a variant of frame.
+
+        variant this of frame = struct {
+            id                : stream_id  # maximum stream (id)
+        }
+    }
+
+    # (0x18) TOCHECK
     object new_connection_id = {
         
         # New connection id frames are a variant of frame.
@@ -183,72 +295,7 @@ object frame = {
         
     }
 
-    object path_challenge = {
-        
-        # Path challenge frames are a variant of frame.
-
-        variant this of frame = struct {
-            data : stream_data                    # 8-byte payload
-        }
-    }
-
-    object path_response = {
-        
-        # Path response frames are a variant of frame.
-
-        variant this of frame = struct {
-            data : stream_data                    # 8-byte payload
-        }
-    }
-
-    object new_token = {
-
-        # New token frames are a variant of frame.
-
-        variant this of frame = struct {
-            length : stream_pos,                  # length of the token
-            data : stream_data                    # the token
-        }
-    }
-        
-    object max_data = {
-        
-        # Max data frames are a variant of frame.
-
-        variant this of frame = struct {
-            pos               : stream_pos  # max number of bytes
-        }
-    }
-
-    object stream_blocked = {
-        
-        # Stream blocked frames are a variant of frame.
-
-        variant this of frame = struct {
-            id                : stream_id,  # the stream id
-            pos               : stream_pos  # max number of bytes
-        }
-    }
-
-    object stop_sending = {
-        
-        # Stop sending frames are a variant of frame.
-
-        variant this of frame = struct {
-            id                : stream_id,  # the stream id
-            err_code          : error_code  # the error code
-        }
-    }
-
-    object blocked = {
-        
-        # Blocked frames are a variant of frame.
-
-        variant this of frame = struct {
-            pos               : stream_pos  # max number of bytes
-        }
-    }
-
+    # (0x19)
     object retire_connection_id = {
         
         # Retire connection id frames are a variant of frame.
@@ -258,6 +305,64 @@ object frame = {
         }
         
     }
+
+    # (0x1a)
+    object path_challenge = {
+        
+        # Path challenge frames are a variant of frame.
+
+        variant this of frame = struct {
+            data : stream_data                    # 8-byte payload
+        }
+    }
+
+    # (0x1b)
+    object path_response = {
+        
+        # Path response frames are a variant of frame.
+
+        variant this of frame = struct {
+            data : stream_data                    # 8-byte payload
+        }
+    }
+
+    # (0x1c or 0x1d) 
+    object connection_close = {
+        
+        # Connection close frames are a variant of frame.
+
+        variant this of frame = struct {
+            err_code               : error_code, # the error code
+            frame_type             : error_code, # TODO: not the real type
+            reason_phrase_length   : stream_pos, # number of bytes in reason phrase
+            reason_phrase          : stream_data # bytes of reason phrase
+        }
+    }
+
+    # (0x1e) HANDSHAKE_DONE
+    object handshake_done = {
+        
+        # HANDSHAKE_DONE frames are a variant of frame.
+
+        variant this of frame = struct {
+
+        }
+    }
+
+    # NOT PRESENT ANYMORE TOCHECK IF CAN BE REMOVED
+    object application_close = {
+        
+        # Application close frames are a variant of frame.
+
+        variant this of frame = struct {
+            err_code               : error_code, # the error code
+            reason_phrase_length   : stream_pos, # number of bytes in reason phrase
+            reason_phrase          : stream_data # bytes of reason phrase
+        }
+    }
+
+
+    #TODO EXTENSION Frames
 
     instance idx : unbounded_sequence
     instance arr : array(idx,this)
@@ -286,7 +391,7 @@ object frame = {
 # TODO: we assume here that a frame can only be sent at a given
 # encryption level if the keys for that level have already been
 # established.  For 1rtt frames this means that a TLS finish message
-# must have bee sent in some prior frame. This is helpful to prevent
+# must have been sent in some prior frame. This is helpful to prevent
 # the peer from dropping packets in tests, but not realistic, since
 # packet re-ordering could cause the 1rtt frame to be received before
 # the required handshake message.  In principle, we should allow this
@@ -370,6 +475,8 @@ object frame = {
 # - The relation `queued_ack_eliciting(C)` indicates that one or more of the queued
 #   frames at aid `C` is an ACK eliciting frame, i.e. according to draft 24, frames other than ACK, PADDING, CONNECTION_CLOSE
 #Hamid
+
+# TOCHECK & update
  
 relation stream_seen(C:cid,S:stream_id)
 function max_stream_data_val(C:cid,S:stream_id) : stream_pos
@@ -410,12 +517,11 @@ after init {
 }
 
 
-# #### ACK event
+# #### ACK event 
 
 # The set of packet numbers acknowledged by an ACK frame is determined
 # by the `largest_ack` field and the `ack_blocks` field. Each ACK
-# block acknowledges packet numbers in the inclusive range `[last - gap, last -
-# gap - blocks]` where `gap` and `blocks` are the fields of the ACK
+# block acknowledges packet numbers in the inclusive range `[last - gap, last - gap - blocks]` where `gap` and `blocks` are the fields of the ACK
 # block and `last` is `largest_ack` minus the sum of `gap + blocks`
 # for all the previous ack blocks.
 #
@@ -424,7 +530,7 @@ after init {
 
 # Requirements:
 #
-# - Every acknowledged packet must have been sent by the destination endpoint [1].
+# - Every acknowledged packet must have been sent by the destination endpoint [1]. 
 # - Keys must be established for the given encryption level [4].
 
 # Effects:
@@ -442,6 +548,13 @@ after init {
 # TEMPORARY: use this to enforce new acks in testing. Without this,
 # too many duplicate acks would be generated.
 
+
+# CHRISTOPHE
+# PROBABLY IN SECTION 13 TOCHECK QUIC14 vs QUIC29
+# [1] 
+# [2] 12.1: All QUIC packets except Version Negotiation packets use authenticated encryption with additional data (AEAD)
+# [4]
+
 var force_new_ack : bool
 
 object frame = {
@@ -453,7 +566,7 @@ object frame = {
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);  # [4]
+            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);         # [4]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             var idx : frame.ack.block.idx := 0;
             var last := f.largest_acked;
@@ -470,7 +583,7 @@ object frame = {
                 last := upper - ack_block.blocks;
 		var jdx := last;
 		while jdx <= upper {
-                    require sent_pkt(dcid,e,jdx);  # [1]
+                    require sent_pkt(dcid,e,jdx);    # [1]
                     if pkt_has_close(dcid,e,jdx) {
                         conn_draining(scid) := true  # [5]
                     };
@@ -494,7 +607,7 @@ object frame = {
 }
 
 #
-# #### STREAM event
+# #### STREAM event TOCONTINUE
 #
 # STREAM frames carry stream data. 
 #
