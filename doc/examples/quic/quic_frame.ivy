@@ -549,8 +549,8 @@ after init {
 # too many duplicate acks would be generated.
 
 
-# CHRISTOPHE
-# PROBABLY IN SECTION 13 TOCHECK QUIC14 vs QUIC29
+# #### CHRISTOPHE
+# PROBABLY IN SECTION 13 TOCHECK QUIC14 vs QUIC29 VS QUIC31
 # [1] 
 # [2] 12.1: All QUIC packets except Version Negotiation packets use authenticated encryption with additional data (AEAD)
 # [4]
@@ -593,7 +593,7 @@ object frame = {
 		    acked_pkt(dcid,e,jdx) := true;
 		    jdx := jdx + 1
 		};
-#                acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2]
+                # acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2]
                 idx := idx.next;
             };
             if _generating {
