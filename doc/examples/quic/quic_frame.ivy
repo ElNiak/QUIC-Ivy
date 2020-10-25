@@ -31,7 +31,7 @@ include quic_stream
 # (however, multiple packets may be concatenated in a single UDP
 # datagram). This requirement is enforced by requiring that every
 # frame queue contains only frames of the same encryption level. The
-# frame handler for each type enforces this condition.
+# frame handler for each type enforces this condition. 
 
 # Data structures
 # ===============
@@ -46,7 +46,7 @@ object frame = {
 
     object stream = {
 
-        # Stream frames are a variant of frame
+    # Stream frames are a variant of frame
 
    	# The first byte in the stream has an offset of 0.  The largest offset
    	# delivered on a stream - the sum of the offset and data length -
@@ -57,7 +57,7 @@ object frame = {
 
         variant this of frame = struct {
         
-	    # The OFF bit (0x04) in the frame type is set to indicate that there
+			# The OFF bit (0x04) in the frame type is set to indicate that there
       	    # is an Offset field present.  When set to 1, the Offset field is
       	    # present.  When set to 0, the Offset field is absent and the Stream
       	    # Data starts at an offset of 0 (that is, the frame contains the
@@ -73,9 +73,9 @@ object frame = {
 
             len : bool,        # is there a length field
 
- 	    # The FIN bit (0x01) of the frame type is set only on frames that
-  	    # contain the final size of the stream.  Setting this bit indicates
-  	    # that the frame marks the end of the stream
+			# The FIN bit (0x01) of the frame type is set only on frames that
+			# contain the final size of the stream.  Setting this bit indicates
+			# that the frame marks the end of the stream
 
             fin : bool,        # is this the final offset
 
@@ -85,22 +85,21 @@ object frame = {
             data : stream_data         # the stream data
         }
     }
-
     
     # (0x00) 
     object padding = {
 
         # PADDING frame frames are a variant of frame and contains nothing
-
+		# 1 byte frame to increase the size of a packet
         variant this of frame = struct {
-        
+			
         }
     }
 
     # (0x01)
     object ping = {
 
-        # Ping frames contain no data
+        # Ping frames contain no data, check peers still alive
 
         variant this of frame = struct {
 
@@ -108,27 +107,52 @@ object frame = {
     }
 
 
-    # (0x02 and 0x03) TOCHECK
+    # (0x02 and 0x03) 
     object ack = {
 
-        object block = {
+        object range = {
             type this = struct {
-                gap : pkt_num,       # gap, or zero for first block
-                blocks : pkt_num     # number of packets in block - 1
+                gap : pkt_num,       # gap, or zero for first range
+                ranges : pkt_num     # number of packets in range - 1
             }
             instance idx : unbounded_sequence
             instance arr : array(idx,this)
         }
 
-        # Ack frames are a variant of frame
+        # Ack frames 0x02 are a variant of frame
+
+        variant this of frame = struct {
+        
+            largest_acked   : pkt_num,          # largest acknowledged packet number
+            ack_delay       : microsecs,        # delay of largest acked packet
+			first_ack_range : range.arr.value(0) 
+            ack_ranges      : range.arr          # ack ranges
+            
+        }
+		
+        # Ack frames 0x03 are a variant of frame
+		# TODO: module counter ? variable ecn ?
+		
+        object ecn = {
+            type this = struct {
+                ect0 : pkt_num,       # total number of packets received with the ECT(0)
+				ect1 : pkt_num,       # total number of packets received with the ECT(1)
+                ecn_ce : pkt_num      # total number of packets received with the CE codepoint
+            }
+            instance idx : unbounded_sequence
+            instance arr : array(idx,this)
+        }
 
         variant this of frame = struct {
         
             largest_acked   : pkt_num,    # largest acknowledged packet number
             ack_delay       : microsecs,  # delay of largest acked packet
-            ack_blocks      : block.arr   # ack blocks
-            
+			first_ack_range : range.arr.value(0) 
+            ack_ranges      : range.arr   # ack ranges
+			ecn_counts       : ecn.arr
+			
         }
+		
     }
 
     # (0x04) RESET_STREAM Frame
@@ -189,7 +213,7 @@ object frame = {
         # Max data frames are a variant of frame.
 
         variant this of frame = struct {
-            pos               : stream_pos  # max number of bytes
+            pos               : stream_pos  # max number of bytes per connection
         }
     }
 
@@ -203,16 +227,16 @@ object frame = {
 
         variant this of frame = struct {
             id                : stream_id,  # the stream id
-            pos               : stream_pos  # max number of bytes
+            pos               : stream_pos  # max number of bytes per stream
         }
     }
 
 
 	
     # (0x12 and 0x13) Outdated, not present since draft 16, now MAX_STREAMS
-    object max_stream_id = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
+    object max_streams = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
 
-        # Max_stream_id frames are a variant of frame.
+        # Max_stream frames are a variant of frame.
 
         variant this of frame = struct {
         
@@ -250,17 +274,17 @@ object frame = {
     }
 
     # (0x14) DATA_BLOCKED FRAME 
-    object blocked = {
+    object data_blocked = {
         
-        # Blocked frames are a variant of frame.
+        # data_blocked frames are a variant of frame.
 
         variant this of frame = struct {
             pos               : stream_pos  # max number of bytes
         }
     }
 
-    # (0x15) Now STREAM_DATA_BLOCKED Frame
-    object stream_blocked = {
+    # (0x15)
+    object stream_data_blocked = {
         
         # STREAM_DATA_BLOCKED frames are a variant of frame.
 
@@ -271,7 +295,7 @@ object frame = {
     }
 
     # (0x16 or 0x17) Now STREAMS_BLOCKED Frames TODO
-    object stream_id_blocked = { # TODO: handle bidi and uni cases
+    object stream_blocked = { # TODO: handle bidi and uni cases
         
         # Stream id blocked frames are a variant of frame.
 
@@ -280,7 +304,7 @@ object frame = {
         }
     }
 
-    # (0x18) TOCHECK
+    # (0x18) 
     object new_connection_id = {
         
         # New connection id frames are a variant of frame.
@@ -320,7 +344,7 @@ object frame = {
     object path_response = {
         
         # Path response frames are a variant of frame.
-
+ 
         variant this of frame = struct {
             data : stream_data                    # 8-byte payload
         }
@@ -449,6 +473,7 @@ object frame = {
 #
 #   TODO: Currently we can only queue frames of the same packet type,
 #   We should have a separate frame queue for each packet type. 
+#   Chris: queued_level(C,T)
 #
 # - The relation `queued_non_probing(C)` indicates that one of the queued
 #   frames at aid `C` contains a non-probing frame. This is a frame
@@ -479,23 +504,35 @@ object frame = {
 # TOCHECK & update
  
 relation stream_seen(C:cid,S:stream_id)
+
 function max_stream_data_val(C:cid,S:stream_id) : stream_pos
 relation max_stream_data_set(C:cid,S:stream_id)
+
 function max_data_val(C:cid) : stream_pos
 relation max_data_set(C:cid)
+
 function stream_length(C:cid,S:stream_id) : stream_pos
+
 relation stream_finished(C:cid,S:stream_id)
+
 relation stream_reset(C:cid,S:stream_id)
+
 relation max_stream_set(C:cid,K:stream_kind)
 function max_stream(C:cid,K:stream_kind) : stream_id
+
 function queued_frames(C:cid) : frame.arr
+#Chris
+function queued_frames(C:cid,T:quic_packet_type) : frame.arr
+#Chris
 function queued_level(C:cid) : quic_packet_type
 relation queued_non_probing(C:cid)
 relation queued_non_ack(C:cid)
 relation queued_close(C:cid)
+
 function num_queued_frames(C:cid) : frame.idx
 relation path_challenge_pending(C:cid,D:stream_data)
 function conn_total_data(C:cid) : stream_pos
+
 #Hamid
 relation queued_ack_eliciting(C:cid)
 #Hamid
@@ -520,18 +557,19 @@ after init {
 # #### ACK event 
 
 # The set of packet numbers acknowledged by an ACK frame is determined
-# by the `largest_ack` field and the `ack_blocks` field. Each ACK
-# block acknowledges packet numbers in the inclusive range `[last - gap, last - gap - blocks]` where `gap` and `blocks` are the fields of the ACK
-# block and `last` is `largest_ack` minus the sum of `gap + blocks`
-# for all the previous ack blocks.
+# by the `largest_ack` field and the `ack_ranges` field. Each ACK
+# block acknowledges packet numbers in the inclusive range `[last - gap, last - gap - ranges]` where `gap` and `ranges` are the fields of the ACK
+# range and `last` is `largest_ack` minus the sum of `gap + ranges`
+# for all the previous ack ranges.
 #
-# The `gap` field for the first ack block is always zero and is not
+# The `gap` field for the first ack range is always zero and is not
 # present in the low-level syntax.
 
 # Requirements:
 #
 # - Every acknowledged packet must have been sent by the destination endpoint [1]. 
 # - Keys must be established for the given encryption level [4].
+# - If any computed packet number is negative, an endpoint MUST generate a connection error of type FRAME_ENCODING_ERROR.[5]
 
 # Effects:
 #
@@ -546,14 +584,14 @@ after init {
 #   
 
 # TEMPORARY: use this to enforce new acks in testing. Without this,
-# too many duplicate acks would be generated.
+#            too many duplicate acks would be generated.
 
 
 # #### CHRISTOPHE
 # PROBABLY IN SECTION 13 TOCHECK QUIC14 vs QUIC29 VS QUIC31
 # [1] 
 # [2] 12.1: All QUIC packets except Version Negotiation packets use authenticated encryption with additional data (AEAD)
-# [4]
+# [6] Version Negotiation and Retry packets cannot be acknowledged because they do not contain a packet number.
 
 var force_new_ack : bool
 
@@ -566,34 +604,40 @@ object frame = {
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);         # [4]
-            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            var idx : frame.ack.block.idx := 0;
-            var last := f.largest_acked;
+            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);         # [4] 
+			#Chris
+			require ~(e = quic_packet_type.version_negociation) & ~(e = quic_packet_type.retry)
+			#Chris
+			require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            var idx : frame.ack.range.idx := 0;   
+            var last := f.largest_acked;       
             if max_acked(dcid,e) < last {
                 max_acked(dcid,e) := last;  # [3]
             };
-            require f.ack_blocks.end > 0;
+			
+            require f.ack_ranges.end > 0;
             var some_new_ack := false;
-            while idx < f.ack_blocks.end {
-                var ack_block := f.ack_blocks.value(idx);
-                require idx > 0 -> ack_block.gap < last - 1;
-                var upper := last - ((ack_block.gap+2) if idx > 0 else 0);
-                require ack_block.blocks <= upper;
-                last := upper - ack_block.blocks;
-		var jdx := last;
-		while jdx <= upper {
-                    require sent_pkt(dcid,e,jdx);    # [1]
-                    if pkt_has_close(dcid,e,jdx) {
-                        conn_draining(scid) := true  # [5]
-                    };
-                    if ~acked_pkt(dcid,e,jdx) {
-                        some_new_ack := true;
-                    };
-		    acked_pkt(dcid,e,jdx) := true;
-		    jdx := jdx + 1
-		};
-                # acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2]
+			
+			#TODO ECN
+            while idx < f.ack_ranges.end {
+                var ack_range := f.ack_ranges.value(idx);
+                require idx > 0 -> ack_range.gap < last - 1;
+                var upper := last - ((ack_range.gap+2) if idx > 0 else 0); # upper = largest
+                require ack_range.ranges <= upper;
+                last := upper - ack_range.ranges;
+				var jdx := last;
+				while jdx <= upper {
+					require sent_pkt(dcid,e,jdx);    # [1]
+					if pkt_has_close(dcid,e,jdx) {
+						conn_draining(scid) := true  # [5]
+					};
+					if ~acked_pkt(dcid,e,jdx) {
+						some_new_ack := true;	
+					};
+					acked_pkt(dcid,e,jdx) := true;
+					jdx := jdx + 1
+				};
+                # acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2] TODO
                 idx := idx.next;
             };
             if _generating {
@@ -616,6 +660,11 @@ object frame = {
 # - The upper bound of the stream frame may not exceed the current
 #   value of `max_stream_data_val` for the given destination and cid, if
 #   it has been set [2].
+#chris
+# - The upper bound of the stream frame may not exceed the current
+#   value of `max_data_val` for the given destination and cid, if
+#   it has been set [12].
+#chris
 #
 # - If the stream is finished, the the frame offset plus length must
 #   not exceed the stream length [5].
@@ -664,18 +713,18 @@ object frame = {
             require ~conn_closed(scid);  # [8]
 
             var offset := f.offset if f.off else 0;
-	    require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
-#            call show_offset_length(offset,f.length);
-	    require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
+			require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
+            #call show_offset_length(offset,f.length);
+			require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
 
             require f.fin <-> (stream_app_data_finished(dcid,f.id)
                                & offset+f.length = stream_app_data_end(dcid,f.id));
 
             var kind := get_stream_kind(f.id);
 
-# Following assertion could fail because of packet
-# re-ordering. QUESTION: what can we say?  require
-# ~stream_reset(dcid,f.id); # [7]
+			# Following assertion could fail because of packet
+			# re-ordering. QUESTION: what can we say?  
+			# require ~stream_reset(dcid,f.id); # [7]
 
             require conn_seen(scid);  # [9]
             require ((offset) + (f.length)) <= stream_max_data(dcid,f.id);  # [2]
@@ -690,6 +739,9 @@ object frame = {
             if stream_length(dcid,f.id) < length {
                 conn_total_data(dcid) := conn_total_data(dcid) +
                                              (length - stream_length(dcid,f.id));  # [12]
+				#chris
+				require conn_total_data(dcid) < max_data_val(scid) [13]
+				#chris
                 stream_length(dcid,f.id) := length
             };
             if f.fin {
@@ -708,6 +760,9 @@ object frame = {
 #
 # - The connection must not have been closed by the source endpoint [1].
 # - The bytes are present in `crypto_data` [2].
+  #chris
+# - It can be sent in all packet types except 0-RTT. [4] (implicit, needed ?)
+  #chris
 #
 # Effects:
 #
@@ -721,10 +776,10 @@ object frame = {
 
 	around handle {
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-#            require ~conn_closed(scid);  # [1]
-
-	    require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
-	    require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
+			# require ~conn_closed(scid);  # [1]
+			require ~(e = quic_packet_type.zero_rtt)  # [4]
+			require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
+			require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
 
 	    ...
             var length := f.offset + f.length;
@@ -756,7 +811,7 @@ object frame = {
 #
 # Requirements:
 #
-# - Stream id must not exceed maximim stream id for the stream kind [4].
+# - Stream id must not exceed maximum stream id for the stream kind [4].
 # - QUESTION: Can a previously reset stream be reset?
 # - The final stream position may not be lesser than that of any previous
 #   stream frame for the same stream id [1].
@@ -802,7 +857,7 @@ object frame = { ...
 #
 # Requirements:
 #
-# - Stream id must not exceed maximim stream id for the stream kind [4].
+# - Stream id must not exceed maximum stream id for the stream kind [4].
 # - QUESTION: Can a previously reset stream be reset?
 # - The connection must not have been closed by the source endpoint [5].
 # - The encryption level must be 0rtt or 1rtt [6].
@@ -831,9 +886,9 @@ object frame = { ...
 }
 
 #
-# #### MAX_STREAM_ID event
+# #### max_streams event
 #
-# MAX_STREAM_ID frames cause the maximum stream id to be set. 
+# max_streams frames cause the maximum stream id to be set. 
 # The receiver of the max stream id may use stream ids up to and including
 # the given maximum. Bit 1 of the stream id (the next-to-least significant)
 # determines whether the limit is set for unidirectional or bidirectional
@@ -847,6 +902,8 @@ object frame = { ...
 # - The role of the stream id must equal the role of the peer in the given connection. [4]
 #   QUESTION: this requirement is not stated in the draft spec, but it is enforced
 #   by picoquic (see anomaly6). The spec should state explicitly what happens in this case.
+# -  a lower stream limit than an endpoint has previously received. MAX_STREAMS frames that 
+#    do not increase the stream limit MUST be ignored. [5]
 #
 # Effects:
 #
@@ -854,10 +911,11 @@ object frame = { ...
 #
 # QUESTION: must the stream id's be less than the max or less than or equal?
 # Picoquic seems to think less than, but the is not clear in the draft.
+# CHRIS: This value cannot exceed 2^60, as it is not possible to encode stream IDs larger than 2^62-1 =>  less than or equal
 
 object frame = { ...
-    object max_stream_id = { ...
-        action handle(f:frame.max_stream_id,scid:cid,dcid:cid,e:quic_packet_type)
+    object max_streams = { ...
+        action handle(f:frame.max_streams,scid:cid,dcid:cid,e:quic_packet_type)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
@@ -867,7 +925,7 @@ object frame = { ...
             require ~conn_closed(scid);  # [2]
 
             var kind := bidir;
-            if ~ (max_stream_set(dcid,kind) & f.id < max_stream(dcid,kind)) {
+            if ~ (max_stream_set(dcid,kind) & f.id < max_stream(dcid,kind)) { #[5]
                 max_stream_set(dcid,kind) := true;
                 max_stream(dcid,kind) := f.id; #  [1]
             }
@@ -1008,9 +1066,63 @@ object frame = { ...
 }
 
 #
-# #### STREAM_BLOCKED event
+# #### stream_data_blocked event
 #
-# STREAM_BLOCKED frames indicate that sender wishes to send data on stream beyond current limit.
+# stream_data_blocked frames indicate that sender wishes to send data on stream beyond current limit.
+#
+# Requirements
+#
+# - Connection must be established
+#
+# Effects
+#
+# (None)
+
+object frame = { ...
+    object stream_data_blocked = { ...
+        action handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+	around handle {
+            require connected(dcid) & connected_to(dcid) = scid;
+            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+	    ...
+            call enqueue_frame(scid,f,e,false);
+        }
+    }
+}
+
+#
+# #### data_blocked event
+#
+# data_blocked frames indicate that sender wishes to send data beyond current total limit
+# for all streams.
+#
+# Requirements
+#
+# - Connection must be established
+#
+# Effects
+#
+# (None)
+
+object frame = { ...
+    object data_blocked = { ...
+        action handle(f:frame.data_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+	around handle {
+            require connected(dcid) & connected_to(dcid) = scid;
+            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+	    ...
+            call enqueue_frame(scid,f,e,false);
+        }
+    }
+}
+
+#
+# #### stream_blocked event
+#
+# stream_blocked frames indicate that sender wishes to open a stream beyond current limit
+# on streams of a given kind.
 #
 # Requirements
 #
@@ -1023,60 +1135,6 @@ object frame = { ...
 object frame = { ...
     object stream_blocked = { ...
         action handle(f:frame.stream_blocked,scid:cid,dcid:cid,e:quic_packet_type)
-	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
-            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-	    ...
-            call enqueue_frame(scid,f,e,false);
-        }
-    }
-}
-
-#
-# #### BLOCKED event
-#
-# BLOCKED frames indicate that sender wishes to send data beyond current total limit
-# for all streams.
-#
-# Requirements
-#
-# - Connection must be established
-#
-# Effects
-#
-# (None)
-
-object frame = { ...
-    object blocked = { ...
-        action handle(f:frame.blocked,scid:cid,dcid:cid,e:quic_packet_type)
-	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
-            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-	    ...
-            call enqueue_frame(scid,f,e,false);
-        }
-    }
-}
-
-#
-# #### STREAM_ID_BLOCKED event
-#
-# STREAM_ID_BLOCKED frames indicate that sender wishes to open a stream beyond current limit
-# on streams of a given kind.
-#
-# Requirements
-#
-# - Connection must be established
-#
-# Effects
-#
-# (None)
-
-object frame = { ...
-    object stream_id_blocked = { ...
-        action handle(f:frame.stream_id_blocked,scid:cid,dcid:cid,e:quic_packet_type)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1255,6 +1313,13 @@ object frame = { ...
 #
 # NEW_TOKEN frames are sent by the server to provide the client a
 # token for establishing a new connection.
+#
+# Requirements
+#
+#chris 
+# - The token MUST NOT be empty. [1]
+# - Clients MUST NOT send NEW_TOKEN frame [2]
+#chris
 
 object frame = { ...
     object new_token = { ...
@@ -1263,7 +1328,10 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            require ~is_client(scid);
+			#chris
+			require f.length > 0; [1]
+			#chris
+            require ~is_client(scid); [2]
             ...
             call enqueue_frame(scid,f,e,false);
         }
@@ -1362,13 +1430,13 @@ action stream_max_data(dcid:cid,id:stream_id) returns (max:stream_pos) = {
 # computed by the following procedure. The id of a remotely initiated
 # stream must be less than the maximum of:
 #
-# - Four times the aid's `initial_max_stream_id_uni` transport
+# - Four times the aid's `initial_max_streams_uni` transport
 #   parameter, if the stream is unidirectional [3].
 #
-# - Four times the aid's `initial_max_stream_id_bidi` transport
+# - Four times the aid's `initial_max_streams_bidi` transport
 #   parameter, if the stream is bidirectional [4].
 #
-# - The stream id parameter of any MAX_STREAM_ID frame sent by the
+# - The stream id parameter of any max_streams frame sent by the
 #   aid, if it is of the same kind.
 
 action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
@@ -1378,12 +1446,12 @@ action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
     var idhi : stream_id := id / 4;
     if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
         if kind = unidir {
-            if initial_max_stream_id_uni.is_set(tp) {
-                ok := idhi < (initial_max_stream_id_uni.value(tp).stream_id_16)  # [3]
+            if initial_max_streams_uni.is_set(tp) {
+                ok := idhi < (initial_max_streams_uni.value(tp).stream_id_16)  # [3]
             }
         } else {
-            if initial_max_stream_id_bidi.is_set(tp) {
-                ok := idhi < (initial_max_stream_id_bidi.value(tp).stream_id_16);  # [4]
+            if initial_max_streams_bidi.is_set(tp) {
+                ok := idhi < (initial_max_streams_bidi.value(tp).stream_id_16);  # [4]
             }
         };
         ok := ok | max_stream_set(dcid,kind) & idhi < max_stream(dcid,kind)
