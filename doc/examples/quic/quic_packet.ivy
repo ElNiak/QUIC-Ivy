@@ -42,6 +42,7 @@ include ip
 # - *payload*: the payload, a sequence of frames  [8]
 
 object quic_packet = {
+
     type this = struct {
         ptype : quic_packet_type, # [2]
         pversion : version, # [3]
@@ -58,6 +59,18 @@ object quic_packet = {
     #Hamid
     instance retired_cids : array(idx, cid_seq)
     #Hamid
+	
+	#chris
+	# (LH-0x0)
+	object initial_packet = {
+
+        # 
+		
+        variant this of quic_packet = struct {
+			
+        }
+    }
+	#chris
 
     action long(pkt:this) returns(res:bool) = {
         res := pkt.ptype ~= quic_packet_type.one_rtt;

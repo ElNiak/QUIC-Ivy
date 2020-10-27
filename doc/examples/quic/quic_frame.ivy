@@ -473,7 +473,9 @@ object frame = {
 #
 #   TODO: Currently we can only queue frames of the same packet type,
 #   We should have a separate frame queue for each packet type. 
-#   Chris: queued_level(C,T)
+# chris
+#	queued_level(C,T) 
+# chris
 #
 # - The relation `queued_non_probing(C)` indicates that one of the queued
 #   frames at aid `C` contains a non-probing frame. This is a frame
@@ -500,6 +502,10 @@ object frame = {
 # - The relation `queued_ack_eliciting(C)` indicates that one or more of the queued
 #   frames at aid `C` is an ACK eliciting frame, i.e. according to draft 24, frames other than ACK, PADDING, CONNECTION_CLOSE
 #Hamid
+#
+#chris 
+# - the relation `send_retire_cid(C:cid,S:stream_id)` is used to say that the next frame should be a retire_CID frame
+# - the function `max_rtp_num(C:cid) : cid_seq``is used to get the maximum retire_prior_to field in new_cid frame
 
 # TOCHECK & update
  
@@ -523,6 +529,7 @@ function max_stream(C:cid,K:stream_kind) : stream_id
 function queued_frames(C:cid) : frame.arr
 #Chris
 function queued_frames(C:cid,T:quic_packet_type) : frame.arr
+relation send_retire_cid(C:cid,S:stream_id)
 #Chris
 function queued_level(C:cid) : quic_packet_type
 relation queued_non_probing(C:cid)
@@ -536,6 +543,10 @@ function conn_total_data(C:cid) : stream_pos
 #Hamid
 relation queued_ack_eliciting(C:cid)
 #Hamid
+
+#chris
+function max_rtp_num(C:cid) : cid_seq
+#chris
 
 after init {
     stream_seen(C,S) := false;
@@ -551,6 +562,10 @@ after init {
 #Hamid
     queued_ack_eliciting(C) := false;
 #Hamid
+#chris
+    max_rtp_num(C) := 0;
+	send_retire_cid(C,S) := false;
+#chris
 }
 
 
@@ -1041,6 +1056,10 @@ object frame = { ...
 # Requirements
 #
 # - The stream must be open for receiving at the source endpoint [1].
+#   (A MAX_STREAM_DATA frame can be sent for streams in the Recv state;)
+#   (Receiving a MAX_STREAM_DATA frame for a locally-
+#    initiated stream that has not yet been created MUST be treated as a
+#    connection error of type STREAM_STATE_ERROR)
 #
 # Effects
 # - If the given limit is greater than any previously set limit, then
@@ -1073,6 +1092,11 @@ object frame = { ...
 # Requirements
 #
 # - Connection must be established
+#chris
+# - The stream must be open for receiving at the destination endpoint [1]
+#   An endpoint that receives a STREAM_DATA_BLOCKED frame for a send-only
+#   stream MUST terminate the connection with error STREAM_STATE_ERROR.
+#chris 
 #
 # Effects
 #
@@ -1081,13 +1105,13 @@ object frame = { ...
 object frame = { ...
     object stream_data_blocked = { ...
         action handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:quic_packet_type)
-	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
-            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-	    ...
-            call enqueue_frame(scid,f,e,false);
-        }
+		around handle {
+				require connected(dcid) & connected_to(dcid) = scid;
+				require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+				require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+			...
+				call enqueue_frame(scid,f,e,false);
+		}
     }
 }
 
@@ -1123,6 +1147,13 @@ object frame = { ...
 #
 # stream_blocked frames indicate that sender wishes to open a stream beyond current limit
 # on streams of a given kind.
+#
+# chris
+# A STREAMS_BLOCKED (by sender)
+# frame of type 0x16 is used to indicate reaching the bidirectional
+# stream limit, and a STREAMS_BLOCKED frame of type 0x17 is used to
+# indicate reaching the unidirectional stream limit. => receiver should increase max_stream (TODO)
+# chris
 #
 # Requirements
 #
@@ -1202,24 +1233,57 @@ object frame = { ...
 # #### NEW_CONNECTION_ID event
 #
 # NEW_CONNECTION_ID frames are used to transmit additional cid's to the peer.
+# chris
+# Requirements
 #
-
+# - length field less than 1 and greater than 20 are invalid [1]
+# - An endpoint that is sending packets with a zero-length Destination
+#   Connection ID MUST treat receipt of a NEW_CONNECTION_ID frame as a
+#   connection error of type PROTOCOL_VIOLATION. [2] TODO
+# - Receipt of the same frame multiple times MUST NOT be treated as a connection
+#   error. [3]
+# - The Retire Prior To field MUST be less than or equal to the Sequence Number field [4]
+#
+# Effects
+#
+# - A receiver MUST ignore any Retire Prior To fields that do not increase the
+#   largest received Retire Prior To value [5]
+# - An endpoint that receives a NEW_CONNECTION_ID frame with a sequence
+#   number smaller than the Retire Prior To field of a previously
+#   received NEW_CONNECTION_ID frame MUST send a corresponding
+#   RETIRE_CONNECTION_ID frame that retires the newly received connection
+#   ID, unless it has already done so for that sequence number. [6] TODO
+#
+#chris
 object frame = { ...
     object new_connection_id = { ...
         action handle(f:frame.new_connection_id,scid:cid,dcid:cid,e:quic_packet_type)
-	around handle {
+		around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); #Will change with implementing TODO
-            ...
+            #chris
+			require f.length >= 1 & f.lenght <= 20; #[1]
+			require f.retire_prior_to <= f.seq_num; #[4]
+			require f.seq_num < max_rtp_num(scid) -> send_retire_cid(dcid,f.id); #[6]
+			#chris
+			...
 	        cid_mapped(f.scid) := true;
 	        cid_to_aid(f.scid) := scid;
             seqnum_to_cid(scid,f.seq_num) := f.scid;
+			
+			#chris
+            if (f.retire_prior_to > max_rtp_num(scid)) {
+                max_rtp_num(scid) := f.retire_prior_to; #[5]
+            };
+            #chris 
+			
             #Hamid
             if (f.seq_num > max_seq_num(scid)) {
                 max_seq_num(scid) := f.seq_num;
             };
             #Hamid 
+			
 	        call enqueue_frame(scid,f,e,true);
         }
     }
