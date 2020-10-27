@@ -19,18 +19,25 @@ if platform.system() == 'Windows':
 else:
     spawn = pexpect.spawn
 
-scdir = os.environ.get('QUIC_IMPL_DIR',os.environ.get('HOME','') + '/projects')
+scdir = os.environ.get('QUIC_IMPL_DIR',os.environ.get('HOME','') + '/TVOQE_Perso/quic')
     
 servers = [
-    ['picoquic',[scdir+'/picoquic','./picoquicdemo -L -l -']],
+    ['picoquic',[scdir+'/picoquic','./picoquicdemo']],
     ['quant',['..',scdir + '/quant/Debug/bin/server -d . -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600']],
     ['winquic',['..','true']],
+    ['minq',['..','go run '+ scdir + '/go/src/github.com/ekr/minq/bin/server/main.go']],
+    ['chromium',[scdir + '/chromium/src','./out/Default/quic_server \
+  --quic_response_cache_dir=/tmp/quic-data/www.example.org \
+  --certificate_file=net/tools/quic/certs/out/leaf_cert.pem \
+  --key_file=net/tools/quic/certs/out/leaf_cert.pkcs8 --quic-enable-version-99']]
 ]
 
 clients = [
     ['picoquic',[scdir + '/picoquic','./picoquicdemo -v ff000012 localhost 4443']],
     ['quant',['..',scdir + '/quant/Debug/bin/client -d . -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600']],
     ['winquic',['..','true']],
+    ['minq',['..','go run '+ scdir + '/go/src/github.com/ekr/minq/bin/client/main.go ']],
+    ['chromium',[scdir + '/chromium/src','./out/Default/quick_client --host=127.0.0.1 --port=6121 --disable-certificate-verification https://www.example.org/ --quic-enable-version-99']]
 ]
 
 server_tests = [

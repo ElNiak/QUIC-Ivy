@@ -119,40 +119,30 @@ object frame = {
             instance arr : array(idx,this)
         }
 
-        # Ack frames 0x02 are a variant of frame
-
-        variant this of frame = struct {
-        
-            largest_acked   : pkt_num,          # largest acknowledged packet number
-            ack_delay       : microsecs,        # delay of largest acked packet
-			first_ack_range : range.arr.value(0) 
-            ack_ranges      : range.arr          # ack ranges
-            
-        }
-		
-        # Ack frames 0x03 are a variant of frame
-		# TODO: module counter ? variable ecn ?
+	# TODO: module counter ? variable ecn ?
 		
         object ecn = {
             type this = struct {
                 ect0 : pkt_num,       # total number of packets received with the ECT(0)
-				ect1 : pkt_num,       # total number of packets received with the ECT(1)
+		ect1 : pkt_num,       # total number of packets received with the ECT(1)
                 ecn_ce : pkt_num      # total number of packets received with the CE codepoint
             }
             instance idx : unbounded_sequence
             instance arr : array(idx,this)
         }
 
+        # Ack frames 0x02 are a variant of frame
+        # Ack frames 0x03 are a variant of frame
         variant this of frame = struct {
         
-            largest_acked   : pkt_num,    # largest acknowledged packet number
-            ack_delay       : microsecs,  # delay of largest acked packet
-			first_ack_range : range.arr.value(0) 
-            ack_ranges      : range.arr   # ack ranges
-			ecn_counts       : ecn.arr
-			
+            largest_acked   : pkt_num,          # largest acknowledged packet number
+            ack_delay       : microsecs,        # delay of largest acked packet
+	    #first_ack_range : range.arr.value(0),
+            ack_ranges      : range.arr,          # ack ranges
+            ecn_counts      : ecn.arr
+            
         }
-		
+	
     }
 
     # (0x04) RESET_STREAM Frame
@@ -266,7 +256,7 @@ object frame = {
 
         variant this of frame = struct {
         
-            id1              : stream_id  # maximum stream of sender 1(id)
+            id1              : stream_id,  # maximum stream of sender 1(id)
             id2              : stream_id  # maximum stream of sender 2(id)
             
         }
@@ -528,8 +518,8 @@ function max_stream(C:cid,K:stream_kind) : stream_id
 
 function queued_frames(C:cid) : frame.arr
 #Chris
-function queued_frames(C:cid,T:quic_packet_type) : frame.arr
-relation send_retire_cid(C:cid,S:stream_id)
+function queued_level_type(C:cid,T:quic_packet_type) : frame.arr
+relation send_retire_cid(C:cid) # ?? S:stream_id
 #Chris
 function queued_level(C:cid) : quic_packet_type
 relation queued_non_probing(C:cid)
@@ -564,7 +554,7 @@ after init {
 #Hamid
 #chris
     max_rtp_num(C) := 0;
-	send_retire_cid(C,S) := false;
+    send_retire_cid(C) := false;
 #chris
 }
 
@@ -620,10 +610,10 @@ object frame = {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);         # [4] 
-			#Chris
-			require ~(e = quic_packet_type.version_negociation) & ~(e = quic_packet_type.retry)
-			#Chris
-			require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            #Chris
+	    require ~(e = quic_packet_type.version_negociation) & ~(e = quic_packet_type.retry);
+	    #Chris
+	    require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             var idx : frame.ack.range.idx := 0;   
             var last := f.largest_acked;       
             if max_acked(dcid,e) < last {
@@ -633,7 +623,7 @@ object frame = {
             require f.ack_ranges.end > 0;
             var some_new_ack := false;
 			
-			#TODO ECN
+	   #TODO ECN
             while idx < f.ack_ranges.end {
                 var ack_range := f.ack_ranges.value(idx);
                 require idx > 0 -> ack_range.gap < last - 1;
@@ -754,9 +744,9 @@ object frame = {
             if stream_length(dcid,f.id) < length {
                 conn_total_data(dcid) := conn_total_data(dcid) +
                                              (length - stream_length(dcid,f.id));  # [12]
-				#chris
-				require conn_total_data(dcid) < max_data_val(scid) [13]
-				#chris
+		#chris
+		require conn_total_data(dcid) < max_data_val(scid); # [13]
+		#chris
                 stream_length(dcid,f.id) := length
             };
             if f.fin {
@@ -792,7 +782,7 @@ object frame = {
 	around handle {
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 			# require ~conn_closed(scid);  # [1]
-			require ~(e = quic_packet_type.zero_rtt)  # [4]
+			require ~(e = quic_packet_type.zero_rtt);  # [4]
 			require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
 			require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
 
@@ -1263,9 +1253,9 @@ object frame = { ...
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); #Will change with implementing TODO
             #chris
-			require f.length >= 1 & f.lenght <= 20; #[1]
+			require f.length >= 1 & f.length <= 20; #[1]
 			require f.retire_prior_to <= f.seq_num; #[4]
-			require f.seq_num < max_rtp_num(scid) -> send_retire_cid(dcid,f.id); #[6]
+			require f.seq_num < max_rtp_num(scid) -> send_retire_cid(dcid); #[6] 
 			#chris
 			...
 	        cid_mapped(f.scid) := true;
@@ -1393,9 +1383,9 @@ object frame = { ...
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 			#chris
-			require f.length > 0; [1]
+			require f.length > 0; #[1]
 			#chris
-            require ~is_client(scid); [2]
+            require ~is_client(scid); #[2]
             ...
             call enqueue_frame(scid,f,e,false);
         }
@@ -1510,12 +1500,12 @@ action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
     var idhi : stream_id := id / 4;
     if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
         if kind = unidir {
-            if initial_max_streams_uni.is_set(tp) {
-                ok := idhi < (initial_max_streams_uni.value(tp).stream_id_16)  # [3]
+            if initial_max_stream_id_uni.is_set(tp) { #initial_max_streams_uni
+                ok := idhi < (initial_max_stream_id_uni.value(tp).stream_id_16)  # [3]
             }
         } else {
-            if initial_max_streams_bidi.is_set(tp) {
-                ok := idhi < (initial_max_streams_bidi.value(tp).stream_id_16);  # [4]
+            if initial_max_stream_id_bidi.is_set(tp) { #initial_max_streams_bidi
+                ok := idhi < (initial_max_stream_id_bidi.value(tp).stream_id_16);  # [4]
             }
         };
         ok := ok | max_stream_set(dcid,kind) & idhi < max_stream(dcid,kind)
