@@ -205,7 +205,7 @@ object frame = {
         }
     }
 	
-    # (0x14) DATA_BLOCKED FRAME TODO rename
+    # (0x14) DATA_BLOCKED FRAME 
     object data_blocked = {
         
         # data_blocked frames are a variant of frame.
@@ -216,7 +216,7 @@ object frame = {
     }
     
     # (0x15) STREAM_DATA_BLOCKED  TODO rename
-    object stream_blocked = {
+    object stream_data_blocked = {
         
         # Stream blocked frames are a variant of frame.
 
@@ -955,9 +955,9 @@ object frame = { ...
 }
 
 #
-# #### STREAM_BLOCKED event
+# #### stream_data_blocked event
 #
-# STREAM_BLOCKED frames indicate that sender wishes to send data on stream beyond current limit.
+# stream_data_blocked frames indicate that sender wishes to send data on stream beyond current limit.
 #
 # Requirements
 #
@@ -968,8 +968,8 @@ object frame = { ...
 # (None)
 
 object frame = { ...
-    object stream_blocked = { ...
-        action handle(f:frame.stream_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+    object stream_data_blocked = { ...
+        action handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:quic_packet_type)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
