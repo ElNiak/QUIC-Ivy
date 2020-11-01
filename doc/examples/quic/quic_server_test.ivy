@@ -476,7 +476,7 @@ interpret error_code -> bv[16]
 interpret stream_id -> bv[16]
 
 attribute frame.idx.cardinality = 1
-attribute frame.ack.block.idx.cardinality = 1
+attribute frame.ack.range.idx.cardinality = 1
 attribute pkt_num.cardinality = 1
 attribute stream_pos.cardinality = 4
 #attribute ip.addr.override = bv[1]
