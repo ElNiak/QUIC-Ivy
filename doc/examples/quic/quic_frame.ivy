@@ -193,9 +193,8 @@ object frame = {
     }
 	
 	
-	# (0x12 and 0x13) Outdated, not present since draft 16, now MAX_STREAMS
+	# (0x12 and 0x13) 
     object max_streams = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
-        # TODO rename: max_streams 
         # max_streams frames are a variant of frame.
 
         variant this of frame = struct {
@@ -215,7 +214,7 @@ object frame = {
         }
     }
     
-    # (0x15) STREAM_DATA_BLOCKED  TODO rename
+    # (0x15) STREAM_DATA_BLOCKED 
     object stream_data_blocked = {
         
         # Stream blocked frames are a variant of frame.
@@ -227,7 +226,7 @@ object frame = {
     }
 
     # (0x16 or 0x17) Now STREAMS_BLOCKED Frames TODO
-    object stream_id_blocked = { # TODO: handle bidi and uni cases
+    object streams_blocked = { # TODO: handle bidi and uni cases
         
         # Stream id blocked frames are a variant of frame.
 
@@ -1008,9 +1007,9 @@ object frame = { ...
 }
 
 #
-# #### STREAM_ID_BLOCKED event
+# #### streams_blocked event
 #
-# STREAM_ID_BLOCKED frames indicate that sender wishes to open a stream beyond current limit
+# streams_blocked frames indicate that sender wishes to open a stream beyond current limit
 # on streams of a given kind.
 #
 # Requirements
@@ -1022,8 +1021,8 @@ object frame = { ...
 # (None)
 
 object frame = { ...
-    object stream_id_blocked = { ...
-        action handle(f:frame.stream_id_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+    object streams_blocked = { ...
+        action handle(f:frame.streams_blocked,scid:cid,dcid:cid,e:quic_packet_type)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
