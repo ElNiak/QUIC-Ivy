@@ -683,7 +683,9 @@ object frame = {
 #
 # - The connection must not have been closed by the source endpoint [1].
 # - The bytes are present in `crypto_data` [2].
-#
+#chris
+# - It can be sent in all packet types except 0-RTT. [4] (implicit, needed ?)
+#chris  
 # Effects:
 #
 # - The length of the crypto stream and the present bits are updated. [3]
@@ -697,7 +699,9 @@ object frame = {
 	around handle {
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 #            require ~conn_closed(scid);  # [1]
-
+        #chris
+        require ~(e = quic_packet_type.zero_rtt);  # [4]
+        #chris
 	    require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
 	    require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
 
