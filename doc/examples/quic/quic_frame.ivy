@@ -1182,7 +1182,7 @@ object frame = { ...
             #chris
             if (f.retire_prior_to > max_rtp_num(scid)) {
                max_rtp_num(scid) := f.retire_prior_to; #[5] 
-            }
+            };
             #chris
             #Hamid
             if (f.seq_num > max_seq_num(scid)) {
