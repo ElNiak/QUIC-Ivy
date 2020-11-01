@@ -84,10 +84,10 @@ object frame = {
 	# (0x02 and 0x03) 
     object ack = {
 
-        object block = { # TODO rename
+        object range = { # TODO rename
             type this = struct {
-                gap : pkt_num,       # gap, or zero for first block
-                blocks : pkt_num     # number of packets in block - 1
+                gap : pkt_num,       # gap, or zero for first range
+                ranges : pkt_num     # number of packets in range - 1
             }
             instance idx : unbounded_sequence
             instance arr : array(idx,this)
@@ -111,7 +111,7 @@ object frame = {
         
             largest_acked   : pkt_num,    # largest acknowledged packet number
             ack_delay       : microsecs,  # delay of largest acked packet
-            ack_blocks      : block.arr,   # ack blocks
+            ack_ranges      : range.arr,   # ack ranges
 			ecnp            : bool,        # is this the final offset
 			ecn_counts      : ecn.arr
         }
@@ -475,11 +475,11 @@ after init {
 # The set of packet numbers acknowledged by an ACK frame is determined
 # by the `largest_ack` field and the `ack_blocks` field. Each ACK
 # block acknowledges packet numbers in the inclusive range `[last - gap, last -
-# gap - blocks]` where `gap` and `blocks` are the fields of the ACK
-# block and `last` is `largest_ack` minus the sum of `gap + blocks`
-# for all the previous ack blocks.
+# gap - blocks]` where `gap` and `ranges` are the fields of the ACK
+# range and `last` is `largest_ack` minus the sum of `gap + ranges`
+# for all the previous ack ranges.
 #
-# The `gap` field for the first ack block is always zero and is not
+# The `gap` field for the first ack range is always zero and is not
 # present in the low-level syntax.
 
 # Requirements:
@@ -515,19 +515,19 @@ object frame = {
             require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);  # [4]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            var idx : frame.ack.block.idx := 0;
+            var idx : frame.ack.range.idx := 0;
             var last := f.largest_acked;
             if max_acked(dcid,e) < last {
                 max_acked(dcid,e) := last;  # [3]
             };
-            require f.ack_blocks.end > 0;
+            require f.ack_ranges.end > 0;
             var some_new_ack := false;
-            while idx < f.ack_blocks.end {
-                var ack_block := f.ack_blocks.value(idx);
-                require idx > 0 -> ack_block.gap < last - 1;
-                var upper := last - ((ack_block.gap+2) if idx > 0 else 0);
-                require ack_block.blocks <= upper;
-                last := upper - ack_block.blocks;
+            while idx < f.ack_ranges.end {
+                var ack_range := f.ack_ranges.value(idx);
+                require idx > 0 -> ack_range.gap < last - 1;
+                var upper := last - ((ack_range.gap+2) if idx > 0 else 0);
+                require ack_range.ranges <= upper;
+                last := upper - ack_range.ranges;
 		var jdx := last;
 		while jdx <= upper {
                     require sent_pkt(dcid,e,jdx);  # [1]
