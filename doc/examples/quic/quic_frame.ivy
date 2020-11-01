@@ -225,7 +225,7 @@ object frame = {
         }
     }
 
-    # (0x16 or 0x17) Now STREAMS_BLOCKED Frames TODO
+    # (0x16 or 0x17)
     object streams_blocked = { # TODO: handle bidi and uni cases
         
         # Stream id blocked frames are a variant of frame.
@@ -429,7 +429,13 @@ object frame = {
 # - The relation `queued_ack_eliciting(C)` indicates that one or more of the queued
 #   frames at aid `C` is an ACK eliciting frame, i.e. according to draft 24, frames other than ACK, PADDING, CONNECTION_CLOSE
 #Hamid
- 
+#
+#chris 
+# - the function `queued_level_type(C:cid,T:quic_packet_type) : frame.arr` is used to  queue frames a separate frame queue for each packet type.  TODO
+# - the relation `send_retire_cid(C:cid,S:stream_id)` is used to say that the next frame should be a retire_CID frame
+# - the function `max_rtp_num(C:cid) : cid_seq``is used to get the maximum retire_prior_to field in new_cid frame
+#chris
+
 relation stream_seen(C:cid,S:stream_id)
 function max_stream_data_val(C:cid,S:stream_id) : stream_pos
 relation max_stream_data_set(C:cid,S:stream_id)
@@ -452,6 +458,12 @@ function conn_total_data(C:cid) : stream_pos
 relation queued_ack_eliciting(C:cid)
 #Hamid
 
+#chris
+function queued_level_type(C:cid,T:quic_packet_type) : frame.arr
+relation send_retire_cid(C:cid) # ?? S:stream_id
+function max_rtp_num(C:cid) : cid_seq
+#chris
+
 after init {
     stream_seen(C,S) := false;
     stream_length(C,S) := 0;
@@ -466,6 +478,10 @@ after init {
 #Hamid
     queued_ack_eliciting(C) := false;
 #Hamid
+#chris
+    max_rtp_num(C) := 0;
+    send_retire_cid(C) := false;
+#chris
 }
 
 
