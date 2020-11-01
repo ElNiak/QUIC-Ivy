@@ -84,7 +84,7 @@ object frame = {
 	# (0x02 and 0x03) 
     object ack = {
 
-        object range = { # TODO rename
+        object range = {
             type this = struct {
                 gap : pkt_num,       # gap, or zero for first range
                 ranges : pkt_num     # number of packets in range - 1
@@ -206,9 +206,9 @@ object frame = {
     }
 	
     # (0x14) DATA_BLOCKED FRAME TODO rename
-    object blocked = {
+    object data_blocked = {
         
-        # Blocked frames are a variant of frame.
+        # data_blocked frames are a variant of frame.
 
         variant this of frame = struct {
             pos               : stream_pos  # max number of bytes
@@ -981,9 +981,9 @@ object frame = { ...
 }
 
 #
-# #### BLOCKED event
+# #### data_blocked event
 #
-# BLOCKED frames indicate that sender wishes to send data beyond current total limit
+# data_blocked frames indicate that sender wishes to send data beyond current total limit
 # for all streams.
 #
 # Requirements
@@ -995,8 +995,8 @@ object frame = { ...
 # (None)
 
 object frame = { ...
-    object blocked = { ...
-        action handle(f:frame.blocked,scid:cid,dcid:cid,e:quic_packet_type)
+    object data_blocked = { ...
+        action handle(f:frame.data_blocked,scid:cid,dcid:cid,e:quic_packet_type)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
