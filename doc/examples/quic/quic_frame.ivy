@@ -194,9 +194,9 @@ object frame = {
 	
 	
 	# (0x12 and 0x13) Outdated, not present since draft 16, now MAX_STREAMS
-    object max_stream_id = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
+    object max_streams = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
         # TODO rename: max_streams 
-        # Max_stream_id frames are a variant of frame.
+        # max_streams frames are a variant of frame.
 
         variant this of frame = struct {
         
@@ -778,9 +778,9 @@ object frame = { ...
 }
 
 #
-# #### MAX_STREAM_ID event
+# #### max_streams event
 #
-# MAX_STREAM_ID frames cause the maximum stream id to be set. 
+# max_streams frames cause the maximum stream id to be set. 
 # The receiver of the max stream id may use stream ids up to and including
 # the given maximum. Bit 1 of the stream id (the next-to-least significant)
 # determines whether the limit is set for unidirectional or bidirectional
@@ -803,8 +803,8 @@ object frame = { ...
 # Picoquic seems to think less than, but the is not clear in the draft.
 
 object frame = { ...
-    object max_stream_id = { ...
-        action handle(f:frame.max_stream_id,scid:cid,dcid:cid,e:quic_packet_type)
+    object max_streams = { ...
+        action handle(f:frame.max_streams,scid:cid,dcid:cid,e:quic_packet_type)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
@@ -1309,13 +1309,13 @@ action stream_max_data(dcid:cid,id:stream_id) returns (max:stream_pos) = {
 # computed by the following procedure. The id of a remotely initiated
 # stream must be less than the maximum of:
 #
-# - Four times the aid's `initial_max_stream_id_uni` transport
+# - Four times the aid's `initial_max_streams_uni` transport
 #   parameter, if the stream is unidirectional [3].
 #
-# - Four times the aid's `initial_max_stream_id_bidi` transport
+# - Four times the aid's `initial_max_streams_bidi` transport
 #   parameter, if the stream is bidirectional [4].
 #
-# - The stream id parameter of any MAX_STREAM_ID frame sent by the
+# - The stream id parameter of any max_streams frame sent by the
 #   aid, if it is of the same kind.
 
 action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
@@ -1325,7 +1325,7 @@ action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
     var idhi : stream_id := id / 4;
     if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
         if kind = unidir {
-            if initial_max_stream_id_uni.is_set(tp) {
+            if initial_max_stream_id_uni.is_set(tp) { #TODO max_stream_uni
                 ok := idhi < (initial_max_stream_id_uni.value(tp).stream_id_16)  # [3]
             }
         } else {

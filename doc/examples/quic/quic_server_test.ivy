@@ -313,9 +313,9 @@ before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
     }
 }
 
-# Generate max_stream_id frames only for the environment process(es).
+# Generate max_streams frames only for the environment process(es).
 
-before frame.max_stream_id.handle(f:frame.max_stream_id,scid:cid,dcid:cid) {
+before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
     }
@@ -445,7 +445,7 @@ export tls_recv_event
 #export frame.new_connection_id.handle
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
-#export frame.max_stream_id.handle
+#export frame.max_streams.handle
 #export frame.connection_close.handle
 #export frame.max_stream_data.handle
 
