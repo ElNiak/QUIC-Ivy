@@ -81,42 +81,40 @@ object frame = {
         }
     }
 
-    # (0x02 and 0x03) 
+	 # (0x02 and 0x03) 
     object ack = {
 
-        object range = {
+        object block = {
             type this = struct {
-                gap : pkt_num,       # gap, or zero for first range
-                ranges : pkt_num     # number of packets in range - 1
+                gap : pkt_num,       # gap, or zero for first block
+                blocks : pkt_num     # number of packets in block - 1
             }
             instance idx : unbounded_sequence
             instance arr : array(idx,this)
         }
 
-	# TODO: module counter ? variable ecn ?
+		# TODO: module counter ? variable ecn ?
 		
         object ecn = {
             type this = struct {
                 ect0 : pkt_num,       # total number of packets received with the ECT(0)
-		ect1 : pkt_num,       # total number of packets received with the ECT(1)
+				ect1 : pkt_num,       # total number of packets received with the ECT(1)
                 ecn_ce : pkt_num      # total number of packets received with the CE codepoint
             }
             instance idx : unbounded_sequence
             instance arr : array(idx,this)
         }
+		
+        # Ack frames are a variant of frame
 
-        # Ack frames 0x02 are a variant of frame
-        # Ack frames 0x03 are a variant of frame
         variant this of frame = struct {
         
-            largest_acked   : pkt_num,          # largest acknowledged packet number
-            ack_delay       : microsecs,        # delay of largest acked packet
-	    #first_ack_range : range.arr.value(0),
-            ack_ranges      : range.arr,          # ack ranges
-            ecn_counts      : ecn.arr
-            
+            largest_acked   : pkt_num,    # largest acknowledged packet number
+            ack_delay       : microsecs,  # delay of largest acked packet
+            ack_blocks      : block.arr,   # ack blocks
+			ecnp            : bool,        # is this the final offset
+			ecn_counts      : ecn.arr
         }
-	
     }
 
     object rst_stream = {
