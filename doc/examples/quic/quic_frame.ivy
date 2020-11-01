@@ -583,6 +583,12 @@ object frame = {
 #   value of `max_stream_data_val` for the given destination and cid, if
 #   it has been set [2].
 #
+#chris
+# - The upper bound of the stream frame may not exceed the current
+#   value of `max_data_val` for the given destination and cid, if
+#   it has been set [14].
+#chris
+#
 # - If the stream is finished, the the frame offset plus length must
 #   not exceed the stream length [5].
 #
@@ -639,9 +645,9 @@ object frame = {
 
             var kind := get_stream_kind(f.id);
 
-# Following assertion could fail because of packet
-# re-ordering. QUESTION: what can we say?  require
-# ~stream_reset(dcid,f.id); # [7]
+            # Following assertion could fail because of packet
+            # re-ordering. QUESTION: what can we say?  require
+            # ~stream_reset(dcid,f.id); # [7]
 
             require conn_seen(scid);  # [9]
             require ((offset) + (f.length)) <= stream_max_data(dcid,f.id);  # [2]
@@ -656,6 +662,9 @@ object frame = {
             if stream_length(dcid,f.id) < length {
                 conn_total_data(dcid) := conn_total_data(dcid) +
                                              (length - stream_length(dcid,f.id));  # [12]
+                #chris
+                require conn_total_data(dcid) < max_data_val(scid); # [13]
+                #chris
                 stream_length(dcid,f.id) := length
             };
             if f.fin {
