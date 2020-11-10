@@ -22,10 +22,8 @@ if platform.system() == 'Windows':
 else:
     spawn = pexpect.spawn
 
-#Direct where our QUIC implementation are:
-scdir = os.environ.get('QUIC_IMPL_DIR',os.environ.get('HOME','') + '/TVOQE_Perso/projects')
-
-#List of available server, and the command to launch it  
+scdir = os.environ.get('QUIC_IMPL_DIR',os.environ.get('HOME','') + '/TVOQE_Perso/quic')
+    
 servers = [
     ['picoquic',[scdir+'/picoquic','./picoquicdemo -L -l -']],
     ['quant',['..',scdir + '/quant/Debug/bin/server -d . -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600']],
