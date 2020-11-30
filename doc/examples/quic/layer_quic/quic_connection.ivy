@@ -128,7 +128,7 @@ relation is_client(C:cid)
 relation conn_requested(S:ip.endpoint,D:ip.endpoint,C:cid)
 function hi_non_probing(C:cid) : pkt_num
 relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
-function conn_total_data(C:cid) : stream_pos
+# function conn_total_data(C:cid) : stream_pos
 relation pkt_has_close(C:cid,L:encryption_level,N:pkt_num)
 
 # TLS handshake protocol state
