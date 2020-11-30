@@ -36,7 +36,7 @@ object initial_max_data = {
     instantiate trans_params_ops(this)
 }
 
-object initial_max_stream_id_bidi = {
+object initial_max_stream_id_bidi = { #TODO max_streams_uni
     variant this of transport_parameter = struct {  # tag = 2
         stream_id_16 : stream_id
     }
@@ -108,6 +108,13 @@ object initial_max_stream_data_uni = {
 object max_ack_delay = {
     variant this of transport_parameter = struct {  # tag = 12
         exponent_8 : microsecs
+    }
+    instantiate trans_params_ops(this)
+}
+
+object active_connection_id_limit = {
+    variant this of transport_parameter = struct {  # tag = 14
+        stream_pos_32 : stream_pos
     }
     instantiate trans_params_ops(this)
 }

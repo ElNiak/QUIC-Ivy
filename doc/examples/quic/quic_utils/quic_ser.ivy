@@ -14,7 +14,6 @@ object quic_ser = {}
 
     class `quic_ser` : public ivy_binary_ser {
         enum {quic_s_init,
-              quic_s_type,
               quic_s_version,
 	      quic_s_dcil,
 	      quic_s_scil,
@@ -52,6 +51,12 @@ object quic_ser = {}
               quic_application_close_err_code,
               quic_max_stream_data_id,
               quic_path_challenge_data,
+              quic_new_connection_id_length,
+              quic_new_connection_id_seq_num,
+              quic_new_connection_id_retire_prior_to,
+              quic_new_connection_id_scid,
+              quic_new_connection_id_token,
+              quic_retire_connection_id_seq_num,
               quic_s_done} state;
         bool long_format;
         char hdr_type;
@@ -71,13 +76,8 @@ object quic_ser = {}
             switch (state) {
             case quic_s_init:
             {
-                long_format = res & 1;
-                state = quic_s_type;
-            }
-            break;
-            case quic_s_type:
-            {
-                hdr_type = res;
+                long_format = res != 3;
+                hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
 		setn(hdr_type | (long_format ? 0x80 : 0), 1);
                 state = quic_s_version;
             }
@@ -86,43 +86,25 @@ object quic_ser = {}
             {
                 if (long_format)
                     setn(res,4);
-                state = quic_s_dcil;
-            }
-            break;
-            case quic_s_dcil:
-            {
-                dcil = res;
-                state = quic_s_scil;
-            }
-            break;
-            case quic_s_scil:
-            {
-                scil = res;
-                if (long_format) {
-                    setn(((dcil & 0xf) << 4) | (scil & 0xf),1);
-                }
                 state = quic_s_dcid;
             }
             break;
             case quic_s_dcid:
             {
-		setn(res,(dcil ? (dcil+3) : 0));
+                if (long_format) {
+                    setn(8,1);
+                }
+		setn(res,8);
                 state = quic_s_scid;
             }
             break;
             case quic_s_scid:
             {
-		setn(res,(scil ? (scil+3) : 0));
-                state = quic_s_retry_token_length;
-            }
-            break;
-            case quic_s_payload_length:
-            {
-                payload_length_pos = this->res.size();
                 if (long_format) {
-                    setn(res,2);  // will fill in correct value later
+                    setn(8,1);
+		    setn(res,8);
                 }
-                state = quic_s_pkt_num;
+                state = quic_s_retry_token_length;
             }
             break;
             case quic_s_pkt_num:
@@ -229,7 +211,7 @@ object quic_ser = {}
             break;
             case quic_reset_err_code:
             {
-                setn(res,2);
+                set_var_int(res);
                 state = quic_reset_final_offset;
             }
             break;
@@ -246,12 +228,12 @@ object quic_ser = {}
             break;
             case quic_stop_sending_err_code:
             {
-                setn(res,2);
+                set_var_int(res);
             }
             break;
             case quic_connection_close_err_code:
             {
-                setn(res,2);
+                set_var_int(res);
                 state = quic_connection_close_frame_type;
             }
             break;
@@ -270,7 +252,7 @@ object quic_ser = {}
             break;
             case quic_application_close_err_code:
             {
-                setn(res,2);
+                set_var_int(res);
                 state = quic_connection_close_reason_length;
             }
             break;
@@ -280,12 +262,39 @@ object quic_ser = {}
                 state = quic_reset_final_offset;
             }
             break;
-            case quic_s_retry_token_length:
+            case quic_new_connection_id_length:
             {
-                if (long_format & ((hdr_type & 0x30) == 0x00))
-                    set_var_int(res);
-                data_remaining = res;
-                state = quic_s_retry_token;
+                setn(res,1);
+                scil = res;
+                state = quic_new_connection_id_scid;
+            }
+            break;
+            case quic_new_connection_id_seq_num:
+            {
+                set_var_int(res);
+                state = quic_new_connection_id_retire_prior_to;
+            }
+            break;
+            case quic_new_connection_id_retire_prior_to:
+            {
+                set_var_int(res);
+                state = quic_new_connection_id_length;
+            }
+            break;
+            case quic_new_connection_id_scid:
+            {
+                setn(res,scil);
+                state = quic_new_connection_id_token;
+            }
+            break;
+            case quic_new_connection_id_token:
+            {
+                setn(res,16);
+            }
+            break;
+            case quic_retire_connection_id_seq_num:
+            {
+                set_var_int(res);
             }
             break;
             default:
@@ -349,10 +358,10 @@ object quic_ser = {}
                     frame_type = 0x1d;
                     state = quic_application_close_err_code;
                 }
-//                else if (tag == 10) {
-//                    frame_type = 0x18;
-//                    state = quic_new_connection_id_length;
-//                }
+                else if (tag == 10) {
+                    frame_type = 0x18;
+                    state = quic_new_connection_id_seq_num;
+                }
                 else if (tag == 11) {
                     frame_type = 0x1a;
                     state = quic_path_challenge_data;
@@ -381,6 +390,10 @@ object quic_ser = {}
                     state = quic_reset_final_offset;
                     frame_type = 0x14;
                 }
+                else if (tag == 18) {
+                    state = quic_retire_connection_id_seq_num;
+                    frame_type = 0x19;
+                }
 	        else {
                     std::cerr << "saw frame tag " << tag << std::endl;  
                     throw deser_err();
@@ -400,6 +413,12 @@ object quic_ser = {}
                 set_var_int(ack_blocks_expected - 1); // block count doesn't include first
                 ack_block_count = 0;
                 state = quic_ack_gap;
+            } else if (state == quic_s_retry_token_length) {
+                if (long_format & ((hdr_type & 0x30) == 0x00)) {
+                    set_var_int(len);
+                    data_remaining = len;
+                }
+                state = quic_s_retry_token;
             }
         }
         void close_list() {
@@ -417,7 +436,11 @@ object quic_ser = {}
                 }
             }
             else if (state == quic_s_retry_token) {
-                state = quic_s_payload_length;
+                payload_length_pos = this->res.size();
+                if (long_format) {
+                    setn(0,2);  // will fill in correct value later
+                }
+                state = quic_s_pkt_num;
             }
         }
         void close_list_elem() {}

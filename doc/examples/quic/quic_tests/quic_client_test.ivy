@@ -1,11 +1,17 @@
+
 #lang ivy1.7
 
 include order
+include quic_packet
 include quic_connection
+include quic_deser
+include quic_ser
 include quic_infer
+include tls_msg
+include udp_impl
+include serdes
+include quic_protection
 include file
-include quic_shim
-include quic_locale
 
 # This is a simple tester for quic clients.
 #
@@ -33,14 +39,6 @@ include quic_locale
 #   rather than using the dot notation.
 
 
-# The wire specification monitors this action (TODO: shouldn't be declared here).
-
-action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
-
-# This is a ghost action representing a TLS send event.
-
-action tls_send_event(src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,data:stream_data,
-                      pos:stream_pos,e:encryption_level) = {}
 
 # create an UDP network instance to communicate to server with
 # Note: because of packet coalescing, a single UDP datagram contains
@@ -74,8 +72,8 @@ instance tls_extensions : vector(tls.extension)
 # HACK: we fix the initial client transport parameters here
 
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
-    tp.initial_version := 0xff000012;
-    tp.versions := tp.versions.append(0xff000012);
+    tp.initial_version := 0xff000017;
+    tp.versions := tp.versions.append(0xff000017);
     tp.versions := tp.versions.append(0x49565931);  # IVY1
     var imsdbl : initial_max_stream_data_bidi_local;
     imsdbl.stream_pos_32 := max_stream_data;
@@ -213,7 +211,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
         require cid_dst_to_src_set(pkt.hdr_cid);
     };
-    require pkt.hdr_long -> pkt.hdr_version = 0xff000012
+    require pkt.hdr_long -> pkt.hdr_version = 0xff000017
 }
 
 # Hook up to the remote server
@@ -349,11 +347,12 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call show_stream(res.data);
             if res.ok {
                 var pkt := pkt_serdes.from_bytes(res.data);
+                pkt.seq_num := prot.correct_packet_number(rnum,pkt.seq_num,get_pnum_len(res,0));
 	        call show_packet(src,dst,pkt);
 	        call infer_tls_events(src,dst,pkt);   # infer any TLS events on client side
 	        call packet_event(src,dst,pkt);
                 if bvand(ppkt.value(0),0xf0) = 0xc0 & ~cid_dst_to_src_set(the_cid) {
-                    call open_connection(dst,src,the_cid,pkt.hdr_cid);  # [1]
+                    call app_server_open_event(dst,src,the_cid,pkt.hdr_cid);  # [1]
                 }
             }
             else {
@@ -491,9 +490,9 @@ before frame.stop_sending.handle(f:frame.stop_sending,src:ip.endpoint,dst:ip.end
     }
 }
 
-# Generate max_streams frames only for the client.
+# Generate max_stream_id frames only for the client.
 
-before frame.max_streams.handle(f:frame.max_streams,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.max_stream_id.handle(f:frame.max_stream_id,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -523,7 +522,7 @@ before frame.application_close.handle(f:frame.application_close,src:ip.endpoint,
     }
 }
 
-# Generate max_streams frames only for the client.
+# Generate max_stream_id frames only for the client.
 
 before frame.max_stream_data.handle(f:frame.max_stream_data,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
     if _generating {
@@ -534,7 +533,7 @@ before frame.max_stream_data.handle(f:frame.max_stream_data,src:ip.endpoint,dst:
     }
 }
 
-# Generate max_streams frames only for the client.
+# Generate max_stream_id frames only for the client.
 
 before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
     if _generating {
@@ -598,7 +597,7 @@ export packet_event
 export client_send_event
 export tls_recv_event
 #export frame.rst_stream.handle
-#export frame.max_streams.handle
+#export frame.max_stream_id.handle
 # export frame.connection_close.handle
 #export frame.max_stream_data.handle
 
