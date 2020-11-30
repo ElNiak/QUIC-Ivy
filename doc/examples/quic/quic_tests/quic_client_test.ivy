@@ -1,4 +1,3 @@
-
 #lang ivy1.7
 
 include order
@@ -72,8 +71,8 @@ instance tls_extensions : vector(tls.extension)
 # HACK: we fix the initial client transport parameters here
 
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
-    tp.initial_version := 0xff000017;
-    tp.versions := tp.versions.append(0xff000017);
+    tp.initial_version := 0xff00001b; #version 27
+    tp.versions := tp.versions.append(0xff00001b);
     tp.versions := tp.versions.append(0x49565931);  # IVY1
     var imsdbl : initial_max_stream_data_bidi_local;
     imsdbl.stream_pos_32 := max_stream_data;
@@ -211,7 +210,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
         require cid_dst_to_src_set(pkt.hdr_cid);
     };
-    require pkt.hdr_long -> pkt.hdr_version = 0xff000017
+    require pkt.hdr_long -> pkt.hdr_version = 0xff00001b
 }
 
 # Hook up to the remote server
