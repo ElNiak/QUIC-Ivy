@@ -1,9 +1,11 @@
+#lang ivy1.7
+
 type t
 interpret t -> nat
 
 action decr(x:t) returns (y:t) = {
     assume x > 0;
-    y := x - 1;
+    y := x-1;
     assert y < x;
 }
 
