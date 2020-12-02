@@ -1,0 +1,22 @@
+#lang ivy1.7
+
+type t = {red,green,blue} 
+
+relation link(X:t,Y:t)
+relation failed(Y:t)
+individual y:t
+
+after init {
+        y := *
+}
+
+action non_failed(x:t) returns (w:t)= {
+    if * {
+        link(x,red) := true
+    } else {
+        link(x,blue) := true
+    }
+
+}
+
+export non_failed
