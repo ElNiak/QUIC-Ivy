@@ -57,6 +57,7 @@ object quic_ser = {}
               quic_new_connection_id_scid,
               quic_new_connection_id_token,
               quic_retire_connection_id_seq_num,
+              quic_handshake_done,
               quic_s_done} state;
         bool long_format;
         char hdr_type;
@@ -94,7 +95,7 @@ object quic_ser = {}
                 if (long_format) {
                     setn(8,1);
                 }
-		setn(res,8);
+		        setn(res,8);
                 state = quic_s_scid;
             }
             break;
@@ -102,7 +103,7 @@ object quic_ser = {}
             {
                 if (long_format) {
                     setn(8,1);
-		    setn(res,8);
+		            setn(res,8);
                 }
                 state = quic_s_retry_token_length;
             }
@@ -128,7 +129,7 @@ object quic_ser = {}
             case quic_stream_fin:
             {
                 frame_type |= res ? 0x01 : 0;
-		setn(frame_type,1);
+		        setn(frame_type,1);
                 state = quic_stream_id;
             }
             break;
@@ -297,6 +298,11 @@ object quic_ser = {}
                 set_var_int(res);
             }
             break;
+            case quic_handshake_done: //TODO
+            {
+                //set_var_int(res);
+            }
+            break;
             default:
             throw deser_err();
             }
@@ -319,7 +325,7 @@ object quic_ser = {}
         virtual void open_tag(int tag, const std::string &) {
             if (state == quic_s_payload) {
                 if (tag == 0) {
-		    frame_type = 0x08;
+		            frame_type = 0x08; // ??
                     state = quic_stream_off;
                     return;
                 }
@@ -332,7 +338,7 @@ object quic_ser = {}
                     frame_type = 0x04;
                 }
                 else if (tag == 3) {
-                    state = quic_reset_stream_id; // max_stream_id state equivalent to this
+                    state = quic_reset_stream_id; // max_streams state equivalent to this
                     frame_type = 0x12;
                 }
                 else if (tag == 4) {
@@ -352,7 +358,7 @@ object quic_ser = {}
                     state = quic_crypto_offset;
                 }
                 else if (tag == 8) {
-                    frame_type = 0x01;
+                    frame_type = 0x01; //ping frame
                 }
                 else if (tag == 9) {
                     frame_type = 0x1d;
@@ -368,11 +374,11 @@ object quic_ser = {}
                 }
                 else if (tag == 12) {
                     frame_type = 0x1b;
-                    state = quic_path_challenge_data;
+                    state = quic_path_challenge_data; //should be path response ?
                 }
                 else if (tag == 13) {
                     frame_type = 0x07;
-                    state = quic_crypto_length;  // new token equivalent to this
+                    state = quic_crypto_length;  // new_token equivalent to this
                 }
                 else if (tag == 14) {
                     frame_type = 0x10;  // max_data
@@ -393,6 +399,10 @@ object quic_ser = {}
                 else if (tag == 18) {
                     state = quic_retire_connection_id_seq_num;
                     frame_type = 0x19;
+                }
+                else if (tag == 19) {
+                    state = quic_handshake_done;
+                    frame_type = 0x1e;
                 }
 	        else {
                     std::cerr << "saw frame tag " << tag << std::endl;  

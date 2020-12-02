@@ -44,6 +44,7 @@ object frame = {
 
     # Stream frames
 
+    # (0x08 -> 0x0f)
     object stream = {
 
         # Stream frames are a variant of frame

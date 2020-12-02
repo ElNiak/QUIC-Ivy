@@ -322,7 +322,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
     require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
 
-#    call show_pstats(scid,e,pkt.seq_num);
+    call show_pstats(scid,e,pkt.seq_num);
 
     require ~sent_pkt(scid,pkt.ptype,pkt.seq_num);  # [4]
     sent_pkt(scid,pkt.ptype,pkt.seq_num) := true;  # [1]

@@ -81,10 +81,12 @@ object quic_deser = {}
             switch (state) {
             case quic_s_init:
             {
+                //The most significant bit (0x80) of byte 0 (the firstbyte) is set to 1 for long headers.
+                //The most significant bit (0x80) of byte 0 is set to 0 for the short header.
                 getn(res,1);
-                long_format = (res & 0x80) ? true : false;
-                hdr_type = res & 0x7f;
-                res = long_format ? ((hdr_type & 0x30) >> 4) : 3;
+                long_format = (res & 0x80) ? true : false; //0x80 == 128 => if res = x80: true else false ??
+                hdr_type = res & 0x7f;                     //0x7f = 127 | 0x80 & 0x7f = 0 <=>  0 & 0x7f = 0
+                res = long_format ? ((hdr_type & 0x30) >> 4) : 3; //0x30:48 | long => res == 
                 state = quic_s_version;
             }
             break;
@@ -102,11 +104,11 @@ object quic_deser = {}
                 if (long_format) {
                     long long cil;
                     getn(cil,1);
-                    dcil = cil;
+                    dcil = cil; //dcid length
                 } else {
                     dcil = 8;
                 }
-		getn(res,(dcil));
+		        getn(res,(dcil)); //get dcid of dcil bytes
                 state = quic_s_scid;
             }
             break;
@@ -115,11 +117,11 @@ object quic_deser = {}
                 if (long_format) {
                     long long cil;
                     getn(cil,1);
-                    scil = cil;
+                    scil = cil; //scid length
                 } else {
                     scil = 0;
                 }
-		getn(res,(scil));
+		        getn(res,(scil)); //get scid of dcil bytes
                 long long len;
                 if (long_format & ((hdr_type & 0x30) == 0x00))
                     get_var_int(len);
