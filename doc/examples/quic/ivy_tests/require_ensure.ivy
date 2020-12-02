@@ -6,7 +6,8 @@ interpret t -> nat
 action decr(x:t) returns (y:t) = {
     require x > 0;
     y := x-1;
-    ensure y < x;
+    ensure y > x;
 }
 
 export decr
+
