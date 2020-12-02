@@ -271,7 +271,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     # TEMPORARY: Do not allow zero_rtt packets
 
-    require pkt.ptype ~= quic_packet_type.zero_rtt;
+    # chris require pkt.ptype ~= quic_packet_type.zero_rtt;
     
     # Extract the source and destination cid's and packet number from the packet.
 
@@ -286,7 +286,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # destination cid may be the nonce cid chosen by the client for
     # the given source cid. 
     # TODO: The standard says that on receiving
-    # the the server's cid, the clint must switch to it. However, we
+    # the the server's cid, the client must switch to it. However, we
     # can't know when that server's cid has actually been received by
     # the client. As an example, after the server sends its first
     # initial packet, the client might still retransmit its initial
@@ -490,8 +490,8 @@ action handle_tls_handshake(src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,hs
         call handle_tls_extensions(src,dst,scid,ch.extensions,true);
     }
     else if some(sh:tls.server_hello) hs *> sh {
-#        call map_cids(src,scid,dcid);    # [1]
-#        call map_cids(dst,dcid,scid);
+        call map_cids(src,scid,dcid);    # [1]
+        call map_cids(dst,dcid,scid);
         call handle_tls_extensions(src,dst,scid,sh.extensions,false);
     }
     else if some(ee:tls.encrypted_extensions) hs *> ee {
@@ -585,4 +585,4 @@ import action show_offset_length(offset:stream_pos,length:stream_pos)
 
 import action show_pstats(scid:cid,e:quic_packet_type,pnum:pkt_num)
 
-# import action show_tls_keys_established_event(scid:cid, e:quic_packet_type)
+import action show_tls_keys_established_event(scid:cid, e:quic_packet_type)
