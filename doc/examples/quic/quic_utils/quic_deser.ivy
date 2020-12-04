@@ -60,6 +60,7 @@ object quic_deser = {}
               quic_new_connection_id_token,
               quic_path_challenge_data,
               quic_retire_connection_id_seq_num,
+              quic_handshake_done,
               quic_s_done} state;
         bool long_format;
         char hdr_type;
@@ -329,6 +330,11 @@ object quic_deser = {}
                 get_var_int(res);
             }
             break;
+            case quic_handshake_done: //TODO
+            {
+                //get_var_int(res);
+            }
+            break;
             default:
             throw deser_err();
             }
@@ -439,6 +445,10 @@ object quic_deser = {}
                 if (frame_type == 0x19) {
                     state = quic_retire_connection_id_seq_num;
                     return 18;
+                }
+                if (frame_type == 0x1e) {
+                    state = quic_handshake_done;
+                    return 19;
                 }
                 std::cerr << "saw tag " << ft << std::endl;  
             }

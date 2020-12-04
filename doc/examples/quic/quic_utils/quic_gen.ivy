@@ -21,7 +21,6 @@ include tls
 # 
 #
 
-
 # The wire specification monitors this action.
 
 action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
@@ -48,9 +47,9 @@ module quic_endpoint(addr,the_role) = {
     var ep : ip.endpoint
     var tls_id : botan.id
     after init {
-	ep.protocol := ip.udp;
-	ep.addr := addr;
-	ep.port := 0;
+        ep.protocol := ip.udp;
+        ep.addr := addr;
+        ep.port := 0;
     }
 }
     
@@ -70,10 +69,10 @@ after init {
 
 implement botan.lower.send(tls_id:botan.id,bytes:stream_data) {
     if tls_id = client.tls_id {
-	call tls_send_event(client.ep, server.ep, the_cid, bytes)
+	    call tls_send_event(client.ep, server.ep, the_cid, bytes)
     };
     if tls_id = server.tls_id {
-	call tls_send_event(server.ep, client.ep, the_cid, bytes)
+	    call tls_send_event(server.ep, client.ep, the_cid, bytes)
     }
 }
 
@@ -102,8 +101,8 @@ around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, pcid:cid, lo : stream_po
     var data := stream_data.empty;
     var idx := lo;
     while idx < hi {
-	data := data.append(stream_app_data(dst,pcid,0).value(idx));
-	idx := idx.next
+        data := data.append(stream_app_data(dst,pcid,0).value(idx));
+        idx := idx.next
     };
     call botan.lower.recv(tls_id,data)
 }

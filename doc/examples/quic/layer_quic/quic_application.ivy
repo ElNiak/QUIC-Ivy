@@ -153,13 +153,11 @@ after app_send_event {
     var idx := data.begin;
     while idx < data.end {
         var val := stream_app_data(dcid,s).value(pos + idx);
-
         # TODO: using zero as a "null" value is not correct here.
         # We need a data structure to capture the known intervals!
-
         require val ~= 0 ->  data.value(idx) = val;  # [2]
-	stream_app_data(dcid,s) := stream_app_data(dcid,s).set(pos+idx,data.value(idx));
-	idx := idx.next
+	    stream_app_data(dcid,s) := stream_app_data(dcid,s).set(pos+idx,data.value(idx));
+	    idx := idx.next
     };
     stream_app_data_end(dcid,s) := end;  # [1]
     if close {

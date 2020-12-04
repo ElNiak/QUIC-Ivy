@@ -100,7 +100,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data,0));
             call recv_packet(src,dst,pkt);
             call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
-            call packet_event(src,dst,pkt); # also an inferred event
+            call packet_event(src,dst,pkt);       # also an inferred event
         }
         else {
             call undecryptable_packet_event(src,dst,ppkt);
@@ -145,7 +145,7 @@ implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.l
 
 after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data : stream_data,
                      pos:stream_pos, e:quic_packet_type) {
-#    call show_tls_send_event(src,dst,scid,dcid,data,pos,e);
+    call show_tls_send_event(src,dst,scid,dcid,data,pos,e);
 }
 
 # TLS keys established event shim

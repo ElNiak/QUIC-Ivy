@@ -165,7 +165,7 @@ after init {
 # transmitted via a generated crypto frame event. 
 
 implement botan.lower.send(tls_id:botan.id,bytes:stream_data) {
-    var e := quic_packet_type.initial if lev = 0 else (quic_packet_type.handshake if lev = 2 else quic_packet_type.other);
+    var e := quic_packet_type.initial if lev = 0 else (quic_packet_type.handshake if lev = 2 else quic_packet_type.one_rtt);
     if tls_id = server.tls_id {
         call tls_send_event(server.ep, client.ep, the_cid, 0, bytes,
                             crypto_data_end(the_cid,e), e);
@@ -179,7 +179,7 @@ after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data 
 
 
 implement botan.upper.keys_established(tls_id:botan.id,lev:botan.upper.level) {
-    var e := quic_packet_type.handshake if lev = 2 else quic_packet_type.other;
+    var e := quic_packet_type.handshake if lev = 2 else quic_packet_type.one_rtt;
     if tls_id = server.tls_id {
         call tls_keys_established_event(the_cid,e);
     }
@@ -275,7 +275,7 @@ action cid_to_bytes(c:cid,len:cid_length) returns(res:stream_data) = {
 # This action gets the encryption level from the packet header.
 
 action packet_quic_packet_type(h:prot.header_info) returns (e:quic_packet_type) = {
-    e := quic_packet_type.other if ~h.hdr_long
+    e := quic_packet_type.one_rtt if ~h.hdr_long
             else (quic_packet_type.initial if h.hdr_type = 0x7f
                   else quic_packet_type.handshake);
 }
@@ -379,8 +379,8 @@ around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, e:qu
     require src = client.ep & dst = server.ep;
     require hi = crypto_length(scid,e);
     require e = quic_packet_type.handshake -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
-    require e = quic_packet_type.other -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
-    require e = quic_packet_type.other -> crypto_pos(dcid,quic_packet_type.handshake) = crypto_length(scid,quic_packet_type.handshake);
+    require e = quic_packet_type.one_rtt -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
+    require e = quic_packet_type.one_rtt -> crypto_pos(dcid,quic_packet_type.handshake) = crypto_length(scid,quic_packet_type.handshake);
     require dcid = the_cid;
     ...
     var tls_id := server.tls_id;
@@ -449,12 +449,12 @@ before frame.crypto.handle(f:frame.crypto,src:ip.endpoint,dst:ip.endpoint,scid:c
         require src = server.ep & dst = client.ep; 
         require scid = the_cid;
         require f.length > 0;
-#        call show_level_offset_length(e,crypto_length(scid,e),crypto_data_end(src,scid,e))
+        call show_level_offset_length(e,crypto_length(scid,e),crypto_data_end(src,scid,e)) #
         require f.offset = crypto_length(scid,e);
         require f.length = (crypto_data_end(scid,e)) - f.offset;
         require e = quic_packet_type.handshake -> crypto_length(scid,quic_packet_type.initial) = crypto_data_end(scid,quic_packet_type.initial);  # [1]
-        require e = quic_packet_type.other -> crypto_length(scid,quic_packet_type.initial) = crypto_data_end(scid,quic_packet_type.initial);  # [1]
-        require e = quic_packet_type.other -> crypto_length(scid,quic_packet_type.handshake) = crypto_data_end(scid,quic_packet_type.handshake);  # [1]
+        require e = quic_packet_type.one_rtt -> crypto_length(scid,quic_packet_type.initial) = crypto_data_end(scid,quic_packet_type.initial);  # [1]
+        require e = quic_packet_type.one_rtt -> crypto_length(scid,quic_packet_type.handshake) = crypto_data_end(scid,quic_packet_type.handshake);  # [1]
     }
 }
 

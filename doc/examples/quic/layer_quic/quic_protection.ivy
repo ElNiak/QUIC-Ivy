@@ -145,19 +145,19 @@ module quic_protection(tls_id,tls) = {
     # packet.
 
     action get_level(pkt:stream_data) returns (level:tls.level) = {
-        if bvand(pkt.value(0),0x80) ~= 0 { //long header
-            var hdr_type := bvand(pkt.value(0),0x30); //long packet
+        if bvand(pkt.value(0),0x80) ~= 0 { #long header
+            var hdr_type := bvand(pkt.value(0),0x30); #long packet
             if hdr_type = 0x00 { 
-                level := 0; //initial
+                level := 0; #initial
             } else if hdr_type = 0x10 {
-                level := 1; //0RRT
+                level := 1; #0RRT
             } else if hdr_type = 0x20 { # if hdr_type = 0x20, TODO: other packet types
-                level := 2; //HANDSHAKE
+                level := 2; #HANDSHAKE
             } else {
-                level := 3; //1RTT
+                level := 3; #1RTT
             }
         } else {
-            level := 3;    //1RRT
+            level := 3;    #1RRT
         }
     }
     

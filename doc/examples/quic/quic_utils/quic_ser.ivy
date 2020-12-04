@@ -15,13 +15,13 @@ object quic_ser = {}
     class `quic_ser` : public ivy_binary_ser {
         enum {quic_s_init,
               quic_s_version,
-	      quic_s_dcil,
-	      quic_s_scil,
+              quic_s_dcil,
+              quic_s_scil,
               quic_s_dcid,
               quic_s_scid,
               quic_s_retry_token_length,
               quic_s_retry_token,
-	      quic_s_payload_length,
+	          quic_s_payload_length,
               quic_s_pkt_num,
               quic_s_payload,
               quic_stream_id,
@@ -65,7 +65,7 @@ object quic_ser = {}
         int scil;
         char frame_type;
         int data_remaining;
-       long long ack_blocks_expected;
+        long long ack_blocks_expected;
         long long ack_block_count;
         int payload_length_pos;
         int fence;
@@ -309,11 +309,11 @@ object quic_ser = {}
         }
 
         void set_var_int(long long res) {
-	    long long val = res & 0x3fffffffffffffff;
-	    int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
-	    int bytes = 1 << bytecode;
-            val |= bytecode << ((bytes << 3) - 2);
-	    setn(val,bytes);
+            long long val = res & 0x3fffffffffffffff;
+            int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
+            int bytes = 1 << bytecode;
+                val |= bytecode << ((bytes << 3) - 2);
+            setn(val,bytes);
         }
 
         void set_pkt_num(long long &res) {
@@ -325,7 +325,7 @@ object quic_ser = {}
         virtual void open_tag(int tag, const std::string &) {
             if (state == quic_s_payload) {
                 if (tag == 0) {
-		            frame_type = 0x08; // ??
+		            frame_type = 0x08; // frame_type >= 0x08 && frame_type <= 0x0f
                     state = quic_stream_off;
                     return;
                 }
