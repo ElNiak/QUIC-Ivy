@@ -388,7 +388,7 @@ before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid) {
         require ~(max_data_set(scid) & max_data_val(scid) > f.pos);
         var tp := trans_params(scid);
         if initial_max_data.is_set(tp) {
-# TEMORARY: commented out until fixed
+# TEMPORARY: commented out until fixed
 #            require initial_max_data.value(tp).stream_pos_32 <= f.pos;
         }
     }
