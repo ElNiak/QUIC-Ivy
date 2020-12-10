@@ -93,6 +93,7 @@ module quic_protection(tls_id,tls) = {
         var sample := pyld.segment(sample_pos,sample_pos+sample_size);
         var mask := stream_data.empty;
         mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,false);
+        # https://tools.ietf.org/html/draft-ietf-quic-tls-27 p24
         var byte0_mask := bvand(mask.value(0), 0x0f if h.hdr_long else 0x1f);
         hdr := hdr.set(0,byte_xor(pkt.value(0),byte0_mask));
         pnum := stream_data_xor(pnum,mask.segment(1,1+pnum_len));        

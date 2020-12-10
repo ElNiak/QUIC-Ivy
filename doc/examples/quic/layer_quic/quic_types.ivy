@@ -109,7 +109,7 @@ interpret type_bits -> bv[7]
 # This type represents the length of a connection id in bytes
 
 type cid_length
-interpret cid_length -> bv[4]
+interpret cid_length -> bv[4] #32 bits ?
 
 # Connection id sequence numbers
 

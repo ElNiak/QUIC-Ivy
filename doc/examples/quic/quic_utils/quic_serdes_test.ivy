@@ -35,7 +35,7 @@ before show_packet {
     assert ~pkt.hdr_long -> (pkt.dcid = 5 & pkt.scid = 0 & pkt.hdr_cid = 0);
     assert pkt.hdr_long -> (pkt.dcid > 0 & pkt.scid > 0);
     assert pkt.hdr_token_length = pkt.hdr_token.end;
-    assert pkt.hdr_token_length ~= 0 -> (pkt.hdr_long & pkt.hdr_type = 0x7f);
+    assert pkt.hdr_token_length ~= 0 -> (pkt.hdr_long & pkt.hdr_type = 0x0);
     var idx := pkt.payload.begin;
     while idx < pkt.payload.end {
 	var f := pkt.payload.value(idx);

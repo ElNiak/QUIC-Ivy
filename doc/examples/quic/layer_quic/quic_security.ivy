@@ -190,9 +190,9 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
         var byte := data.value(jdx);
         require crypto_data_present(scid,e,cpos) -> crypto_data(scid,e).value(cpos) = byte;
         crypto_data_end(scid,e) := end;
-	crypto_data(scid,e) := crypto_data(scid,e).set(cpos,byte);  # [4]
+	    crypto_data(scid,e) := crypto_data(scid,e).set(cpos,byte);  # [4]
         crypto_data_present(scid,e,cpos) := true;
-	jdx := jdx.next
+	    jdx := jdx.next
     };
     crypto_data_end(scid,e) := crypto_data(scid,e).end;
     var max_present : stream_pos := 0;

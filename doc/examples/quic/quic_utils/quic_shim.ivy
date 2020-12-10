@@ -254,7 +254,7 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
 
 action packet_encryption_level(h:prot.header_info) returns (e:quic_packet_type) = {
     e := quic_packet_type.zero_rtt if ~h.hdr_long
-            else (quic_packet_type.initial if h.hdr_type = 0x7f
+            else (quic_packet_type.initial if h.hdr_type = 0x0 #0x7f
                   else quic_packet_type.handshake);
 }
 

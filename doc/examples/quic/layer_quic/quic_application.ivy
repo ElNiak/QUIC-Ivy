@@ -80,7 +80,7 @@ function stream_app_pos(C:cid,S:stream_id) : stream_pos
 function stream_app_data_finished(C:cid,S:stream_id) : bool
 
 after init {
-    stream_app_pos(C,S) := 0;
+    stream_app_pos(C,S) := 0; 
     stream_app_data_finished(C,S) := false;
 }
 
