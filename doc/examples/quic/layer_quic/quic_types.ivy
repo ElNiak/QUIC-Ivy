@@ -109,14 +109,15 @@ interpret type_bits -> bv[7]
 # This type represents the length of a connection id in bytes
 
 type cid_length
-interpret cid_length -> bv[4] #32 bits ?
+interpret cid_length -> bv[8] 
+# 4bits => 8 bits ?
 
 # Connection id sequence numbers
 
 type cid_seq
 interpret cid_seq -> bv[8]
 
-# Stateless reset tokens
+# Stateless reset tokens => ?? not 128 bits ?
 
 type reset_token
 interpret reset_token -> bv[31]

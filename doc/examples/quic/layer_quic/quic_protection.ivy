@@ -160,6 +160,10 @@ module quic_protection(tls_id,tls) = {
         } else {
             level := 3;    #1RRT
         }
+        #TODO test 
+        <<<
+        std::cout << "[quic_protection] encr_level: " << level << std::endl;
+        >>>
     }
     
     # This returns the header information of a packet, whether
@@ -381,7 +385,7 @@ object quic_prot_deser = {}
                 unsigned len = get_var_int_len(pnum_pos);
                 unsigned pyld_len = get_var_int(pnum_pos,len);
                 data_remaining = (pnum_pos-pos) + len + pyld_len;
-                // std::cout << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
+                std::cout << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
             }
             else {
                 data_remaining = 0x7fffffff;
