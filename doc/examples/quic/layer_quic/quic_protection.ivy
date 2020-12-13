@@ -160,7 +160,11 @@ module quic_protection(tls_id,tls) = {
         } else {
             level := 3;    #1RRT
         }
-        #TODO test 
+        print(level)
+    }
+
+    
+    action print(level:tls.level) {
         <<<
         std::cout << "[quic_protection] encr_level: " << level << std::endl;
         >>>
@@ -235,7 +239,7 @@ module quic_protection(tls_id,tls) = {
         }
     }
 
-    # Get the length of a variable-length ingteger in a packet.
+    # Get the length of a variable-length integer in a packet.
 
     action get_var_int_len(pkt:stream_data,pos:stream_pos) returns (len:stream_pos) = {
         var code := bvand(0xc0,pkt.value(pos));
@@ -280,6 +284,7 @@ module quic_protection(tls_id,tls) = {
             val.val = (val.val << 8) + bytes[i];
         >>>
     }
+
 
     action byte_xor(x:byte,y:byte) returns (z:byte) = {
         <<<
