@@ -160,11 +160,11 @@ module quic_protection(tls_id,tls) = {
         } else {
             level := 3;    #1RRT
         }
-        print(level)
+        #print_level(level);
     }
 
     
-    action print(level:tls.level) {
+    action print_level(level:tls.level) = {
         <<<
         std::cout << "[quic_protection] encr_level: " << level << std::endl;
         >>>

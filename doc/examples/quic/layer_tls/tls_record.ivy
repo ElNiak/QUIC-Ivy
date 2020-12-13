@@ -11,8 +11,8 @@ include byte_stream
 # this is not a fully general description. In particular, it does not allow for TLS messages that
 # span multiple TLS records.
 #
-# The information in this document is derived from [RFC 4256](https://tools.ietf.org/html/rfc5246)
-# 
+# BEFORE: The information in this document is derived from [RFC 4256](https://tools.ietf.org/html/rfc5246)
+# NOW: https://tools.ietf.org/html/rfc8446
 
 object tls = {
 
@@ -198,6 +198,7 @@ object tls = {
     #
     #     | tag   | content type       |
     #     |-------|--------------------|
+    #     | 0     | invalid            | #TODO
     #     | 20    | change cipher spec |
     #     | 21    | alert              |
     #     | 22    | handshake          |
