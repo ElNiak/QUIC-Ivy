@@ -45,9 +45,13 @@ module quic_protection(tls_id,tls) = {
     implement encrypt {
         var h := get_header_info(pkt);
         var level := get_level(pkt);
+        # Get the size of the cipher initial value for a given level.
         var sample_size := tls.iv_size(c,level);
+        # packet number position
         var pnum_pos := h.pkt_num_pos;
+        # Derive the len of variable packet number
         var pnum_len := get_pnum_len(pkt,pnum_pos);
+        # End of header, payload after
         var hdr_len := pnum_pos + pnum_len;
 
         # Tricky: before encrypting the payload, we need to adjust the length field
@@ -55,11 +59,15 @@ module quic_protection(tls_id,tls) = {
         # that actually is. Here we assume it is 16 bytes. Even worse, the length of
         # the length field could grow. Here, we assume the length field format is
         # always two bytes. 
+        # https://tools.ietf.org/html/rfc5116
+        # Not perfect but for picotls, define in https://github.com/h2o/picotls
         if h.hdr_long {
             var new_len := to_var_int_16(h.payload_length+16);
             pkt := pkt.set(pnum_pos-2,new_len.value(0));
             pkt := pkt.set(pnum_pos-1,new_len.value(1));
         };
+        
+        # Extract an array segment function segment(A:t, LO:domain, HI:domain) : t
 
         var hdr := pkt.segment(0,pnum_pos);
         var pnum := pkt.segment(pnum_pos,hdr_len);
@@ -100,6 +108,7 @@ module quic_protection(tls_id,tls) = {
         pkt := hdr.extend(pnum).extend(pyld);
     }
 
+    #TODO error in implementation
     implement decrypt {
         var h := get_header_info(pkt);
         var level := get_level(pkt);
@@ -143,16 +152,17 @@ module quic_protection(tls_id,tls) = {
     }
 
     # This returns the encryption level of a protected or unprotected
-    # packet.
-
+    # packet. 
+    # Encryption level, ranges from 0-3
+    # TODO check encryption level meaning
     action get_level(pkt:stream_data) returns (level:tls.level) = {
         if bvand(pkt.value(0),0x80) ~= 0 { #long header
-            var hdr_type := bvand(pkt.value(0),0x30); #long packet
-            if hdr_type = 0x00 { 
+            var hdr_type := bfe[0][6](pkt.value(0)); 
+            if bvand(hdr_type,0x00) = 0x00 { 
                 level := 0; #initial
-            } else if hdr_type = 0x10 {
+            } else if bvand(hdr_type,0x10) = 0x00 {
                 level := 1; #0RRT
-            } else if hdr_type = 0x20 { # if hdr_type = 0x20, TODO: other packet types
+            } else if bvand(hdr_type,0x20) = 0x00 { # if hdr_type = 0x20, TODO: other packet types
                 level := 2; #HANDSHAKE
             } else {
                 level := 3; #1RTT
@@ -177,18 +187,43 @@ module quic_protection(tls_id,tls) = {
     # are zero.
 
     action get_header_info(pkt:stream_data) returns (h:header_info) = {
-        h.hdr_long := bvand(0x80,pkt.value(0)) ~= 0;
-        h.hdr_type := bfe[0][6](pkt.value(0));
+        #Recap: byte 0 = header info
+        #            [1-4] = version
+        #            [5] = dcid_l
+        #            [6 - 6+dcid_l] = dcid
+        #            [6+dcid_l] = scid_l
+        #            [7+dcid_l - 7+dcid_l+scid_l] = scid
+
+
+        # MSB == 0 => Short header else Long header
+        h.hdr_long := bvand(0x80,pkt.value(0)) ~= 0; 
+        # Example bfe[3][0] is the bit field extraction operator the takes the low order 4 bits of a bit vector.
+        # Here take 7 high order bit of 1st bytes
+        h.hdr_type := bfe[0][6](pkt.value(0)); 
         if h.hdr_long {
-            var dcil : stream_pos := bfe[0][7](pkt.value(5));
-            h.dcid := bytes_to_cid(pkt.segment(6,6+dcil));
-            var scil : stream_pos := bfe[0][7](pkt.value(6+dcil));
-            h.scid := bytes_to_cid(pkt.segment(7+dcil,7+dcil+scil));
-            var pos := 7 + dcil + scil;
+            # Take 8 high order bit of byte 6
+            var dcid_l : stream_pos := bfe[0][7](pkt.value(5));
+            # Convert the bytes value into cid for the good range [byte 7 to 7+dcid_l]
+            h.dcid := bytes_to_cid(pkt.segment(6,6+dcid_l));
+            # Take 8 high order bit of byte 6+length of DCID
+            var scid_l : stream_pos := bfe[0][7](pkt.value(6+dcid_l));
+            # Convert the bytes value into cid for the good range [byte 8 to 8+dcid_l]
+            h.scid := bytes_to_cid(pkt.segment(7+dcid_l,7+dcid_l+scid_l));
+            var pos := 7 + dcid_l + scid_l;
             if bvand(h.hdr_type,0x30) = 0x00 {
+                #Retry packet
                 var len := get_var_int_len(pkt,pos);
                 var retry_token_len := get_var_int(pkt,pos,len);
                 pos := pos + len + retry_token_len;
+            } else if bvand(h.hdr_type,0x20) = 0x00 {
+                #Handshake packet
+                #TODO
+            } else if bvand(h.hdr_type,0x10) = 0x00 {
+                #0RTT packet
+                #TODO
+            } else if bvand(h.hdr_type,0x00) = 0x00 {
+                #Initial packet
+                #TODO
             };
             var len := get_var_int_len(pkt,pos);
             h.payload_length := get_var_int(pkt,pos,len);
@@ -221,6 +256,7 @@ module quic_protection(tls_id,tls) = {
     # Get the length of a packet number at position `pos`
 
     action get_pnum_len(pkt:stream_data,pnum_pos:stream_pos) returns (pnum_len:stream_pos) = {
+        # Here take 2 high order bit of 1st bytes
         var len_minus_one : stream_pos := bfe[0][1](pkt.value(0));
         pnum_len := len_minus_one + 1;
     }
@@ -379,9 +415,9 @@ object quic_prot_deser = {}
             if (level != 1)
                 return;
             if (peek(pos) & 0x80) { // a long packet
-                unsigned dcil = peek(pos+5);
-                unsigned scil = peek(pos+6+dcil);
-                unsigned pnum_pos = pos + 7 + dcil + scil;
+                unsigned dcid_l = peek(pos+5);
+                unsigned scid_l = peek(pos+6+dcid_l);
+                unsigned pnum_pos = pos + 7 + dcid_l + scid_l;
                 if ((peek(pos) &0x30) == 0x00) { // initial packets have tokens
                     unsigned len = get_var_int_len(pnum_pos);
                     unsigned retry_token_len = get_var_int(pnum_pos,len);
