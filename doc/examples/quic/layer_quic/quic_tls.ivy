@@ -6,7 +6,7 @@
 # This document describes the interface between the QUIC protocol and TLS.
 #
 
-include tls_record
+include tls_record_1_3
 
 object quic_tls = {
 

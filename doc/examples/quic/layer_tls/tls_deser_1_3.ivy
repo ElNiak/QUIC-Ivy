@@ -2,7 +2,7 @@
 
 # Deserializer for TLS records
 
-include tls_record
+include tls_record_1_3
 
 object tls_deser = {}
 object tls_ser = {}

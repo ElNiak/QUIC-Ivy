@@ -157,7 +157,7 @@ module quic_protection(tls_id,tls) = {
     # TODO check encryption level meaning
     action get_level(pkt:stream_data) returns (level:tls.level) = {
         if bvand(pkt.value(0),0x80) ~= 0 { #long header
-            var hdr_type := bfe[0][6](pkt.value(0)); 
+            var hdr_type : type_bits := bfe[0][6](pkt.value(0)); 
             if bvand(hdr_type,0x00) = 0x00 { 
                 level := 0; #initial
             } else if bvand(hdr_type,0x10) = 0x00 {
@@ -168,7 +168,7 @@ module quic_protection(tls_id,tls) = {
                 level := 3; #1RTT
             }
         } else {
-            level := 3;    #1RRT
+            level := 3;     #1RRT
         }
         #print_level(level);
     }
@@ -193,7 +193,6 @@ module quic_protection(tls_id,tls) = {
         #            [6 - 6+dcid_l] = dcid
         #            [6+dcid_l] = scid_l
         #            [7+dcid_l - 7+dcid_l+scid_l] = scid
-
 
         # MSB == 0 => Short header else Long header
         h.hdr_long := bvand(0x80,pkt.value(0)) ~= 0; 
