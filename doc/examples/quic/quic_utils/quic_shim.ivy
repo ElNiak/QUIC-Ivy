@@ -135,7 +135,8 @@ import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:str
 
 implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.lower.level) {
     var e := quic_packet_type.initial if lev = 0
-             else (quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt);
+             else (quic_packet_type.handshake if lev = 2 
+             else (quic_packet_type.one_rtt if lev = 3 else quic_packet_type.zero_rtt));
     var scid := tls_id_to_cid(tls_id);
     call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
                         0, bytes,crypto_data_end(scid,e),e);
@@ -200,47 +201,47 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
     # 0xafbfec289993d24c9e9786f19c6111e04390a899 draft 32
     # 0xc3eef712c72ebb5a11a7d2432bb46365bef9f502 draft 27
 
-    salt := salt.append(0xc3);
-    salt := salt.append(0xee);
-    salt := salt.append(0xf7);
-    salt := salt.append(0x12);
-    salt := salt.append(0xc7);
-    salt := salt.append(0x2e);
-    salt := salt.append(0xbb);
-    salt := salt.append(0x5a);
-    salt := salt.append(0x11);
-    salt := salt.append(0xa7);
-    salt := salt.append(0xd2);
-    salt := salt.append(0x43);
-    salt := salt.append(0x2b);
-    salt := salt.append(0xb4);
-    salt := salt.append(0x63);
-    salt := salt.append(0x65);
-    salt := salt.append(0xbe);
-    salt := salt.append(0xf9);
-    salt := salt.append(0xf5);
-    salt := salt.append(0x02);
-    #
-    #salt := salt.append(0x02);
-    #salt := salt.append(0xf5);
-    #salt := salt.append(0xf9);
-    #salt := salt.append(0xbe);
-    #salt := salt.append(0x65);
-    #salt := salt.append(0x63);
-    #salt := salt.append(0xb4);
-    #salt := salt.append(0x2b);
-    #salt := salt.append(0x43);
-    #salt := salt.append(0xd2);
-    #salt := salt.append(0xa7);
-    #salt := salt.append(0x11);
-    #salt := salt.append(0x5a);
-    #salt := salt.append(0xbb);
-    #salt := salt.append(0x2e);
-    #salt := salt.append(0xc7);
-    #salt := salt.append(0x12);
-    #salt := salt.append(0xf7);
-    #salt := salt.append(0xee);
     #salt := salt.append(0xc3);
+    #salt := salt.append(0xee);
+    #salt := salt.append(0xf7);
+    #salt := salt.append(0x12);
+    #salt := salt.append(0xc7);
+    #salt := salt.append(0x2e);
+    #salt := salt.append(0xbb);
+    #salt := salt.append(0x5a);
+    #salt := salt.append(0x11);
+    #salt := salt.append(0xa7);
+    #salt := salt.append(0xd2);
+    #salt := salt.append(0x43);
+    #salt := salt.append(0x2b);
+    #salt := salt.append(0xb4);
+    #salt := salt.append(0x63);
+    #salt := salt.append(0x65);
+    #salt := salt.append(0xbe);
+    #salt := salt.append(0xf9);
+    #salt := salt.append(0xf5);
+    #salt := salt.append(0x02);
+    #
+    salt := salt.append(0x02);
+    salt := salt.append(0xf5);
+    salt := salt.append(0xf9);
+    salt := salt.append(0xbe);
+    salt := salt.append(0x65);
+    salt := salt.append(0x63);
+    salt := salt.append(0xb4);
+    salt := salt.append(0x2b);
+    salt := salt.append(0x43);
+    salt := salt.append(0xd2);
+    salt := salt.append(0xa7);
+    salt := salt.append(0x11);
+    salt := salt.append(0x5a);
+    salt := salt.append(0xbb);
+    salt := salt.append(0x2e);
+    salt := salt.append(0xc7);
+    salt := salt.append(0x12);
+    salt := salt.append(0xf7);
+    salt := salt.append(0xee);
+    salt := salt.append(0xc3);
     call tls_api.upper.set_initial_keys(0,salt,ikm);
 }
 
