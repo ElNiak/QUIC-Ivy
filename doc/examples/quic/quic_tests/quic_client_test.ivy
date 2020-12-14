@@ -206,11 +206,11 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        require pkt.hdr_long -> pkt.dcid = 5 & pkt.scid = 5;
+        require pkt.long -> pkt.dcid = 5 & pkt.scid = 5;
         require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
         require cid_dst_to_src_set(pkt.hdr_cid);
     };
-    require pkt.hdr_long -> pkt.hdr_version = 0xff00001b
+    require pkt.long -> pkt.hdr_version = 0xff00001b
 }
 
 # Hook up to the remote server
@@ -275,7 +275,7 @@ action cid_to_bytes(c:cid,len:cid_length) returns(res:stream_data) = {
 # This action gets the encryption level from the packet header.
 
 action packet_quic_packet_type(h:prot.header_info) returns (e:quic_packet_type) = {
-    e := quic_packet_type.one_rtt if ~h.hdr_long
+    e := quic_packet_type.one_rtt if ~h.long
             else (quic_packet_type.initial if h.hdr_type = 0x7f
                   else quic_packet_type.handshake);
 }
@@ -284,7 +284,7 @@ action packet_quic_packet_type(h:prot.header_info) returns (e:quic_packet_type) 
 # id, which is not present in short packets. Here we get it from history.
 
 action packet_scid(h:prot.header_info) returns (scid:cid) = {
-    if h.hdr_long {
+    if h.long {
         scid := h.scid;
     } else {
         scid := cid_dst_to_src(h.dcid);
