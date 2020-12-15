@@ -58,7 +58,6 @@ module quic_endpoint(addr,the_role) = {
 }
     
 # create a client and a server endpoint, each with an instance of TLS
-
 instance client : quic_endpoint(0,role.client)
 instance server : quic_endpoint(1,role.server)
 

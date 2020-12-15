@@ -164,10 +164,11 @@ after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data 
 # level. This is translated into a `tls_keys_established_event` at the security layer.
 
 implement tls_api.upper.keys_established(tls_id:tls_api.id,lev:tls_api.upper.level) {
-    var e := quic_packet_type.initial if lev = 0
-             else (quic_packet_type.handshake if lev = 2 
-             else (quic_packet_type.one_rtt if lev = 3 
-             else quic_packet_type.zero_rtt));
+    #var e := quic_packet_type.initial if lev = 0
+    #         else (quic_packet_type.handshake if lev = 2 
+    #         else (quic_packet_type.one_rtt if lev = 3 
+    #         else quic_packet_type.zero_rtt));
+    var e := quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt;
     call tls_keys_established_event(tls_id_to_cid(tls_id),e);
 }
 
