@@ -6,6 +6,8 @@ include serdes
 include quic_deser
 include quic_ser
 include quic_protection
+include quic_locale
+
 
 # The QUIC test shim
 # ------------------
@@ -33,7 +35,11 @@ include quic_protection
 
 instance prot : quic_protection(tls_api.id,tls_api.upper)
 
-include quic_locale
+# To send and receive packets, we need to serialize and deserialize them.
+# This object allows that.
+
+instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
+
 
 # Packet event shim
 # -----------------
@@ -89,7 +95,8 @@ after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
 
 implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.arr) {
-    var dst := socket_endpoint(host,s);  # because net API doesn't tell us the dst
+    # because net API doesn't tell us the dst
+    var dst := socket_endpoint(host,s);  
     var idx := pkts.begin;
     while idx < pkts.end {
         var ppkt := pkts.value(idx);
@@ -136,7 +143,8 @@ import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:str
 implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.lower.level) {
     var e := quic_packet_type.initial if lev = 0
              else (quic_packet_type.handshake if lev = 2 
-             else (quic_packet_type.one_rtt if lev = 3 else quic_packet_type.zero_rtt));
+             else (quic_packet_type.one_rtt if lev = 3 
+             else quic_packet_type.zero_rtt));
     var scid := tls_id_to_cid(tls_id);
     call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
                         0, bytes,crypto_data_end(scid,e),e);
@@ -156,7 +164,10 @@ after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data 
 # level. This is translated into a `tls_keys_established_event` at the security layer.
 
 implement tls_api.upper.keys_established(tls_id:tls_api.id,lev:tls_api.upper.level) {
-    var e := quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt;
+    var e := quic_packet_type.initial if lev = 0
+             else (quic_packet_type.handshake if lev = 2 
+             else (quic_packet_type.one_rtt if lev = 3 
+             else quic_packet_type.zero_rtt));
     call tls_keys_established_event(tls_id_to_cid(tls_id),e);
 }
 
@@ -177,7 +188,8 @@ implement tls_api.upper.keys_established(tls_id:tls_api.id,lev:tls_api.upper.lev
 
 after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream_data) {
     if dst_is_generated(dst) {
-        call tls_api.lower.recv(dst_tls_id(dst),data,0); # TODO: fill in the encryption level
+        # TODO: fill in the encryption level
+        call tls_api.lower.recv(dst_tls_id(dst),data,0);
     }
 }
 
@@ -190,7 +202,7 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 # initial key material. Note, the "salt" is specified in the QUIC-TLS
 # document.
 #
-# TODO: this assumes the cid length is 8 bytes. Also, the ikm and salt
+# TODO: this assumes the cid length is 8 (64 bits) bytes. Also, the ikm and salt
 # should really be computed in the protection layer and passed to
 # TLS here in the shim.
 
@@ -254,9 +266,10 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
 # This action gets the encryption level from the packet header.
 
 action packet_encryption_level(h:prot.header_info) returns (e:quic_packet_type) = {
-    e := quic_packet_type.zero_rtt if ~h.hdr_long
-            else (quic_packet_type.initial if h.hdr_type = 0x0 #0x7f
-                  else quic_packet_type.handshake);
+    e := quic_packet_type.zero_rtt if if bvand(h.hdr_type,0x10) = 0x00 
+            else (quic_packet_type.initial if bvand(h.hdr_type,0x00) = 0x00 
+            else (quic_packet_type.handshake if bvand(h.hdr_type,0x20) = 0x00 
+            else quic_packet_type.one_rtt));
 }
 
 # To get the reference packet number for a packet, we need to know the source connection
@@ -285,11 +298,6 @@ action reference_pkt_num(spkt:stream_data) returns (pnum:pkt_num) = {
     var scid := packet_scid(h);
     pnum := last_pkt_num(scid,e);
 }
-
-# To send and receive packets, we need to serialize and deserialize them.
-# This object allows that.
-
-instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
 
 # Convert a CID to bytes. TODO: This doesn't belong here and it shouldn't
 # be written in C++!
