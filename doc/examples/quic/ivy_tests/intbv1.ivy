@@ -8,7 +8,7 @@ action fun(x:t) returns(x:t) = {
 }
 
 action foo(x:t) returns(y:t) = {
-    if __generating {
+    if _generating {
         y := fun(x);
     }
 }

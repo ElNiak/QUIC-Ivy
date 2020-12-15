@@ -178,6 +178,7 @@ module quic_protection(tls_id,tls) = {
             level := 3;    
         }
         #print_level(level);
+        call show_tls_encryption_level(level);
     }
 
     
@@ -187,6 +188,8 @@ module quic_protection(tls_id,tls) = {
         >>>
     }
     
+    action show_tls_encryption_level(level:tls.level) = {}
+
     # This returns the header information of a packet, whether
     # encrypted or not. TODO: For short packets, since we don't know
     # the length of the cid, we assume it is 8. If the packet is too

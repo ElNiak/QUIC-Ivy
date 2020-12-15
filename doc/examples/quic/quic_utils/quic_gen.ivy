@@ -32,17 +32,21 @@ action tls_send_event(src:ip.endpoint,dst:ip.endpoint,pcid:cid,data:stream_data)
 
 var the_cid : cid
 
-# 13 = value arbitraire
+# 13 = value arbitraire todetermine
 after init {
     the_cid := 13;
 }
 
+# equiv tls_api in quic_locale
 object botan = {
     instance id : unbounded_sequence
+    #  defines the interface TLS and the underlying transport.
     instance lower : tls_lower_intf(id,stream_data)
+    # This module defines the interface of a TLS endpoint (either a client or a server).
     instance upper : tls_intf(id,stream_pos,stream_data,lower)
 }    
 
+# represent a quic endpoint, ie server or client
 module quic_endpoint(addr,the_role) = {
     var ep : ip.endpoint
     var tls_id : botan.id
@@ -61,8 +65,9 @@ instance server : quic_endpoint(1,role.server)
 after init {
     client.tls_id := 0;
     server.tls_id := 1;
-    call botan.upper.create(0,false);
-    call botan.upper.create(1,true);
+    # Create a new connection with a fresh cid, and list of extensions (cid,isServer)
+    call botan.upper.create(0,false); # for client
+    call botan.upper.create(1,true);  # for server
 }
 
 # Hook up tls to quic
@@ -80,7 +85,7 @@ after tls_send_event(src:ip.endpoint, dst:ip.endpoint, pcid:cid, data : stream_d
     call show_tls_send_event(src,dst,pcid,data);
 }
 
-# TLS reveive event handling
+# TLS receive event handling
 #
 # When TLS data is received, we route it to the appropriate instance of TLS (that
 # is, either the server or client TLS, depending on the destination endpoint).
@@ -128,13 +133,27 @@ export tls_recv_event
 # print in hex
 attribute radix=16       
 
+#   """ A type that represents a large range of integers using a small a
+#     bit vector. It maintains a mapping from bit vector values to
+#     string values. Each time a new string constant is introduces, it
+#     is given an entry in the table. This can fail, however, if the
+#     number of string constants exceeds the number of bit vector
+#     values.  ""
+# loval, hival, bits
 interpret cid -> intbv[1][13][2]
+# 2 bits vector version
 interpret version -> bv[2]
+# 32 bits packet number
 interpret pkt_num -> bv[32]
+# 16 bits error code
 interpret error_code -> bv[16]
+# 3 bits stream ID
 interpret stream_id -> bv[3]
+# Size/cardinality == 1
 attribute frame.idx.cardinality = 1
+# Size/cardinality == 1 for ack blocks
 attribute frame.ack.block.idx.cardinality = 1
+# Size/cardinality == 1 for packet number
 attribute pkt_num.cardinality = 1
 attribute ip.addr.override = bv[1]
 attribute ip.port.override = bv[1]
