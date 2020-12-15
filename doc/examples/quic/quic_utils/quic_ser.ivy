@@ -79,7 +79,7 @@ object quic_ser = {}
             {
                 long_format = res != 3;
                 hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
-		setn(hdr_type | (long_format ? 0x80 : 0), 1);
+		        setn(hdr_type | (long_format ? 0x80 : 0), 1);
                 state = quic_s_version;
             }
             break;
@@ -424,7 +424,7 @@ object quic_ser = {}
                 ack_block_count = 0;
                 state = quic_ack_gap;
             } else if (state == quic_s_retry_token_length) {
-                if (long_format & ((hdr_type & 0x30) == 0x00)) {
+                if (long_format & ((hdr_type & 0x30) == 0x00)) { //INITIAL packet
                     set_var_int(len);
                     data_remaining = len;
                 }
@@ -433,7 +433,7 @@ object quic_ser = {}
         }
         void close_list() {
             if (state == quic_s_payload) {
-                if ((hdr_type & 0x30) == 0x00)
+                if ((hdr_type & 0x30) == 0x00) //INITIAL packet
                     while (res.size() < 1200)
                         res.push_back(0);  // pad initial packet to 1200 bytes
                 for(unsigned i = 0; i < 16; i++)

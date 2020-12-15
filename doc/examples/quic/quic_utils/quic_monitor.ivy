@@ -53,5 +53,5 @@ implement pc.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     call packet_event(src,dst,pkt);       # monitor the protocol
 }
 
-attribute radix=16       # print in hex
-
+# print in hex
+attribute radix=16       
