@@ -244,7 +244,7 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
 # This action gets the encryption level from the packet header.
 
 action packet_encryption_level(h:prot.header_info) returns (e:quic_packet_type) = {
-    e := quic_packet_type.zero_rtt if if bvand(h.hdr_type,0x10) = 0x00 
+    e := quic_packet_type.zero_rtt if bvand(h.hdr_type,0x10) = 0x00 
             else (quic_packet_type.initial if bvand(h.hdr_type,0x00) = 0x00 
             else (quic_packet_type.handshake if bvand(h.hdr_type,0x20) = 0x00 
             else quic_packet_type.one_rtt));
