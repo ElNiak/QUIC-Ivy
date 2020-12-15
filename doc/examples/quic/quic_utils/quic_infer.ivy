@@ -12,7 +12,7 @@
 
 #
 # TODO: as of version 11, each role has its own cid, so connections
-# are not renamed at the clinet side on a server hello. This code
+# are not renamed at the client side on a server hello. This code
 # is commented and should be removed [1].
 #
 

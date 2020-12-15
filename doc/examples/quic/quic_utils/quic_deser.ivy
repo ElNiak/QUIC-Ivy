@@ -126,8 +126,7 @@ object quic_deser = {}
                 long long len;
                 if (long_format & ((hdr_type & 0x30) == 0x00)) //NOT INITIAL
                     get_var_int(len);
-                else 
-                    len = 0;
+                else len = 0;
                 data_remaining = len;
                 state = quic_s_retry_token;
             }

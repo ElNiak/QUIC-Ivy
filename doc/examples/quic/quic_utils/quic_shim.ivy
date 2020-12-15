@@ -35,12 +35,6 @@ include quic_locale
 
 instance prot : quic_protection(tls_api.id,tls_api.upper)
 
-# To send and receive packets, we need to serialize and deserialize them.
-# This object allows that.
-
-instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
-
-
 # Packet event shim
 # -----------------
 #
@@ -241,14 +235,22 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
 # Procedures
 # ----------
 
+# To send and receive packets, we need to serialize and deserialize them.
+# This object allows that.
+
+instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
+
 # To estimate the sequence number of packets, we have to know the encryption level.
 # This action gets the encryption level from the packet header.
 
 action packet_encryption_level(h:prot.header_info) returns (e:quic_packet_type) = {
-    e := quic_packet_type.zero_rtt if bvand(h.hdr_type,0x10) = 0x00 
-            else (quic_packet_type.initial if bvand(h.hdr_type,0x00) = 0x00 
-            else (quic_packet_type.handshake if bvand(h.hdr_type,0x20) = 0x00 
-            else quic_packet_type.one_rtt));
+    #e := quic_packet_type.zero_rtt if bvand(h.hdr_type,0x10) = 0x00 
+    #        else (quic_packet_type.initial if bvand(h.hdr_type,0x00) = 0x00 
+    #        else (quic_packet_type.handshake if bvand(h.hdr_type,0x20) = 0x00 
+    #        else quic_packet_type.one_rtt));
+    e := quic_packet_type.zero_rtt if ~h.hdr_long
+            else (quic_packet_type.initial if h.hdr_type = 0x7f
+                  else quic_packet_type.handshake);
 }
 
 # To get the reference packet number for a packet, we need to know the source connection
