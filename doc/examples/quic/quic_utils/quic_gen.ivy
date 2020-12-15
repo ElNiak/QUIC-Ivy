@@ -19,19 +19,20 @@ include tls
 #     ./quic_gen
 #
 
-
 # The wire specification monitors this action.
 
+# "after" in quic_shim.ivy
 action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
 
 # This is a ghost action representing a TLS send event.
-
+# also in quic_security
 action tls_send_event(src:ip.endpoint,dst:ip.endpoint,pcid:cid,data:stream_data) = {}
 
 # fix a single connection id
 
 var the_cid : cid
 
+# 13 = value arbitraire
 after init {
     the_cid := 13;
 }

@@ -50,7 +50,6 @@ object frame = {
         # Stream frames are a variant of frame
 
         variant this of frame = struct {
-        
             off : bool,        # is there an offset field
             len : bool,        # is there a length field
             fin : bool,        # is this the final offset
@@ -519,8 +518,8 @@ object frame = {
                 var upper := last - ((ack_range.gap+2) if idx > 0 else 0);
                 require ack_range.ranges <= upper;
                 last := upper - ack_range.ranges;
-            var jdx := last;
-            while jdx <= upper {
+                var jdx := last;
+                while jdx <= upper {
                         require sent_pkt(dcid,e,jdx);  # [1]
                         if pkt_has_close(dcid,e,jdx) {
                             conn_draining(scid) := true  # [5]
@@ -528,10 +527,10 @@ object frame = {
                         if ~acked_pkt(dcid,e,jdx) {
                             some_new_ack := true;
                         };
-                acked_pkt(dcid,e,jdx) := true;
-                jdx := jdx + 1
-            };
-#                acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2]
+                    acked_pkt(dcid,e,jdx) := true;
+                    jdx := jdx + 1
+                };
+    #                acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2]
                 idx := idx.next;
             };
             if _generating {
@@ -626,7 +625,7 @@ object frame = {
             require stream_reset(dcid,f.id) ->
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
             require stream_id_allowed(dcid,f.id);  # [6]
-	    ...
+	        ...
             stream_seen(scid,f.id) := true;
             var offset := f.offset if f.off else 0;
             var length := offset + f.length;
@@ -669,31 +668,28 @@ object frame = {
         action handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type)
 
 	around handle {
-            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-#            require ~conn_closed(scid);  # [1]
+        require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+        #  require ~conn_closed(scid);  # [1]
         #chris
         require ~(e = quic_packet_type.zero_rtt);  # [4]
         #chris
 	    require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
 	    require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
-
 	    ...
-            var length := f.offset + f.length;
-            if crypto_length(scid,e) < length {
-                crypto_length(scid,e) := length   # [3]
-            };
-            var idx := f.offset;
-            while idx < f.offset + f.length {
-                crypto_data_present(scid,e,idx) := true;  # [3]
-                idx := idx.next
-            };
-            call enqueue_frame(scid,f,e,false);
-
-            # TODO: is the following needed? Maybe it belongs somewhere else?
-
-            if e = quic_packet_type.handshake {
-                established_1rtt_keys(scid) := true;
-            }
+        var length := f.offset + f.length;
+        if crypto_length(scid,e) < length {
+            crypto_length(scid,e) := length   # [3]
+        };
+        var idx := f.offset;
+        while idx < f.offset + f.length {
+            crypto_data_present(scid,e,idx) := true;  # [3]
+            idx := idx.next
+        };
+        call enqueue_frame(scid,f,e,false);
+        # TODO: is the following needed? Maybe it belongs somewhere else?
+        if e = quic_packet_type.handshake {
+            established_1rtt_keys(scid) := true;
+        }
         }
     }
 }
@@ -826,7 +822,7 @@ object frame = { ...
                 max_stream_set(dcid,kind) := true;
                 max_stream(dcid,kind) := f.id; #  [1]
             }
-	    ...
+	        ...
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -1148,8 +1144,8 @@ object frame = { ...
             require f.seq_num < max_rtp_num(scid) -> send_retire_cid(dcid); #[6] 
             #chris
             ...
-	    cid_mapped(f.scid) := true;
-	    cid_to_aid(f.scid) := scid;
+	        cid_mapped(f.scid) := true;
+	        cid_to_aid(f.scid) := scid;
             seqnum_to_cid(scid,f.seq_num) := f.scid;
             #chris
             if (f.retire_prior_to > max_rtp_num(scid)) {
@@ -1187,7 +1183,8 @@ object frame = { ...
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
-            require num_queued_frames(scid) > 0 -> e = queued_level(scid); #Will change with implementing TODO
+            # Will change with implementing TODO
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid); 
             # TODO remember the highest sequence number that was sent
             #Hamid
             require f.seq_num <= max_seq_num(dcid); #[1]
@@ -1195,11 +1192,11 @@ object frame = { ...
             # TODO specify that you cannot retire the connection id of the current packet
             #
 	        ... 
-	    cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
+	        cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
             #Hamid
             # the connection id seqnum_to_cid is being retired, append it to an array and iterate over the array in packet
             #Hamid
-	    call enqueue_frame(scid,f,e,true);
+	        call enqueue_frame(scid,f,e,true);
         }
     }
 }
