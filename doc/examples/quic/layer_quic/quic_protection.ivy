@@ -45,6 +45,7 @@ module quic_protection(tls_id,tls) = {
     implement encrypt {
         var h := get_header_info(pkt);
         var level := get_level(pkt);
+        call show_tls_encryption_level(level);
         # Get the size of the cipher initial value for a given level.
         var sample_size := tls.iv_size(c,level);
         # packet number position
@@ -178,7 +179,6 @@ module quic_protection(tls_id,tls) = {
             level := 3;    
         }
         #print_level(level);
-        call show_tls_encryption_level(level);
     }
 
     
