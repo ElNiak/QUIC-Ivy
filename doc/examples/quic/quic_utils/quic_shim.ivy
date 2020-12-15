@@ -6,7 +6,6 @@ include serdes
 include quic_deser
 include quic_ser
 include quic_protection
-include quic_locale
 
 
 # The QUIC test shim
@@ -34,6 +33,9 @@ include quic_locale
 # of TLS.
 
 instance prot : quic_protection(tls_api.id,tls_api.upper)
+
+include quic_locale
+
 
 # Packet event shim
 # -----------------
@@ -235,11 +237,6 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
 # Procedures
 # ----------
 
-# To send and receive packets, we need to serialize and deserialize them.
-# This object allows that.
-
-instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
-
 # To estimate the sequence number of packets, we have to know the encryption level.
 # This action gets the encryption level from the packet header.
 
@@ -249,7 +246,7 @@ action packet_encryption_level(h:prot.header_info) returns (e:quic_packet_type) 
     #        else (quic_packet_type.handshake if bvand(h.hdr_type,0x20) = 0x00 
     #        else quic_packet_type.one_rtt));
     e := quic_packet_type.zero_rtt if ~h.hdr_long
-            else (quic_packet_type.initial if h.hdr_type = 0x7f
+            else (quic_packet_type.initial if h.hdr_type = 0x0 #0x7f
                   else quic_packet_type.handshake);
 }
 
@@ -279,6 +276,12 @@ action reference_pkt_num(spkt:stream_data) returns (pnum:pkt_num) = {
     var scid := packet_scid(h);
     pnum := last_pkt_num(scid,e);
 }
+
+# To send and receive packets, we need to serialize and deserialize them.
+# This object allows that.
+
+instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
+
 
 # Convert a CID to bytes. TODO: This doesn't belong here and it shouldn't
 # be written in C++!
