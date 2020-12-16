@@ -323,7 +323,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     require e = encryption_level.initial -> pkt.hdr_long & hdr_type_bits = 0;
     require e = encryption_level.handshake -> pkt.hdr_long & hdr_type_bits = 0x20;
-    require e = encryption_level.other -> ~pkt.hdr_long;
+    require e = encryption_level.one_rtt  -> ~pkt.hdr_long;
     
     var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
 
@@ -375,7 +375,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # QUESTION: how do you compare packet numbers with different encryption levels?
 
     if queued_non_probing(scid) {
-        if e = encryption_level.other {
+        if e = encryption_level.one_rtt  {
             if pnum >= hi_non_probing(scid) {
                 hi_non_probing(scid) := pnum;
                 hi_non_probing_endpoint(scid,src) := true;
@@ -489,7 +489,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 #   set of byte positions that are present in the crypto handshake
 #   data transmitted by TLS from C in encyption level L. A handshake
 #   data byte may not be present, even if bytes in higher positions
-#   are present (in other words, the handshake data may contain
+#   are present (in one_rtt  words, the handshake data may contain
 #   "holes"). This allows the handshake data bytes to be generated out
 #   of order, but processed in order.
 #
@@ -727,7 +727,7 @@ after tls_keys_established_event {
     call show_tls_keys_established_event(scid,e);
     if e = encryption_level.handshake {
         established_handshake_keys(scid) := true
-    } else if e = encryption_level.other {
+    } else if e = encryption_level.one_rtt  {
         established_1rtt_keys(scid) := true
     }
 }
