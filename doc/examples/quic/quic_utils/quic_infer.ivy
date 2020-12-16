@@ -34,7 +34,7 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
 
     var e := encryption_level.initial if (pkt.hdr_long & bvand(pkt.hdr_type,0x30) = 0x00)
         else (encryption_level.handshake if (pkt.hdr_long & bvand(pkt.hdr_type,0x30) = 0x20)
-        else encryption_level.other);
+        else encryption_level.one_rtt);
     
     call set_encryption_level(src,scid,e);
 

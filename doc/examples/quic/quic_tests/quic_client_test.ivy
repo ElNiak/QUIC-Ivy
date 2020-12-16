@@ -173,7 +173,7 @@ after init {
 # transmitted via a generated crypto frame event. 
 
 implement botan.lower.send(tls_id:botan.id,bytes:stream_data) {
-    var e := encryption_level.initial if lev = 0 else (encryption_level.handshake if lev = 2 else encryption_level.other);
+    var e := encryption_level.initial if lev = 0 else (encryption_level.handshake if lev = 2 else encryption_level.one_rtt );
     if tls_id = server.tls_id {
         call tls_send_event(server.ep, client.ep, the_cid, 0, bytes,
                             crypto_data_end(the_cid,e), e);
@@ -187,7 +187,7 @@ after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data 
 
 
 implement botan.upper.keys_established(tls_id:botan.id,lev:botan.upper.level) {
-    var e := encryption_level.handshake if lev = 2 else encryption_level.other;
+    var e := encryption_level.handshake if lev = 2 else encryption_level.one_rtt ;
     if tls_id = server.tls_id {
         call tls_keys_established_event(the_cid,e);
     }
@@ -282,7 +282,7 @@ action cid_to_bytes(c:cid,len:cid_length) returns(res:stream_data) = {
 # This action gets the encryption level from the packet header.
 
 action packet_encryption_level(h:prot.header_info) returns (e:encryption_level) = {
-    e := encryption_level.other if ~h.hdr_long
+    e := encryption_level.one_rtt  if ~h.hdr_long
             else (encryption_level.initial if h.hdr_type = 0x7f
                   else encryption_level.handshake);
 }
@@ -385,8 +385,8 @@ around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, e:en
     require src = client.ep & dst = server.ep;
     require hi = crypto_length(scid,e);
     require e = encryption_level.handshake -> crypto_pos(dcid,encryption_level.initial) = crypto_length(scid,encryption_level.initial);
-    require e = encryption_level.other -> crypto_pos(dcid,encryption_level.initial) = crypto_length(scid,encryption_level.initial);
-    require e = encryption_level.other -> crypto_pos(dcid,encryption_level.handshake) = crypto_length(scid,encryption_level.handshake);
+    require e = encryption_level.one_rtt  -> crypto_pos(dcid,encryption_level.initial) = crypto_length(scid,encryption_level.initial);
+    require e = encryption_level.one_rtt  -> crypto_pos(dcid,encryption_level.handshake) = crypto_length(scid,encryption_level.handshake);
     require dcid = the_cid;
     ...
     var tls_id := server.tls_id;
@@ -459,8 +459,8 @@ before frame.crypto.handle(f:frame.crypto,src:ip.endpoint,dst:ip.endpoint,scid:c
         require f.offset = crypto_length(scid,e);
         require f.length = (crypto_data_end(scid,e)) - f.offset;
         require e = encryption_level.handshake -> crypto_length(scid,encryption_level.initial) = crypto_data_end(scid,encryption_level.initial);  # [1]
-        require e = encryption_level.other -> crypto_length(scid,encryption_level.initial) = crypto_data_end(scid,encryption_level.initial);  # [1]
-        require e = encryption_level.other -> crypto_length(scid,encryption_level.handshake) = crypto_data_end(scid,encryption_level.handshake);  # [1]
+        require e = encryption_level.one_rtt  -> crypto_length(scid,encryption_level.initial) = crypto_data_end(scid,encryption_level.initial);  # [1]
+        require e = encryption_level.one_rtt  -> crypto_length(scid,encryption_level.handshake) = crypto_data_end(scid,encryption_level.handshake);  # [1]
     }
 }
 
