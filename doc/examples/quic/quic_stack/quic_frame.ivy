@@ -1016,7 +1016,7 @@ object frame = { ...
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             ...
-            call enqueue_frame(src,scid,f,e,true);
+            call enqueue_frame(scid,f,e,true);
         }
     }
 }
@@ -1045,7 +1045,7 @@ object frame = { ...
             require ~path_challenge_pending(dcid,f.data);
             ...
             path_challenge_pending(dcid,f.data) := true;
-            call enqueue_frame(src,scid,f,e,true);
+            call enqueue_frame(scid,f,e,true);
         }
     }
 }
