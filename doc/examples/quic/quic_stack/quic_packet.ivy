@@ -54,6 +54,10 @@ object quic_packet = {
 
     instance idx : unbounded_sequence
     instance arr : array(idx,this)
+
+    #Hamid
+    instance retired_cids : array(idx, cid_seq)
+    #Hamid
 }
 
 
@@ -163,6 +167,10 @@ relation pkt_has_close(C:cid,L:encryption_level,N:pkt_num)
 function cid_to_aid(C:cid) : cid 
 relation cid_mapped(C : cid)
 function seqnum_to_cid (D : cid,S : cid_seq) : cid
+#Hamid
+function max_seq_num(C:cid) : cid_seq
+#Hamid
+
 
 #
 # Client initial request event
@@ -566,6 +574,9 @@ after init {
     stream_app_data_finished(C,S) := false;
 
     cid_mapped(C) := false;
+    #Hamid
+    max_seq_num(C) := 0;
+    #Hamid
 }
 
 # Ghost events
