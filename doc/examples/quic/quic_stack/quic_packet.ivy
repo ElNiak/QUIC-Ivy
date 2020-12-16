@@ -2,6 +2,7 @@
 
 include quic_types
 include quic_frame
+include quic_transport_parameters
 
 # QUIC Packets
 # ------------
