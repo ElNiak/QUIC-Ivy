@@ -37,71 +37,19 @@ include ip
 # - *payload*: the payload, a sequence of frames
 
 object quic_packet = {
-
-    type this
-
-    object long_packet = {
-
-        variant this of quic_packet = struct {
-            #hdr_long : bool, # [1]
-            hdr_type : type_bits, # [2]
-            hdr_version : version, # [4]
-            dcid : cid_length, 
-            scid : cid_length, 
-            dst_cid : cid,
-            hdr_cid : cid # [3]
-        }
-
-        object initial = {
-
-            variant this of long_packet = struct {
-                hdr_token_length : stream_pos,
-                hdr_token : stream_data
-                payload_length : stream_pos,
-                hdr_pkt_num : pkt_num, # [5]
-                payload : frame.arr # [6]
-            }
-
-        }
-
-        object zero_rtt = {
-
-            variant this of long_packet = struct {
-                payload_length : stream_pos,
-                hdr_pkt_num : pkt_num, # [5]
-                payload : frame.arr # [6
-            }
-
-        }
-
-        object handshake = {
-
-            variant this of long_packet = struct {
-                payload_length : stream_pos,
-                hdr_pkt_num : pkt_num, # [5]
-                payload : frame.arr # [6
-            }
-
-        }
-
-        object retry = {
-
-            variant this of long_packet = struct {
-                original_dst_cid : cid,
-                hdr_token : stream_data
-            }
-
-        }
-    }
-
-    object short_packet = {
-        variant this of quic_packet = struct {
-            #hdr_long : bool, # [1]
-            hdr_type : type_bits, # [2]
-            dst_cid : cid,
-            hdr_pkt_num : pkt_num, # [5]
-            payload : frame.arr # [6]
-        }
+    type this = struct {
+        hdr_long : bool, # [1]
+        hdr_type : type_bits, # [2]
+        hdr_version : version, # [4]
+        dcid : cid_length, 
+        scid : cid_length, 
+        dst_cid : cid,
+        hdr_cid : cid, # [3]
+        hdr_token_length : stream_pos,
+        hdr_token : stream_data,
+        payload_length : stream_pos,
+        hdr_pkt_num : pkt_num, # [5]
+        payload : frame.arr # [6]
     }
 
     instance idx : unbounded_sequence
@@ -223,14 +171,6 @@ relation queued_hello(C:cid)
 #Hamid
 function max_seq_num(C:cid) : cid_seq
 #Hamid
-
-object quic_packet = {
-   ...
-    action handle(f:this,scid:cid,dcid:cid,e:encryption_level) = {
-	require false; # this generic action should never be called
-    }
-}
-
 
 
 #

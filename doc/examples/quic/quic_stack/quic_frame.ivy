@@ -36,12 +36,6 @@ include quic_stream
 # Data structures
 # ===============
 
-#lang ivy1.7
-
-include collections
-include order
-include quic_stream
-
 object frame = {
 
     # The base type for frames
