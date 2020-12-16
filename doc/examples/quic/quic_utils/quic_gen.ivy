@@ -108,8 +108,8 @@ around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, pcid:cid, lo : stream_po
     call botan.lower.recv(tls_id,data)
 }
     
-before frame.stream.handle(f:frame.stream,src:ip.endpoint,dst:ip.endpoint,pcid:cid) {
-    require src = client.ep & dst = server.ep | src = server.ep & dst = client.ep; 
+before frame.stream.handle(f:frame.stream,pcid:cid) {
+    #require src = client.ep & dst = server.ep | src = server.ep & dst = client.ep; 
     require pcid = the_cid;
     require f.length > 0;
     require f.offset = stream_length(dst,pcid,f.id);

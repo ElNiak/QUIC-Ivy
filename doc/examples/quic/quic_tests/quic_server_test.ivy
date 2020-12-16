@@ -441,9 +441,9 @@ action lo_byte_pos(x:stream_pos) returns (res:byte) = {
 # send all of the available stream data. We never allow the fin bt to be set, since
 # we don't really have good rules for this yet.
 
-before frame.stream.handle(f:frame.stream,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:encryption_level) {
+before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
         require cid_dst_to_src_set(the_cid) & dcid = cid_dst_to_src(the_cid);
         require f.len & f.off; # TODO: when can f.off be false? We make len true here, since len=false implies last fram of packet.
@@ -458,9 +458,9 @@ before frame.stream.handle(f:frame.stream,src:ip.endpoint,dst:ip.endpoint,scid:c
 
 # We have something similar for crypto frames
 
-before frame.crypto.handle(f:frame.crypto,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:encryption_level) {
+before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
-        require src = client.ep & dst = server.ep; 
+        #require src = client.ep & dst = server.ep; 
         require scid = the_cid;
         require f.length > 0;
 #        call show_level_offset_length(e,crypto_length(scid,e),crypto_data_end(src,scid,e))
@@ -471,9 +471,9 @@ before frame.crypto.handle(f:frame.crypto,src:ip.endpoint,dst:ip.endpoint,scid:c
 
 # Generate ack frames only for the client.
 
-before frame.ack.handle(f:frame.ack,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
         force_new_ack := true;
     }
@@ -481,9 +481,9 @@ before frame.ack.handle(f:frame.ack,src:ip.endpoint,dst:ip.endpoint,scid:cid,dci
 
 # Generate rst_stream frames only for the client.
 
-before frame.rst_stream.handle(f:frame.rst_stream,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
         require f.id = 4;
     }
@@ -491,9 +491,9 @@ before frame.rst_stream.handle(f:frame.rst_stream,src:ip.endpoint,dst:ip.endpoin
 
 # Generate stop_sending frames only for the client.
 
-before frame.stop_sending.handle(f:frame.stop_sending,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
         require f.id = 4;
     }
@@ -501,18 +501,18 @@ before frame.stop_sending.handle(f:frame.stop_sending,src:ip.endpoint,dst:ip.end
 
 # Generate max_streams frames only for the client.
 
-before frame.max_streams.handle(f:frame.max_streams,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
     }
 }
 
 # Generate connection_close frames only for the client.
 
-before frame.connection_close.handle(f:frame.connection_close,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
     } else {
         require f.err_code = 0
@@ -521,18 +521,18 @@ before frame.connection_close.handle(f:frame.connection_close,src:ip.endpoint,ds
 
 # Generate connection_close frames only for the client.
 
-before frame.application_close.handle(f:frame.application_close,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
     }
 }
 
 # Generate max_stream_data frames only for the client.
 
-before frame.max_stream_data.handle(f:frame.max_stream_data,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
         require 4 <= f.id & f.id <= 16;
     }
@@ -540,9 +540,9 @@ before frame.max_stream_data.handle(f:frame.max_stream_data,src:ip.endpoint,dst:
 
 # Generate stream_data_blocked frames only for the client.
 
-before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dcid:cid) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
         require f.id = 4;
     }
@@ -550,9 +550,9 @@ before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,src:ip.endpo
 
 # Generate max_data frames only for the client.
 
-before frame.max_data.handle(f:frame.max_data,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid) {
     if _generating {
-        require (src = client.ep | src = client_alt) & dst = server.ep; 
+        #require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
     }
     else {
