@@ -728,7 +728,7 @@ object frame = { ...
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [6]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [5]
-            require connected(scid) & connected_to(scid) = dcid;
+            require cid_dst_to_src_set(scid) & cid_dst_to_src(scid) = dcid;
             require stream_length(dcid,f.id) <= f.final_offset;  # [1]
             require (stream_reset(dcid,f.id) | stream_finished(dcid,f.id))
                         -> stream_length(dcid,f.id) = f.final_offset;
@@ -768,7 +768,7 @@ object frame = { ...
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [6]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [5]
-            require connected(scid) & connected_to(scid) = dcid;
+            require cid_dst_to_src_set(scid) & cid_dst_to_src(scid) = dcid;
             require stream_id_allowed(dcid,f.id);  # [4]
 	    ...
             stream_seen(scid,f.id) := true;
@@ -814,7 +814,7 @@ object frame = { ...
             require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [3]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            require connected(scid) & connected_to(scid) = dcid;
+            require cid_dst_to_src_set(scid) & cid_dst_to_src(scid) = dcid;
             require ~conn_closed(scid);  # [2]
 
             var kind := bidir;
@@ -869,7 +869,7 @@ object frame = { ...
             require e = encryption_level.one_rtt -> established_1rtt_keys(scid);
             require e = encryption_level.handshake -> established_handshake_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            require connected(scid) & connected_to(scid) = dcid;
+            require cid_dst_to_src_set(scid) & cid_dst_to_src(scid) = dcid;
             require f.reason_phrase_length = f.reason_phrase.end;
             conn_closed(scid) := true;
 	    ...
@@ -916,7 +916,7 @@ object frame = { ...
             require e = encryption_level.one_rtt -> established_1rtt_keys(scid);
             require e = encryption_level.handshake -> established_handshake_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            require connected(scid) & connected_to(scid) = dcid;
+            require cid_dst_to_src_set(scid) & cid_dst_to_src(scid) = dcid;
             require f.reason_phrase_length = f.reason_phrase.end;
             conn_closed(scid) := true;
 	    ...
