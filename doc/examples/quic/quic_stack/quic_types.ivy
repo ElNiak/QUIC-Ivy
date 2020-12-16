@@ -89,7 +89,7 @@ object role = {
 # encryption levels
 
 object encryption_level = {
-    type this = {initial,handshake,one_rtt,zero_rtt}
+    type this = {initial,handshake,one_rtt,zero_rtt, retry, version_negociation} #TODO change
     action next(e:this) returns (e:this) = {
         if e = initial {
             e := handshake;
