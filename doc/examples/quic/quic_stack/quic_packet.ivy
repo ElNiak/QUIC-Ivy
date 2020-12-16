@@ -136,6 +136,8 @@ object quic_packet = {
 #
 # - If cid_mapped(C) is true, then the function cid_to_aid(C) gives the aid for which C is a new connection ID
 #
+# - If aid D created a new connection ID with sequence number S, then seqnum_to_cid(D, S) yield the new connection id.
+
 
 relation conn_seen(C:cid)
 relation conn_closed(C:cid)
@@ -160,6 +162,7 @@ relation pkt_has_close(C:cid,L:encryption_level,N:pkt_num)
 # added
 function cid_to_aid(C:cid) : cid 
 relation cid_mapped(C : cid)
+function seqnum_to_cid (D : cid,S : cid_seq) : cid
 
 #
 # Client initial request event
