@@ -497,7 +497,7 @@ object frame = {
         action handle(f:frame.ack,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.handshake -> established_handshake_keys(scid);  # [4]
             require e = encryption_level.one_rtt -> established_1rtt_keys(scid);  # [4]
             #Chris
@@ -601,7 +601,7 @@ object frame = {
         action handle(f:frame.stream,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [11]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [8]
@@ -724,7 +724,7 @@ object frame = { ...
         action handle(f:frame.rst_stream,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [6]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [5]
@@ -764,7 +764,7 @@ object frame = { ...
         action handle(f:frame.stop_sending,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [6]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [5]
@@ -811,7 +811,7 @@ object frame = { ...
         action handle(f:frame.max_streams,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [3]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require connected(scid) & connected_to(scid) = dcid;
@@ -865,7 +865,7 @@ object frame = { ...
     object connection_close = { ...
         action handle(f:frame.connection_close,scid:cid,dcid:cid,e:encryption_level)
 	around handle{
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt -> established_1rtt_keys(scid);
             require e = encryption_level.handshake -> established_handshake_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
@@ -911,7 +911,7 @@ object frame = { ...
     object application_close = { ...
         action handle(f:frame.application_close,scid:cid,dcid:cid,e:encryption_level)
 	around handle{
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e ~= encryption_level.initial;
             require e = encryption_level.one_rtt -> established_1rtt_keys(scid);
             require e = encryption_level.handshake -> established_handshake_keys(scid);
@@ -948,7 +948,7 @@ object frame = { ...
     object max_stream_data = { ...
         action handle(f:frame.max_stream_data,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             
@@ -983,7 +983,7 @@ object frame = { ...
     object stream_data_blocked = { ...
         action handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 	    ...
@@ -1010,7 +1010,7 @@ object frame = { ...
     object data_blocked = { ...
         action handle(f:frame.data_blocked,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 	    ...
@@ -1042,7 +1042,7 @@ object frame = { ...
     object streams_blocked = { ...
         action handle(f:frame.streams_blocked,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 	    ...
@@ -1070,7 +1070,7 @@ object frame = { ...
     object max_data = { ...
         action handle(f:frame.max_data,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 
@@ -1095,7 +1095,7 @@ object frame = { ...
     object ping = { ...
         action handle(f:frame.ping,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt -> established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             ...
@@ -1135,7 +1135,7 @@ object frame = { ...
     object new_connection_id = { ...
         action handle(f:frame.new_connection_id,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); #Will change with implementing TODO
             #chris
@@ -1181,7 +1181,7 @@ object frame = { ...
     object retire_connection_id = { ...
         action handle(f:frame.retire_connection_id,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             # Will change with implementing TODO
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); 
@@ -1222,7 +1222,7 @@ object frame = { ...
     object path_challenge = { ...
         action handle(f:frame.path_challenge,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require f.data.end = 8;
@@ -1244,7 +1244,7 @@ object frame = { ...
     object path_response = { ...
         action handle(f:frame.path_response,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require f.data.end = 8;
@@ -1266,7 +1266,7 @@ object frame = { ...
     object new_token = { ...
         action handle(f:frame.new_token,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            require cid_dst_to_src_set(dcid) & cid_dst_to_src(dcid) = scid;
             require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~is_client(scid);
