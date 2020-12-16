@@ -143,7 +143,7 @@ module quic_protection(tls_id,tls) = {
             new_seq := correct_pnum(seq,new_seq,pnum_len);
             var pyld := pkt.segment(pnum_pos + pnum_len,pkt.end);
             res := tls.decrypt_aead(c,level,pyld,new_seq,hdr);
-            call show_aead(level,pyld,new_seq,auth); 
+            #call show_aead(level,pyld,new_seq,auth); 
             if res.ok {
                 # fix up the length field to account for removal of checksum
                 if h.hdr_long {
@@ -271,8 +271,8 @@ module quic_protection(tls_id,tls) = {
 
     action get_pnum_len(pkt:stream_data,pnum_pos:stream_pos) returns (pnum_len:stream_pos) = {
         # Here take 2 high order bit of 1st bytes
-        #var len_minus_one : stream_pos := bfe[0][1](pkt.value(0));
-        var len_minus_one : stream_pos := bvand(pkt.value(0),0x03);
+        var len_minus_one : stream_pos := bfe[0][1](pkt.value(0));
+        #var len_minus_one : stream_pos := bvand(pkt.value(0),0x03);
         pnum_len := len_minus_one + 1;
     }
     
