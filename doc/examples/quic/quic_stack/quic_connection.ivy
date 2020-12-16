@@ -31,6 +31,7 @@
 # ==========
 
 include quic_types
+include quic_application
 include quic_frame
 include quic_packet
 include tls_protocol
@@ -186,32 +187,6 @@ relation established_1rtt_keys(C:cid)
 relation established_handshake_keys(C:cid)
 
 
-# The application protocol
-# ------------------------
-#
-# - For aid C,and stream id S, `stream_app_data(C,S)`
-#   represents the stream data transmitted by the application to endpoint E
-#   on stread id S of cid C. This data may or may not have been transmitted in
-#   any QUIC packet.
-#
-# - For aid C,and stream id S, `stream_app_end(C,S)` represents the
-#   length of stream data transmitted by the application to endpoint E
-#   on stread id S of cid C.
-#
-# - For each aid C,and stream id S, `stream_app_pos(C,S)`
-#   represents the read position of the stream data transmitted by the application
-#   on stream id S to C. This is the number of bytes in the stream that have
-#   been read by the application.
-#
-# - For each aid C,and stream id S, `stream_app_data_finished(C,S)` indicates
-#   the data transmitted to C on S is finished.
-
-function stream_app_data(C:cid,S:stream_id) : stream_data
-function stream_app_data_end(C:cid,S:stream_id) : stream_pos
-function stream_app_pos(C:cid,S:stream_id) : stream_pos
-function stream_app_data_finished(C:cid,S:stream_id) : bool
-
-
 # Initial state
 # -------------
 
@@ -296,54 +271,6 @@ after init {
 #     trans_params_set(dst,pcid) := true;
 #     trans_params(dst,pcid) := tp;
 # }    
-
-# Application send event
-# ======================
-#
-# This event corresponds to transfer of application data to QUIC to
-# be transmitted. The data is copied into the sent stream at the given position.
-# This allows the sending application to provide data out of order. 
-#
-# Requirements
-#
-# - If the data overwites existing data in the stream, then it must
-#   agree with that data [2]. 
-#
-# - Writing non-empty data to a closed stream is not allowed [4].
-#
-# Effects
-#
-# - The data bytes are copied at position `pos` into `stream_app_data(C,S)` where `C` is
-#   the cid and `S` is the stream id.
-#
-# - The stream data length is updated to reflect the new data [1].
-#
-# - If `close` is true, the stream is marked as finished [3]. 
-#
-
-action app_send_event(src:ip.endpoint, dst:ip.endpoint, dcid:cid, s : stream_id, data : stream_data, pos : stream_pos, close : bool)
-
-after app_send_event {
-    var send_end := pos + data.end;
-    require ~(send_end > stream_app_data_end(dcid,s) & stream_app_data_finished(dcid,s));  # [4]
-    var end := stream_app_data(dcid,s).end;
-    if end < send_end {
-        end := send_end
-    };
-    stream_app_data(dcid,s) := stream_app_data(dcid,s).resize(end,0);  # [1]
-    var idx := data.begin;
-    while idx < data.end {
-        var val := stream_app_data(dcid,s).value(pos + idx);
-        # TODO: using zero as a "null" value is not correct here -- need a data structure to capture the known intervals!
-        require val ~= 0 ->  data.value(idx) = val;  # [2]
-	stream_app_data(dcid,s) := stream_app_data(dcid,s).set(pos+idx,data.value(idx));
-	idx := idx.next
-    };
-    stream_app_data_end(dcid,s) := end;  # [1]
-    if close {
-        stream_app_data_finished(dcid,s) := true;  # [3]
-    }
-}
 
 # Encryption level change
 

@@ -234,7 +234,8 @@ after init {
 }
 
 action on_initial_request(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) = {
-    client.ep := src; # TODO: migration?
+    client.ep := src;
+    # TODO: migration?
     if ~initial_keys_set {
         var lens := spkt.value(5);
         var dcil : stream_pos := bfe[4][7](lens);
