@@ -3,6 +3,7 @@
 include quic_types
 include quic_frame
 include quic_transport_parameters
+include ip
 
 # QUIC Packets
 # ------------
@@ -130,6 +131,11 @@ object quic_packet = {
 # - The relation `pkt_has_close(C,L,N)` is true if packet number `N` sent 
 #   by aid `C` contained a CONNECTION_CLOSE frame.
 #
+# - The relation cid_mapped(C) is true when connection ID C has been provided as new connection ID for a connection
+#   and becomes false when the C is retired
+#
+# - If cid_mapped(C) is true, then the function cid_to_aid(C) gives the aid for which C is a new connection ID
+#
 
 relation conn_seen(C:cid)
 relation conn_closed(C:cid)
@@ -150,6 +156,9 @@ function hi_non_probing(C:cid) : pkt_num
 relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 #function conn_total_data(C:cid) : stream_pos
 relation pkt_has_close(C:cid,L:encryption_level,N:pkt_num)
+
+# added
+relation cid_mapped(C : cid)
 
 #
 # Client initial request event
@@ -541,6 +550,8 @@ after init {
     hi_non_probing(C) := 0;
     hi_non_probing_endpoint(C,E) := false;
     stream_app_data_finished(C,S) := false;
+
+    cid_mapped(C) := false;
 }
 
 # Ghost events
