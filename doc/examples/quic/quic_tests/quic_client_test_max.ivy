@@ -26,7 +26,7 @@ before frame.max_stream_data.handle(f:frame.max_stream_data,src:ip.endpoint,dst:
     }
 }
 
-before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:encryption_level) {
+before frame.stream_blocked.handle(f:frame.stream_blocked,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require f.pos > 32;
     }
