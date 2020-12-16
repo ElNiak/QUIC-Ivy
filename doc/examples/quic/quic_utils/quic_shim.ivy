@@ -5,7 +5,7 @@ include tls_msg
 include serdes
 include quic_deser
 include quic_ser
-include quic_protection_1_2
+include quic_protection_1_3
 
 
 # The QUIC test shim

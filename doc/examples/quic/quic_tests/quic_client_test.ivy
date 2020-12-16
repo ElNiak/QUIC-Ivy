@@ -9,7 +9,7 @@ include quic_infer
 include tls_msg
 include udp_impl
 include serdes
-include quic_protection
+include quic_protection_1_3
 include file
 
 # This is a simple tester for quic clients.
