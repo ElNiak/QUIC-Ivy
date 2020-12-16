@@ -158,6 +158,7 @@ relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 relation pkt_has_close(C:cid,L:encryption_level,N:pkt_num)
 
 # added
+function cid_to_aid(C:cid) : cid 
 relation cid_mapped(C : cid)
 
 #
@@ -273,6 +274,11 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     var dcid := pkt.dst_cid;
     var scid := pkt.hdr_cid;
+
+    #add 
+    if cid_mapped(dcid) {
+	    dcid := cid_to_aid(dcid);
+    };
 
     # On long headers, both cids are given. Record the correspondence.
     # If the scid has been mapped, make sure it maps to the dcid.
@@ -395,6 +401,11 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
     var dcid := pkt.dst_cid;
     var scid := pkt.hdr_cid;
+
+    if cid_mapped(dcid) {
+	    dcid := cid_to_aid(dcid);
+    };
+
     if ~pkt.hdr_long {
         scid := cid_dst_to_src(dcid)
     };
