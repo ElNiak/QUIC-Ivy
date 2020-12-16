@@ -1,6 +1,6 @@
 #lang ivy1.7
 
-include tls_protocol_1_3
+include tls_protocol_1_2
 
 # The security protocol
 # ---------------------
