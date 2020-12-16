@@ -466,7 +466,7 @@ before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:encryption_level) 
 
 # Generate ack frames only for the client.
 
-before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
+before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require client.ep.addr ~= 0;
         #require src = server.ep & dst = client.ep; 
@@ -477,7 +477,7 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
 
 # Generate rst_stream frames only for the client.
 
-before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
+before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require client.ep.addr ~= 0;
         #require src = server.ep & dst = client.ep; 
@@ -488,7 +488,7 @@ before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
 
 # Generate stop_sending frames only for the client.
 
-before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
+before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require client.ep.addr ~= 0;
         #require src = server.ep & dst = client.ep; 
@@ -499,7 +499,7 @@ before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
 
 # Generate max_streams frames only for the client.
 
-before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
+before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require client.ep.addr ~= 0;
         #require src = server.ep & dst = client.ep; 
@@ -509,7 +509,7 @@ before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
 
 # Generate connection_close frames only for the client.
 
-before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
+before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require client.ep.addr ~= 0;
         #require src = server.ep & dst = client.ep; 
@@ -521,7 +521,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
 
 # Generate connection_close frames only for the client.
 
-before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
+before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require client.ep.addr ~= 0;
         #require src = server.ep & dst = client.ep; 
@@ -531,7 +531,7 @@ before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:ci
 
 # Generate max_stream_data frames only for the client.
 
-before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
+before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require client.ep.addr ~= 0;
         #require src = server.ep & dst = client.ep; 
@@ -542,7 +542,7 @@ before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
 
 # Generate stream_data_blocked frames only for the client.
 
-before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dcid:cid) {
+before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require client.ep.addr ~= 0;
         #require src = server.ep & dst = client.ep; 
@@ -553,7 +553,7 @@ before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dci
 
 # Generate max_data frames only for the client.
 
-before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid) {
+before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid,e:encryption_level) {
     if _generating {
         require client.ep.addr ~= 0;
         #require src = server.ep & dst = client.ep; 
