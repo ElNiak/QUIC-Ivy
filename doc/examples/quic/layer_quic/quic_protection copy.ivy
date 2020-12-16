@@ -45,9 +45,14 @@ module quic_protection(tls_id,tls) = {
     implement encrypt {
         var h := get_header_info(pkt);
         var level := get_level(pkt);
+        #call print_level(level);
+        # Get the size of the cipher initial value for a given level.
         var sample_size := tls.iv_size(c,level);
+        # packet number position
         var pnum_pos := h.pkt_num_pos;
+        # Derive the len of variable packet number
         var pnum_len := get_pnum_len(pkt,pnum_pos);
+        # End of header, payload after
         var hdr_len := pnum_pos + pnum_len;
 
         # Tricky: before encrypting the payload, we need to adjust the length field
@@ -55,11 +60,15 @@ module quic_protection(tls_id,tls) = {
         # that actually is. Here we assume it is 16 bytes. Even worse, the length of
         # the length field could grow. Here, we assume the length field format is
         # always two bytes. 
+        # https://tools.ietf.org/html/rfc5116
+        # Not perfect but for picotls, define in https://github.com/h2o/picotls
         if h.hdr_long {
             var new_len := to_var_int_16(h.payload_length+16);
             pkt := pkt.set(pnum_pos-2,new_len.value(0));
             pkt := pkt.set(pnum_pos-1,new_len.value(1));
         };
+        
+        # Extract an array segment function segment(A:t, LO:domain, HI:domain) : t
 
         var hdr := pkt.segment(0,pnum_pos);
         var pnum := pkt.segment(pnum_pos,hdr_len);
@@ -69,12 +78,12 @@ module quic_protection(tls_id,tls) = {
         var new_seq := get_pnum(pnum,0,pnum_len);
         new_seq := correct_pnum(seq,new_seq,pnum_len);
         pyld := tls.encrypt_aead(c,level,pyld,new_seq,auth);
-#        call show_aead(level,pyld,new_seq,auth);
+        call show_aead(level,pyld,new_seq,auth); 
 
         # Computing the sample position is a bit tricky. First we
         # assume the length of the pnum is 4, which means the offset
-        # of the sample withing the payload is `4 -
-        # pnum_len`. However, if there are not enough bytes in the
+        # of the sample withing the payload is `4 -  pnum_len`. 
+        # However, if there are not enough bytes in the
         # payload, we change it to `payld.end - sample`. Note,
         # however, that we are using natural numbers, so if the
         # position would be negative, it saturates to zero. This is
@@ -93,12 +102,14 @@ module quic_protection(tls_id,tls) = {
         var sample := pyld.segment(sample_pos,sample_pos+sample_size);
         var mask := stream_data.empty;
         mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,false);
+        # https://tools.ietf.org/html/draft-ietf-quic-tls-27 p24
         var byte0_mask := bvand(mask.value(0), 0x0f if h.hdr_long else 0x1f);
         hdr := hdr.set(0,byte_xor(pkt.value(0),byte0_mask));
         pnum := stream_data_xor(pnum,mask.segment(1,1+pnum_len));        
         pkt := hdr.extend(pnum).extend(pyld);
     }
 
+    #TODO error in implementation
     implement decrypt {
         var h := get_header_info(pkt);
         var level := get_level(pkt);
@@ -118,16 +129,21 @@ module quic_protection(tls_id,tls) = {
             var mask := stream_data.empty;
             # tricky: this encrypts with the receiving cipher
             mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,true);
+            
             var byte0_mask := bvand(mask.value(0), 0x0f if h.hdr_long else 0x1f);
+            
             var hdr := pkt.segment(0,pnum_pos);
             hdr := hdr.set(0,byte_xor(pkt.value(0),byte0_mask));
             var pnum_len := get_pnum_len(hdr,pnum_pos);
-            pnum := stream_data_xor(pnum.segment(0,pnum_len),mask.segment(1,1+pnum_len));
+
+            pnum := stream_data_xor(pnum.segment(0,pnum_len),
+                                    mask.segment(1,1+pnum_len));
             hdr := hdr.extend(pnum);
             var new_seq := get_pnum(pnum,0,pnum_len);
             new_seq := correct_pnum(seq,new_seq,pnum_len);
             var pyld := pkt.segment(pnum_pos + pnum_len,pkt.end);
             res := tls.decrypt_aead(c,level,pyld,new_seq,hdr);
+            call show_aead(level,pyld,new_seq,auth); 
             if res.ok {
                 # fix up the length field to account for removal of checksum
                 if h.hdr_long {
@@ -142,21 +158,43 @@ module quic_protection(tls_id,tls) = {
     }
 
     # This returns the encryption level of a protected or unprotected
-    # packet.
-
+    # packet. 
+    # Encryption level, ranges from 0-3
+    # TODO check encryption level meaning
     action get_level(pkt:stream_data) returns (level:tls.level) = {
-        if bvand(pkt.value(0),0x80) ~= 0 {
-            var hdr_type := bvand(pkt.value(0),0x30);
-            if hdr_type = 0x00 {
-                level := 0;
-            } else  { # if hdr_type = 0x20, TODO: other packet types
-                level := 2;
+        if bvand(pkt.value(0),0x80) ~= 0 { 
+            #long header
+            var hdr_type : type_bits := bfe[0][6](pkt.value(0)); 
+            if bvand(hdr_type,0x00) = 0x00 { 
+                #initial
+                level := 0; 
+            } else if bvand(hdr_type,0x10) = 0x00 {
+                #0RRT
+                level := 1; 
+            } else if bvand(hdr_type,0x20) = 0x00 { 
+                # if hdr_type = 0x20, TODO: other packet types
+                #HANDSHAKE
+                level := 2; 
+            } else {
+                #1RTT
+                level := 3; 
             }
         } else {
-            level := 3;
+            #1RRT
+            level := 3;    
         }
+        #print_level(level);
+    }
+
+    
+    action print_level(level:tls.level) = {
+        <<<
+        std::cout << "[quic_protection] encr_level: " << level << std::endl;
+        >>>
     }
     
+    action show_tls_encryption_level(level:tls.level) = {}
+
     # This returns the header information of a packet, whether
     # encrypted or not. TODO: For short packets, since we don't know
     # the length of the cid, we assume it is 8. If the packet is too
@@ -164,18 +202,42 @@ module quic_protection(tls_id,tls) = {
     # are zero.
 
     action get_header_info(pkt:stream_data) returns (h:header_info) = {
-        h.hdr_long := bvand(0x80,pkt.value(0)) ~= 0;
-        h.hdr_type := bfe[0][6](pkt.value(0));
+        #Recap: byte 0 = header info
+        #            [1-4] = version
+        #            [5] = dcid_l
+        #            [6 - 6+dcid_l] = dcid
+        #            [6+dcid_l] = scid_l
+        #            [7+dcid_l - 7+dcid_l+scid_l] = scid
+
+        # MSB == 0 => Short header else Long header
+        h.hdr_long := bvand(0x80,pkt.value(0)) ~= 0; 
+        # Example bfe[3][0] is the bit field extraction operator the takes the low order 4 bits of a bit vector.
+        # Here take 7 high order bit of 1st bytes
+        h.hdr_type := bfe[0][6](pkt.value(0)); 
         if h.hdr_long {
-            var dcil : stream_pos := bfe[0][7](pkt.value(5));
-            h.dcid := bytes_to_cid(pkt.segment(6,6+dcil));
-            var scil : stream_pos := bfe[0][7](pkt.value(6+dcil));
-            h.scid := bytes_to_cid(pkt.segment(7+dcil,7+dcil+scil));
-            var pos := 7 + dcil + scil;
+            # Take 8 high order bit of byte 6
+            var dcid_l : stream_pos := bfe[0][7](pkt.value(5));
+            # Convert the bytes value into cid for the good range [byte 7 to 7+dcid_l]
+            h.dcid := bytes_to_cid(pkt.segment(6,6+dcid_l));
+            # Take 8 high order bit of byte 6+length of DCID
+            var scid_l : stream_pos := bfe[0][7](pkt.value(6+dcid_l));
+            # Convert the bytes value into cid for the good range [byte 8 to 8+dcid_l]
+            h.scid := bytes_to_cid(pkt.segment(7+dcid_l,7+dcid_l+scid_l));
+            var pos := 7 + dcid_l + scid_l;
             if bvand(h.hdr_type,0x30) = 0x00 {
+                #Retry packet
                 var len := get_var_int_len(pkt,pos);
                 var retry_token_len := get_var_int(pkt,pos,len);
                 pos := pos + len + retry_token_len;
+            } else if bvand(h.hdr_type,0x20) = 0x00 {
+                #Handshake packet
+                #TODO
+            } else if bvand(h.hdr_type,0x10) = 0x00 {
+                #0RTT packet
+                #TODO
+            } else if bvand(h.hdr_type,0x00) = 0x00 {
+                #Initial packet
+                #TODO
             };
             var len := get_var_int_len(pkt,pos);
             h.payload_length := get_var_int(pkt,pos,len);
@@ -208,7 +270,9 @@ module quic_protection(tls_id,tls) = {
     # Get the length of a packet number at position `pos`
 
     action get_pnum_len(pkt:stream_data,pnum_pos:stream_pos) returns (pnum_len:stream_pos) = {
-        var len_minus_one : stream_pos := bfe[0][1](pkt.value(0));
+        # Here take 2 high order bit of 1st bytes
+        #var len_minus_one : stream_pos := bfe[0][1](pkt.value(0));
+        var len_minus_one : stream_pos := bvand(pkt.value(0),0x03);
         pnum_len := len_minus_one + 1;
     }
     
@@ -226,7 +290,7 @@ module quic_protection(tls_id,tls) = {
         }
     }
 
-    # Get the length of a variable-length ingteger in a packet.
+    # Get the length of a variable-length integer in a packet.
 
     action get_var_int_len(pkt:stream_data,pos:stream_pos) returns (len:stream_pos) = {
         var code := bvand(0xc0,pkt.value(pos));
@@ -272,6 +336,7 @@ module quic_protection(tls_id,tls) = {
         >>>
     }
 
+
     action byte_xor(x:byte,y:byte) returns (z:byte) = {
         <<<
         z = x ^ y;
@@ -279,6 +344,12 @@ module quic_protection(tls_id,tls) = {
     }
 
     action stream_data_xor(x:stream_data,y:stream_data) returns (x:stream_data) = {
+        #guint32 pkt_pkn = 0;
+        #for (guint i = 0; i < pkn_len; i++) {
+        #    pkt_pkn |= (pkn_bytes[i] ^ mask[1 + i]) << (8 * (pkn_len - 1 - i));
+        #}  
+        #pnum := stream_data_xor(pnum.segment(0,pnum_len),
+        #                        mask.segment(1,1+pnum_len)); 
         var idx := x.begin;
         while idx < x.end {
             x := x.set(idx,byte_xor(x.value(idx),y.value(idx)));
@@ -365,9 +436,9 @@ object quic_prot_deser = {}
             if (level != 1)
                 return;
             if (peek(pos) & 0x80) { // a long packet
-                unsigned dcil = peek(pos+5);
-                unsigned scil = peek(pos+6+dcil);
-                unsigned pnum_pos = pos + 7 + dcil + scil;
+                unsigned dcid_l = peek(pos+5);
+                unsigned scid_l = peek(pos+6+dcid_l);
+                unsigned pnum_pos = pos + 7 + dcid_l + scid_l;
                 if ((peek(pos) &0x30) == 0x00) { // initial packets have tokens
                     unsigned len = get_var_int_len(pnum_pos);
                     unsigned retry_token_len = get_var_int(pnum_pos,len);
@@ -376,7 +447,7 @@ object quic_prot_deser = {}
                 unsigned len = get_var_int_len(pnum_pos);
                 unsigned pyld_len = get_var_int(pnum_pos,len);
                 data_remaining = (pnum_pos-pos) + len + pyld_len;
-                // std::cout << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
+                std::cout << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
             }
             else {
                 data_remaining = 0x7fffffff;

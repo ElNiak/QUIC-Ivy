@@ -270,8 +270,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     require pkt.token.end ~= 0 -> (pkt.ptype = quic_packet_type.initial);
 
     # TEMPORARY: Do not allow zero_rtt packets
-
-    # chris require pkt.ptype ~= quic_packet_type.zero_rtt;
+    # chris
+    require pkt.ptype ~= quic_packet_type.zero_rtt;
     
     # Extract the source and destination cid's and packet number from the packet.
 
