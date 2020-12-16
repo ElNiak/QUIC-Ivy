@@ -499,9 +499,9 @@ before frame.stop_sending.handle(f:frame.stop_sending,src:ip.endpoint,dst:ip.end
     }
 }
 
-# Generate max_stream_id frames only for the client.
+# Generate max_streams frames only for the client.
 
-before frame.max_stream_id.handle(f:frame.max_stream_id,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.max_streams.handle(f:frame.max_streams,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
     if _generating {
         require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
@@ -528,7 +528,7 @@ before frame.application_close.handle(f:frame.application_close,src:ip.endpoint,
     }
 }
 
-# Generate max_stream_id frames only for the client.
+# Generate max_stream_data frames only for the client.
 
 before frame.max_stream_data.handle(f:frame.max_stream_data,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
     if _generating {
@@ -538,9 +538,9 @@ before frame.max_stream_data.handle(f:frame.max_stream_data,src:ip.endpoint,dst:
     }
 }
 
-# Generate max_stream_id frames only for the client.
+# Generate stream_data_blocked frames only for the client.
 
-before frame.stream_blocked.handle(f:frame.stream_blocked,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
     if _generating {
         require (src = client.ep | src = client_alt) & dst = server.ep; 
         require scid = the_cid;
