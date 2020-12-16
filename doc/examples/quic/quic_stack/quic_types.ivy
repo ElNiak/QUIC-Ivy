@@ -89,12 +89,12 @@ object role = {
 # encryption levels
 
 object encryption_level = {
-    type this = {initial,handshake,other}
+    type this = {initial,handshake,one_rtt,zero_rtt}
     action next(e:this) returns (e:this) = {
         if e = initial {
             e := handshake;
         } else {
-            e := other;
+            e := one_rtt;
         }
     }
 }
@@ -122,3 +122,20 @@ type reset_token
 interpret reset_token -> bv[31]
 
 
+# Packet type, also determines encryption keys
+
+object quic_packet_type = {
+    type this = {initial,zero_rtt,handshake,one_rtt}
+
+    # The `next` action computes the next packet type
+    # according to the normal sequence.
+
+    action next(e:this) returns (e:this) = {
+        if e = initial {
+            e := handshake;
+        } else {
+            e := one_rtt;
+        }
+    }
+
+}

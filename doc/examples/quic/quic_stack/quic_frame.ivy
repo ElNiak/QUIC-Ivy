@@ -308,7 +308,7 @@ object frame = {
 
 object frame = {
     ...
-    action handle(f:this,scid:cid,dcid:cid,e:quic_packet_type) = {
+    action handle(f:this,scid:cid,dcid:cid,e:encryption_level) = {
        require false; # this generic action should never be called
     }
 }
@@ -402,7 +402,7 @@ object frame = {
 #Hamid
 #
 #chris 
-# - the function `queued_level_type(C:cid,T:quic_packet_type) : frame.arr` is used to  queue frames a separate frame queue for each packet type.  TODO
+# - the function `queued_level_type(C:cid,T:encryption_level) : frame.arr` is used to  queue frames a separate frame queue for each packet type.  TODO
 # - the relation `send_retire_cid(C:cid,S:stream_id)` is used to say that the next frame should be a retire_CID frame
 # - the function `max_rtp_num(C:cid) : cid_seq``is used to get the maximum retire_prior_to field in new_cid frame
 #chris
@@ -418,7 +418,7 @@ relation stream_reset(C:cid,S:stream_id)
 relation max_stream_set(C:cid,K:stream_kind)
 function max_stream(C:cid,K:stream_kind) : stream_id
 function queued_frames(C:cid) : frame.arr
-function queued_level(C:cid) : quic_packet_type
+function queued_level(C:cid) : encryption_level #encryption_level
 relation queued_non_probing(C:cid)
 relation queued_non_ack(C:cid)
 relation queued_close(C:cid)
@@ -430,7 +430,7 @@ relation queued_ack_eliciting(C:cid)
 #Hamid
 
 #chris
-function queued_level_type(C:cid,T:quic_packet_type) : frame.arr
+function queued_level_type(C:cid,T:encryption_level) : frame.arr
 relation send_retire_cid(C:cid) # ?? S:stream_id
 function max_rtp_num(C:cid) : cid_seq
 #chris
@@ -494,15 +494,15 @@ object frame = {
     ...
     object ack = {
         ...
-        action handle(f:frame.ack,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.ack,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);  # [4]
+            require e = encryption_level.handshake -> established_handshake_keys(scid);  # [4]
+            require e = encryption_level.one_rtt -> established_1rtt_keys(scid);  # [4]
             #Chris
             #TODO ECN
-            require ~(e = quic_packet_type.version_negociation) & ~(e = quic_packet_type.retry);
+            require ~(e = encryption_level.version_negociation) & ~(e = encryption_level.retry);
             #Chris
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             var idx : frame.ack.range.idx := 0;
@@ -598,11 +598,11 @@ object frame = {
     ...
     object stream = {
         ...
-        action handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.stream,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);  # [11]
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [11]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [8]
 
@@ -665,13 +665,13 @@ object frame = {
     ...
     object crypto = {
         ...
-        action handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.crypto,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
         require num_queued_frames(scid) > 0 -> e = queued_level(scid);
         #  require ~conn_closed(scid);  # [1]
         #chris
-        require ~(e = quic_packet_type.zero_rtt);  # [4]
+        require ~(e = encryption_level.zero_rtt);  # [4]
         #chris
 	    require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
 	    require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
@@ -687,7 +687,7 @@ object frame = {
         };
         call enqueue_frame(scid,f,e,false);
         # TODO: is the following needed? Maybe it belongs somewhere else?
-        if e = quic_packet_type.handshake {
+        if e = encryption_level.handshake {
             established_1rtt_keys(scid) := true;
         }
         }
@@ -721,11 +721,11 @@ object frame = {
 
 object frame = { ...
     object rst_stream = { ...
-        action handle(f:frame.rst_stream,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.rst_stream,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);  # [6]
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [6]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [5]
             require connected(scid) & connected_to(scid) = dcid;
@@ -761,11 +761,11 @@ object frame = { ...
 
 object frame = { ...
     object stop_sending = { ...
-        action handle(f:frame.stop_sending,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.stop_sending,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);  # [6]
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [6]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [5]
             require connected(scid) & connected_to(scid) = dcid;
@@ -808,11 +808,11 @@ object frame = { ...
 
 object frame = { ...
     object max_streams = { ...
-        action handle(f:frame.max_streams,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.max_streams,scid:cid,dcid:cid,e:encryption_level)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);  # [3]
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);  # [3]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require connected(scid) & connected_to(scid) = dcid;
             require ~conn_closed(scid);  # [2]
@@ -863,11 +863,11 @@ object frame = { ...
 
 object frame = { ...
     object connection_close = { ...
-        action handle(f:frame.connection_close,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.connection_close,scid:cid,dcid:cid,e:encryption_level)
 	around handle{
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
-            require e = quic_packet_type.handshake -> established_handshake_keys(scid);
+            require e = encryption_level.one_rtt -> established_1rtt_keys(scid);
+            require e = encryption_level.handshake -> established_handshake_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require connected(scid) & connected_to(scid) = dcid;
             require f.reason_phrase_length = f.reason_phrase.end;
@@ -909,12 +909,12 @@ object frame = { ...
 
 object frame = { ...
     object application_close = { ...
-        action handle(f:frame.application_close,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.application_close,scid:cid,dcid:cid,e:encryption_level)
 	around handle{
             require connected(dcid) & connected_to(dcid) = scid;
-            require e ~= quic_packet_type.initial;
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
-            require e = quic_packet_type.handshake -> established_handshake_keys(scid);
+            require e ~= encryption_level.initial;
+            require e = encryption_level.one_rtt -> established_1rtt_keys(scid);
+            require e = encryption_level.handshake -> established_handshake_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require connected(scid) & connected_to(scid) = dcid;
             require f.reason_phrase_length = f.reason_phrase.end;
@@ -946,10 +946,10 @@ object frame = { ...
 
 object frame = { ...
     object max_stream_data = { ...
-        action handle(f:frame.max_stream_data,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.max_stream_data,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             
             if ~max_stream_data_set(scid,f.id) | f.pos > max_stream_data_val(scid,f.id) {
@@ -981,10 +981,10 @@ object frame = { ...
 
 object frame = { ...
     object stream_data_blocked = { ...
-        action handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 	    ...
             call enqueue_frame(scid,f,e,false);
@@ -1008,10 +1008,10 @@ object frame = { ...
 
 object frame = { ...
     object data_blocked = { ...
-        action handle(f:frame.data_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.data_blocked,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 	    ...
             call enqueue_frame(scid,f,e,false);
@@ -1040,10 +1040,10 @@ object frame = { ...
 
 object frame = { ...
     object streams_blocked = { ...
-        action handle(f:frame.streams_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.streams_blocked,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 	    ...
             call enqueue_frame(scid,f,e,false);
@@ -1068,10 +1068,10 @@ object frame = { ...
 
 object frame = { ...
     object max_data = { ...
-        action handle(f:frame.max_data,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.max_data,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 
             if ~max_data_set(scid) | f.pos > max_data_val(scid) {
@@ -1093,10 +1093,10 @@ object frame = { ...
 
 object frame = { ...
     object ping = { ...
-        action handle(f:frame.ping,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.ping,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt -> established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             ...
             call enqueue_frame(scid,f,e,false);
@@ -1133,10 +1133,10 @@ object frame = { ...
 
 object frame = { ...
     object new_connection_id = { ...
-        action handle(f:frame.new_connection_id,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.new_connection_id,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); #Will change with implementing TODO
             #chris
             require f.length >= 1 & f.length <= 20; #[1]
@@ -1179,10 +1179,10 @@ object frame = { ...
 #    connection error of type PROTOCOL_VIOLATION. [3] TODO
 object frame = { ...
     object retire_connection_id = { ...
-        action handle(f:frame.retire_connection_id,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.retire_connection_id,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             # Will change with implementing TODO
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); 
             # TODO remember the highest sequence number that was sent
@@ -1220,10 +1220,10 @@ object frame = { ...
 
 object frame = { ...
     object path_challenge = { ...
-        action handle(f:frame.path_challenge,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.path_challenge,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require f.data.end = 8;
             require ~path_challenge_pending(dcid,f.data);
@@ -1242,10 +1242,10 @@ object frame = { ...
 
 object frame = { ...
     object path_response = { ...
-        action handle(f:frame.path_response,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.path_response,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require f.data.end = 8;
             require path_challenge_pending(scid,f.data);
@@ -1264,10 +1264,10 @@ object frame = { ...
 
 object frame = { ...
     object new_token = { ...
-        action handle(f:frame.new_token,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.new_token,scid:cid,dcid:cid,e:encryption_level)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require e = encryption_level.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~is_client(scid);
             ...
@@ -1296,7 +1296,7 @@ object frame = { ...
 # 
 # The argument probing indicates that the frame is a probing frame, according to [9.1]
 # of the transport document( as of draft 23)
-action enqueue_frame(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
+action enqueue_frame(scid:cid, f:frame, e:encryption_level, probing:bool) = {
     queued_frames(scid) := queued_frames(scid).append(f);
     num_queued_frames(scid) := queued_frames(scid).end;
     queued_level(scid) := e;
