@@ -48,11 +48,11 @@ include file
 
 #action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
 
-action quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
-action quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
-action quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
-action quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
-action quic_packet.short_packet.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+#action quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+#action quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+#action quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+#action quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+#action quic_packet.short_packet.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
 
 # This is a ghost action representing a TLS send event.
 
@@ -255,9 +255,9 @@ before quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pk
         require dst = server.ep;
         require pkt.dcid = 5 & pkt.scid = 5;
         require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
-        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
+        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid;
     };
-    pkt.hdr_version = 0xff000012
+    require pkt.hdr_version = 0xff000012
 }
 
 before quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
@@ -265,9 +265,9 @@ before quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,p
         require src = client.ep | src = client_alt;
         require dst = server.ep;
         require pkt.dcid = 5 & pkt.scid = 5;
-        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
+        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid;
     };
-    pkt.hdr_version = 0xff000012
+    require pkt.hdr_version = 0xff000012
 }
 
 before quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
@@ -275,9 +275,9 @@ before quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,
         require src = client.ep | src = client_alt;
         require dst = server.ep;
         require pkt.dcid = 5 & pkt.scid = 5;
-        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
+        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid;
     };
-    pkt.hdr_version = 0xff000012
+    require pkt.hdr_version = 0xff000012
 }
 
 before quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
@@ -285,9 +285,9 @@ before quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:
         require src = client.ep | src = client_alt;
         require dst = server.ep;
         require pkt.dcid = 5 & pkt.scid = 5;
-        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
+        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid;
     };
-    pkt.hdr_version = 0xff000012
+    require pkt.hdr_version = 0xff000012
 }
 
 # Hook up to the remote server
@@ -772,7 +772,7 @@ export frame.path_response.handle
 export quic_packet.long_packet.initial.handle
 export quic_packet.long_packet.zero_rtt.handle
 export quic_packet.long_packet.handshake.handle
-export quic_packet.long_packet.retry.handle
+#export quic_packet.long_packet.retry.handle
 export quic_packet.short_packet.handle
 
 export client_send_event
