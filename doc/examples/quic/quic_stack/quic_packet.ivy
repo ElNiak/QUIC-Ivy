@@ -42,17 +42,17 @@ object quic_packet = {
 
     object long_packet = {
 
-        variant this of quic_packet
+        #variant this of quic_packet
 
-        #variant this of quic_packet = struct {
+        variant this of quic_packet = struct {
             #hdr_long : bool, # [1]
-        #    hdr_type : type_bits, # [2]
-        #    hdr_version : version, # [4]
-        #    dcid : cid_length, 
-        #    scid : cid_length, 
-        #    dst_cid : cid,
-        #    hdr_cid : cid # [3]
-        #}
+            hdr_type : type_bits, # [2]
+            hdr_version : version, # [4]
+            dcid : cid_length, 
+            scid : cid_length, 
+            dst_cid : cid,
+            hdr_cid : cid # [3]
+        }
 
         object initial = {
 

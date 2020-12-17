@@ -297,7 +297,7 @@ before quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,
 # of bytes. Note, the "salt" is specified in QUIC-TLS version 15, and is
 # unchanged in version 16.
 
-after client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
+after client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet) {
     var ikm := cid_to_bytes(pkt.dst_cid,pkt.dcid + 3 if pkt.dcid > 0 else 0);
     var salt : stream_data := stream_data.empty;
 
@@ -389,7 +389,17 @@ action reference_pkt_num(spkt:stream_data) returns (pnum:pkt_num) = {
 # To send and receive packets, we need to serialize and deserialize them.
 # This object allows that.
 
+instance pkt_serdes_initial : serdes(quic_packet.long_packet.initial,stream_data,quic_ser,quic_deser)
+
+instance pkt_serdes_zero_rtt : serdes(quic_packet.long_packet.zero_rtt,stream_data,quic_ser,quic_deser)
+
+instance pkt_serdes_handshake : serdes(quic_packet.long_packet.handshake,stream_data,quic_ser,quic_deser)
+
+instance pkt_serdes_short : serdes(quic_packet.short_packet,stream_data,quic_ser,quic_deser)
+
 instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
+
+#instance pkt_serdes_retry : serdes(quic_packet,stream_data,quic_ser,quic_deser)
 
 # When the client sends a packet, route it to the server on the socket
 # corresponding to the ip endpoint, after first serializing it, then
@@ -415,7 +425,7 @@ instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
 
 after quic_packet.short_packet.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
     if src = client.ep | src = client_alt {
-        var spkt := pkt_serdes.to_bytes(pkt);
+        var spkt := pkt_serdes_short.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
         call clear_packet(rnum,spkt);
         var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
@@ -432,7 +442,7 @@ after quic_packet.short_packet.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_p
 
 after quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.initial) {
     if src = client.ep | src = client_alt {
-        var spkt := pkt_serdes.to_bytes(pkt);
+        var spkt := pkt_serdes_initial.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
         call clear_packet(rnum,spkt);
         var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
@@ -449,7 +459,7 @@ after quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt
 
 after quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.zero_rtt) {
     if src = client.ep | src = client_alt {
-        var spkt := pkt_serdes.to_bytes(pkt);
+        var spkt := pkt_serdes_zero_rtt.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
         call clear_packet(rnum,spkt);
         var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
@@ -466,7 +476,7 @@ after quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pk
 
 after quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.handshake) {
     if src = client.ep | src = client_alt {
-        var spkt := pkt_serdes.to_bytes(pkt);
+        var spkt := pkt_serdes_handshake.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
         call clear_packet(rnum,spkt);
         var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
