@@ -481,22 +481,22 @@ after quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,p
     }
 }
 
-after quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
-    if src = client.ep | src = client_alt {
-        var spkt := pkt_serdes.to_bytes(pkt);
-        var rnum := reference_pkt_num(spkt);
-        call clear_packet(rnum,spkt);
-        var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
-        call cipher_packet(ppkt);
-        var pkts := prot.arr.empty;
-        pkts := pkts.append(ppkt);
-        if src = client.ep {
-            call net.send(endpoint_id.client,sock,dst,pkts);
-        } else if src = client_alt {
-            call net.send(endpoint_id.client_alt,sock_alt,dst,pkts);
-        } 
-    }
-}
+#after quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+#    if src = client.ep | src = client_alt {
+#        var spkt := pkt_serdes.to_bytes(pkt);
+#        var rnum := reference_pkt_num(spkt);
+#        call clear_packet(rnum,spkt);
+#        var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
+#        call cipher_packet(ppkt);
+#        var pkts := prot.arr.empty;
+#        pkts := pkts.append(ppkt);
+#        if src = client.ep {
+#            call net.send(endpoint_id.client,sock,dst,pkts);
+#        } else if src = client_alt {
+#            call net.send(endpoint_id.client_alt,sock_alt,dst,pkts);
+#        } 
+#    }
+#}
 
 # When an packet arrives at the client endpoint, decrypt it, deserialize it,
 # then generate a `packet_event`.

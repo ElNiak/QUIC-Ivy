@@ -27,7 +27,7 @@ action infer_tls_events_short(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.sh
     # On short headers, the scid is not given, so we use the recorded value
 
     #if ~pkt.hdr_long {
-    var scid := cid_dst_to_src(dcid)
+    var scid := cid_dst_to_src(dcid);
     #};
 
     # the encryption level of frames has to be inferred from the packet header
@@ -70,12 +70,6 @@ action infer_tls_events_initial(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.
     var scid := pkt.hdr_cid;
     var dcid := pkt.dst_cid;
 
-    # On short headers, the scid is not given, so we use the recorded value
-
-    if ~pkt.hdr_long {
-        scid := cid_dst_to_src(dcid)
-    };
-
     # the encryption level of frames has to be inferred from the packet header
 
     var e := encryption_level.initial;
@@ -116,11 +110,6 @@ action infer_tls_events_handshake(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packe
     var scid := pkt.hdr_cid;
     var dcid := pkt.dst_cid;
 
-    # On short headers, the scid is not given, so we use the recorded value
-
-    if ~pkt.hdr_long {
-        scid := cid_dst_to_src(dcid)
-    };
 
     # the encryption level of frames has to be inferred from the packet header
 
@@ -161,12 +150,6 @@ action infer_tls_events_zero_rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet
 
     var scid := pkt.hdr_cid;
     var dcid := pkt.dst_cid;
-
-    # On short headers, the scid is not given, so we use the recorded value
-
-    if ~pkt.hdr_long {
-        scid := cid_dst_to_src(dcid)
-    };
 
     # the encryption level of frames has to be inferred from the packet header
 
