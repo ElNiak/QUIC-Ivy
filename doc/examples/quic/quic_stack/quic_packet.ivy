@@ -43,7 +43,7 @@ object quic_packet = {
     object long_packet = {
 
         variant this of quic_packet
-        
+
         #variant this of quic_packet = struct {
             #hdr_long : bool, # [1]
         #    hdr_type : type_bits, # [2]
@@ -129,6 +129,11 @@ object quic_packet = {
             #hdr_long : bool, # [1]
             hdr_type : type_bits, # [2]
             dst_cid : cid,
+
+            #should not be there
+            dcid : cid_length, 
+            scid : cid_length, 
+
             hdr_pkt_num : pkt_num, # [5]
             payload : frame.arr # [6]
         }
@@ -261,10 +266,10 @@ function max_seq_num(C:cid) : cid_seq
 # This event occurs when a client transmits in initial request to open
 # a connection.
 
-action client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.initial)
-action client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.zero_rtt)
-action client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.handshake)
-action client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.retry)
+action client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet)
+#action client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.zero_rtt)
+#action client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.handshake)
+#action client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.retry)
 
 # Packet events
 # -------------
@@ -555,6 +560,7 @@ object quic_packet = {
             action handle(src:ip.endpoint,dst:ip.endpoint,pkt:this.long_packet.zero_rtt)
 
             around handle {
+                var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
                 # assume fixed bit is 1, R = 0
                 require bvand(pkt.hdr_type,0x4c) = 0x40; 
                 require pkt.dcid > 0 & pkt.scid > 0;
@@ -729,6 +735,7 @@ object quic_packet = {
             action handle(src:ip.endpoint,dst:ip.endpoint,pkt:this.long_packet.handshake)
 
             around handle {
+                var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
                 # assume fixed bit is 1, R = 0
                 require bvand(pkt.hdr_type,0x4c) = 0x40; 
                 require pkt.dcid > 0 & pkt.scid > 0;
@@ -944,6 +951,7 @@ object quic_packet = {
 
         around handle {
             # assume fixed bit is 1, R,K = 0
+            var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
             require bvand(pkt.hdr_type,0x5c) = 0x40; 
             require pkt.dcid = 5 & pkt.scid = 0;
 
