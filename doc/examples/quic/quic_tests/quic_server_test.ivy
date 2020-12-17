@@ -280,15 +280,15 @@ before quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,
     require pkt.hdr_version = 0xff000012
 }
 
-before quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
-    if _generating {
-        require src = client.ep | src = client_alt;
-        require dst = server.ep;
-        require pkt.dcid = 5 & pkt.scid = 5;
-        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid;
-    };
-    require pkt.hdr_version = 0xff000012
-}
+#before quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+#    if _generating {
+#        require src = client.ep | src = client_alt;
+#        require dst = server.ep;
+#        require pkt.dcid = 5 & pkt.scid = 5;
+#        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid;
+#    };
+#    require pkt.hdr_version = 0xff000012
+#}
 
 # Hook up to the remote server
 
