@@ -272,7 +272,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
     # TEMPORARY
     require ~pkt.hdr_long -> bvand(pkt.hdr_type,0x5c) = 0x40; # assume fixed bit is 1, R,K = 0
-    require pkt.hdr_long -> bvand(pkt.hdr_type,0x4c) = 0x40; # assume fixed bit is 1, R = 0
+    require pkt.hdr_long -> bvand(pkt.hdr_type,0x4c) = 0x40;  # assume fixed bit is 1, R = 0
     require ~pkt.hdr_long -> (pkt.dcid = 5 & pkt.scid = 0);
     require pkt.hdr_long -> (pkt.dcid > 0 & pkt.scid > 0);
     require pkt.hdr_token_length = pkt.hdr_token.end;
@@ -447,9 +447,9 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # An ack-only packet must be in response to a non-ack-only packet
 
     if queued_non_ack(scid) {
-	ack_credit(dcid) := ack_credit(dcid) + 1;
+	    ack_credit(dcid) := ack_credit(dcid) + 1;
     } else {
-	ack_credit(scid) := ack_credit(scid) - 1;
+	    ack_credit(scid) := ack_credit(scid) - 1;
     };
 
     # If the packet contains a close frame, then set `pkt_has_close`
@@ -668,9 +668,9 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
         var byte := data.value(jdx);
         require crypto_data_present(scid,e,cpos) -> crypto_data(scid,e).value(cpos) = byte;
         crypto_data_end(scid,e) := end;
-	crypto_data(scid,e) := crypto_data(scid,e).set(cpos,byte);  # [4]
+	    crypto_data(scid,e) := crypto_data(scid,e).set(cpos,byte);  # [4]
         crypto_data_present(scid,e,cpos) := true;
-	jdx := jdx.next
+	    jdx := jdx.next
     };
     crypto_data_end(scid,e) := crypto_data(scid,e).end;
     var max_present : stream_pos := 0;

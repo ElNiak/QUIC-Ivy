@@ -16,13 +16,13 @@ object quic_ser = {}
         enum {quic_s_init,
               quic_s_type,
               quic_s_version,
-	      quic_s_dcil,
-	      quic_s_scil,
+	          quic_s_dcil,
+	          quic_s_scil,
               quic_s_dcid,
               quic_s_scid,
               quic_s_retry_token_length,
               quic_s_retry_token,
-	      quic_s_payload_length,
+	          quic_s_payload_length,
               quic_s_pkt_num,
               quic_s_payload,
               quic_stream_id,
@@ -59,7 +59,7 @@ object quic_ser = {}
         int scil;
         char frame_type;
         int data_remaining;
-       long long ack_blocks_expected;
+        long long ack_blocks_expected;
         long long ack_block_count;
         int payload_length_pos;
         int fence;
@@ -78,7 +78,7 @@ object quic_ser = {}
             case quic_s_type:
             {
                 hdr_type = res;
-		setn(hdr_type | (long_format ? 0x80 : 0), 1);
+		        setn(hdr_type | (long_format ? 0x80 : 0), 1);
                 state = quic_s_version;
             }
             break;

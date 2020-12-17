@@ -56,7 +56,7 @@ object quic_packet = {
 
             variant this of long_packet = struct {
                 hdr_token_length : stream_pos,
-                hdr_token : stream_data
+                hdr_token : stream_data,
                 payload_length : stream_pos,
                 hdr_pkt_num : pkt_num, # [5]
                 payload : frame.arr # [6]
@@ -224,15 +224,6 @@ relation queued_hello(C:cid)
 function max_seq_num(C:cid) : cid_seq
 #Hamid
 
-object quic_packet = {
-   ...
-    action handle(f:this,scid:cid,dcid:cid,e:encryption_level) = {
-	require false; # this generic action should never be called
-    }
-}
-
-
-
 #
 # Client initial request event
 # ============================
@@ -326,214 +317,722 @@ action client_initial_request(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
 #   never complete the path challenge of the new address. 
 
 
-
-around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
-    
-    var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
-    # TEMPORARY
-    require ~pkt.hdr_long -> bvand(pkt.hdr_type,0x5c) = 0x40; # assume fixed bit is 1, R,K = 0
-    require pkt.hdr_long -> bvand(pkt.hdr_type,0x4c) = 0x40; # assume fixed bit is 1, R = 0
-    require ~pkt.hdr_long -> (pkt.dcid = 5 & pkt.scid = 0);
-    require pkt.hdr_long -> (pkt.dcid > 0 & pkt.scid > 0);
-    require pkt.hdr_token_length = pkt.hdr_token.end;
-    require pkt.hdr_token_length ~= 0 -> (pkt.hdr_long & hdr_type_bits = 0);
-
-    # Allowed long header types (TEMPORARY)
-
-    require pkt.hdr_long -> (hdr_type_bits = 0x20 | hdr_type_bits = 0);
-    
-    # Extract the source and destination cid's and packet number from the packet.
-
-    var dcid := pkt.dst_cid;
-    var scid := pkt.hdr_cid;
-
-    #add 
-    if cid_mapped(dcid) {
-	    dcid := cid_to_aid(dcid);
-    };
-
-    # On long headers, both cids are given. Record the correspondence.
-    # If the scid has been mapped, make sure it maps to the dcid.
-    # However, this requirement does not apply to initial client hello
-    # packets.
-
-    if pkt.hdr_long {
-        require cid_dst_to_src_set(scid) ->
-              (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)))
+object quic_packet = {
+   ...
+    action handle(src:ip.endpoint,dst:ip.endpoint,pkt:this) = {
+	    require false; # this generic action should never be called
     }
+}
 
-    # On short headers, the scid is not given, so we use the recorded value
 
-    # TODO: this is not reliable for testing, since a short header might
-    # arrive before a corresping long header due to packet re-ordering. We
-    # need to handle this case. This is a general problem with the test setup:
-    # the specification applies to packets in the actual order of transmission,
-    # while the tester may receive them out-of-order. One fix for this would be
-    # to have the spec also allow re-ordering, but this might introduce some
-    # significant complexity.
-
-    else {
-        require cid_dst_to_src_set(dcid);
-        scid := cid_dst_to_src(dcid)
-    };
-
-    var e := queued_level(scid);
-
-    # The header type depends on the encryption level
-
-    require e = encryption_level.initial -> pkt.hdr_long & hdr_type_bits = 0;
-    require e = encryption_level.handshake -> pkt.hdr_long & hdr_type_bits = 0x20;
-    require e = encryption_level.one_rtt  -> ~pkt.hdr_long;
-    
-    var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
-
-    call show_pstats(scid,e,pnum);
-
-    require ~sent_pkt(scid,e,pnum);  # [4]
-
-    # The payload may not be empty
-
-    require num_queued_frames(scid) > 0;  # [7]
-
-    # A packet is an initial packet iff it contains a client hello.
-
-    # TODO: what to say about this?
-    # assert pkt.hdr_type = 0x7f <-> queued_hello(scid);
-
-    # Record that the connection has been seen from this source, and
-    # the packet has been sent.
-
-    sent_pkt(scid,e,pnum) := true;  # [1]
-
-    # Record the packet number as latest seen
-
-    last_pkt_num(scid,e) := pnum;
-
-  
-    # The payload must exactly match the queued frames.
-
-    require pkt.payload = queued_frames(scid);
-
-    # var idx : frame.idx := 0;
-    # while idx < pkt.payload.end {
-    #     call pkt.payload.value(idx).handle(src,dst,dcid);
-    #     idx := idx + 1
-    # }
-
-    # TEMPORARY: don't allow client migration during handshake
-
-    require conn_seen(scid) & pkt.hdr_long & is_client(scid) -> conn_requested(src,dst,scid);
-
-    # Packet must be sent to the endpoint from which the highest numbered
-    # packet has been received.
-
-    require conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
-
-    # If this is a non-probing packet, update the highest non-probing
-    # packet number seen on from this aid.
-    # QUESTION: what if two differenht paths send the same packet number?
-    # QUESTION: how do you compare packet numbers with different encryption levels?
-
-    if queued_non_probing(scid) {
-        if e = encryption_level.one_rtt  {
-            if pnum >= hi_non_probing(scid) {
-                hi_non_probing(scid) := pnum;
-                hi_non_probing_endpoint(scid,src) := true;
-            }
-        } else {
-            hi_non_probing_endpoint(scid,src) := true;
-        }
-    };
-
-    # TEMPORARY: do not apply ack-onlty rule to generated packets
-    # This can be removed when we have a frame queue per encryption level
-
-    require ~_generating & ~queued_non_ack(scid) -> ack_credit(scid) > 0;  # [5]
-
-    # QUESTION: THis sentence is from draft-18 section 13.1: "An
-    #   endpoint MUST NOT send a packet containing only an ACK frame
-    #   in response to a packet containing only ACK or PADDING frames,
-    #   even if there are packet gaps which precede the received
-    #   packet." Do we interpret this to mean that an ack-only packet
-    #   cannot ack *only* ack-only packets?  Or that an ack-only
-    #   packet cannot ack *any* ack-only packets?
-    
-    # If the sender is in the draining state, this is the draining packet.
-    # Make sure that a draining packet has not previously been sent and
-    # that the packet contains a connection_close frame;
-
-    if conn_draining(scid) {
-        require ~draining_pkt_sent(scid) & queued_close(scid);
-    };
+object quic_packet = {
     ...
+    object long_packet = {
+        ...
+        action handle(src:ip.endpoint,dst:ip.endpoint,pkt:this.long_packet) = {
+	        require false; # this generic action should never be called
+        }
+    }
+}
 
-    # TEMPORARY: The following are repeated because currently locals defined in
-    # the "before" section cannot be accessed in the "after" section.
+object quic_packet = {
+    ...
+    object long_packet = {
+        ...
+        object initial = {
+            ...
+            action handle(src:ip.endpoint,dst:ip.endpoint,pkt:this.long_packet.initial)
 
-    var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
-    var dcid := pkt.dst_cid;
-    var scid := pkt.hdr_cid;
+            around handle {
+                var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
+                # assume fixed bit is 1, R = 0
+                require bvand(pkt.hdr_type,0x4c) = 0x40; 
+                require  (pkt.dcid > 0 & pkt.scid > 0);
+                require pkt.hdr_token_length = pkt.hdr_token.end;
+                require pkt.hdr_token_length ~= 0 -> (hdr_type_bits = 0); #pkt.hdr_long & 
+                require (hdr_type_bits = 0x20 | hdr_type_bits = 0);
 
-    if cid_mapped(dcid) {
-	    dcid := cid_to_aid(dcid);
-    };
+                var dcid := pkt.dst_cid;
+                var scid := pkt.hdr_cid;
 
-    if ~pkt.hdr_long {
-        scid := cid_dst_to_src(dcid)
-    };
+                #add 
+                if cid_mapped(dcid) {
+                    dcid := cid_to_aid(dcid);
+                };
 
-    # TODO: in draft 15, application close is not allowed in an
-    # initial packet. This will change in draft 17 so that it is
-    # allowed, but not if the RTT-1 keys are available. 
+                require cid_dst_to_src_set(scid) ->
+                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)))
+            
+                var e := queued_level(scid);
 
-    if pkt.hdr_long & hdr_type_bits = 0 {
-        require forall (I:frame.idx) 0 <= I & I < pkt.payload.end ->
-        ((pkt.payload.value(I) isa frame.ack)
-        | (pkt.payload.value(I) isa frame.crypto)
-        | (pkt.payload.value(I) isa frame.rst_stream)
-        | (pkt.payload.value(I) isa frame.connection_close));
-        # require ~conn_closed(src,scid);  # [6]
+                require e = encryption_level.initial
 
-        # An initial packet with an unseen destination cid is a connection request.
-        if ~conn_seen(dcid) {
-            call client_initial_request(src,dst,pkt);
-            conn_requested(src,dst,scid) := true;
-        };
-    
-    };
+                var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
 
-    conn_seen(scid) := true;  # [1]
+                call show_pstats(scid,e,pnum);
 
-    # An ack-only packet must be in response to a non-ack-only packet
+                require ~sent_pkt(scid,e,pnum);  # [4]
 
-    if queued_non_ack(scid) {
-	ack_credit(dcid) := ack_credit(dcid) + 1;
-    } else {
-	ack_credit(scid) := ack_credit(scid) - 1;
-    };
+                # The payload may not be empty
 
-    # If the packet contains a close frame, then set `pkt_has_close`
+                require num_queued_frames(scid) > 0;  # [7]
 
-    var e := queued_level(scid);
-    var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
-    if queued_close(scid) {
-        pkt_has_close(scid,e,pnum) := true;
-    };
+                # A packet is an initial packet iff it contains a client hello.
 
-    # If the sender is in the draining state, this is the draining packet.
+                # TODO: what to say about this?
+                # assert pkt.hdr_type = 0x7f <-> queued_hello(scid);
 
-    if conn_draining(scid) {
-        draining_pkt_sent(scid) := true
-    };
+                # Record that the connection has been seen from this source, and
+                # the packet has been sent.
 
-    # The queued frames are deleted
-    
-    queued_frames(scid) := frame.arr.empty;
-    queued_hello(scid) := false;
-    queued_non_probing(scid) := false;
-    queued_non_ack(scid) := false;
-    queued_close(scid) := false;
-    num_queued_frames(scid) := 0;
+                sent_pkt(scid,e,pnum) := true;  # [1]
+
+                # Record the packet number as latest seen
+
+                last_pkt_num(scid,e) := pnum;
+
+            
+                # The payload must exactly match the queued frames.
+
+                require pkt.payload = queued_frames(scid);
+
+                # TEMPORARY: don't allow client migration during handshake
+
+                require conn_seen(scid) & is_client(scid) -> conn_requested(src,dst,scid);
+
+                # Packet must be sent to the endpoint from which the highest numbered
+                # packet has been received.
+
+                require conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
+            
+                # If this is a non-probing packet, update the highest non-probing
+                # packet number seen on from this aid.
+                # QUESTION: what if two differenht paths send the same packet number?
+                # QUESTION: how do you compare packet numbers with different encryption levels?
+
+                if queued_non_probing(scid) {
+                    if e = encryption_level.one_rtt  {
+                        if pnum >= hi_non_probing(scid) {
+                            hi_non_probing(scid) := pnum;
+                            hi_non_probing_endpoint(scid,src) := true;
+                        }
+                    } else {
+                        hi_non_probing_endpoint(scid,src) := true;
+                    }
+                };
+
+                # TEMPORARY: do not apply ack-onlty rule to generated packets
+                # This can be removed when we have a frame queue per encryption level
+
+                require ~_generating & ~queued_non_ack(scid) -> ack_credit(scid) > 0;  # [5]
+
+                # QUESTION: THis sentence is from draft-18 section 13.1: "An
+                #   endpoint MUST NOT send a packet containing only an ACK frame
+                #   in response to a packet containing only ACK or PADDING frames,
+                #   even if there are packet gaps which precede the received
+                #   packet." Do we interpret this to mean that an ack-only packet
+                #   cannot ack *only* ack-only packets?  Or that an ack-only
+                #   packet cannot ack *any* ack-only packets?
+                
+                # If the sender is in the draining state, this is the draining packet.
+                # Make sure that a draining packet has not previously been sent and
+                # that the packet contains a connection_close frame;
+
+                if conn_draining(scid) {
+                    require ~draining_pkt_sent(scid) & queued_close(scid);
+                };
+                ...
+
+                # TEMPORARY: The following are repeated because currently locals defined in
+                # the "before" section cannot be accessed in the "after" section.
+
+                var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
+                var dcid := pkt.dst_cid;
+                var scid := pkt.hdr_cid;
+
+                if cid_mapped(dcid) {
+                    dcid := cid_to_aid(dcid);
+                };
+
+                # TODO: in draft 15, application close is not allowed in an
+                # initial packet. This will change in draft 17 so that it is
+                # allowed, but not if the RTT-1 keys are available. 
+
+                if hdr_type_bits = 0 {
+                    require forall (I:frame.idx) 0 <= I & I < pkt.payload.end ->
+                    ((pkt.payload.value(I) isa frame.ack)
+                    | (pkt.payload.value(I) isa frame.crypto)
+                    | (pkt.payload.value(I) isa frame.rst_stream)
+                    | (pkt.payload.value(I) isa frame.connection_close));
+                    # require ~conn_closed(src,scid);  # [6]
+
+                    # An initial packet with an unseen destination cid is a connection request.
+                    if ~conn_seen(dcid) {
+                        call client_initial_request(src,dst,pkt);
+                        conn_requested(src,dst,scid) := true;
+                    };
+                
+                };
+
+                conn_seen(scid) := true;  # [1]
+
+                # An ack-only packet must be in response to a non-ack-only packet
+
+                if queued_non_ack(scid) {
+                ack_credit(dcid) := ack_credit(dcid) + 1;
+                } else {
+                ack_credit(scid) := ack_credit(scid) - 1;
+                };
+
+                # If the packet contains a close frame, then set `pkt_has_close`
+
+                var e := queued_level(scid);
+                var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
+                if queued_close(scid) {
+                    pkt_has_close(scid,e,pnum) := true;
+                };
+
+                # If the sender is in the draining state, this is the draining packet.
+
+                if conn_draining(scid) {
+                    draining_pkt_sent(scid) := true
+                };
+
+                # The queued frames are deleted
+                
+                queued_frames(scid) := frame.arr.empty;
+                queued_hello(scid) := false;
+                queued_non_probing(scid) := false;
+                queued_non_ack(scid) := false;
+                queued_close(scid) := false;
+                num_queued_frames(scid) := 0;
+            }
+        }
+    }
+}
+
+
+object quic_packet = {
+    ...
+    object long_packet = {
+        ...
+        object zero_rtt = {
+            ...
+            action handle(src:ip.endpoint,dst:ip.endpoint,pkt:this.long_packet.zero_rtt)
+
+            around handle {
+                # assume fixed bit is 1, R = 0
+                require bvand(pkt.hdr_type,0x4c) = 0x40; 
+                require  (pkt.dcid > 0 & pkt.scid > 0);
+                require (hdr_type_bits = 0x20 | hdr_type_bits = 0);
+
+                var dcid := pkt.dst_cid;
+                var scid := pkt.hdr_cid;
+
+                #add 
+                if cid_mapped(dcid) {
+                    dcid := cid_to_aid(dcid);
+                };
+
+                require cid_dst_to_src_set(scid) ->
+                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)))
+            
+                var e := queued_level(scid);
+
+                # The header type depends on the encryption level TODO
+                require e = encryption_level.zero_rtt
+
+                var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
+
+                call show_pstats(scid,e,pnum);
+
+                require ~sent_pkt(scid,e,pnum);  # [4]
+
+                # The payload may not be empty
+
+                require num_queued_frames(scid) > 0;  # [7]
+
+                # A packet is an initial packet iff it contains a client hello.
+
+                # TODO: what to say about this?
+                # assert pkt.hdr_type = 0x7f <-> queued_hello(scid);
+
+                # Record that the connection has been seen from this source, and
+                # the packet has been sent.
+
+                sent_pkt(scid,e,pnum) := true;  # [1]
+
+                # Record the packet number as latest seen
+
+                last_pkt_num(scid,e) := pnum;
+
+            
+                # The payload must exactly match the queued frames.
+
+                require pkt.payload = queued_frames(scid);
+
+                # TEMPORARY: don't allow client migration during handshake
+
+                require conn_seen(scid) & is_client(scid) -> conn_requested(src,dst,scid);
+
+                # Packet must be sent to the endpoint from which the highest numbered
+                # packet has been received.
+
+                require conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
+
+                # If this is a non-probing packet, update the highest non-probing
+                # packet number seen on from this aid.
+                # QUESTION: what if two differenht paths send the same packet number?
+                # QUESTION: how do you compare packet numbers with different encryption levels?
+
+                if queued_non_probing(scid) {
+                    if e = encryption_level.one_rtt  {
+                        if pnum >= hi_non_probing(scid) {
+                            hi_non_probing(scid) := pnum;
+                            hi_non_probing_endpoint(scid,src) := true;
+                        }
+                    } else {
+                        hi_non_probing_endpoint(scid,src) := true;
+                    }
+                };
+
+                                # This can be removed when we have a frame queue per encryption level
+
+                require ~_generating & ~queued_non_ack(scid) -> ack_credit(scid) > 0;  # [5]
+
+                # QUESTION: THis sentence is from draft-18 section 13.1: "An
+                #   endpoint MUST NOT send a packet containing only an ACK frame
+                #   in response to a packet containing only ACK or PADDING frames,
+                #   even if there are packet gaps which precede the received
+                #   packet." Do we interpret this to mean that an ack-only packet
+                #   cannot ack *only* ack-only packets?  Or that an ack-only
+                #   packet cannot ack *any* ack-only packets?
+                
+                # If the sender is in the draining state, this is the draining packet.
+                # Make sure that a draining packet has not previously been sent and
+                # that the packet contains a connection_close frame;
+
+                if conn_draining(scid) {
+                    require ~draining_pkt_sent(scid) & queued_close(scid);
+                };
+                ...
+
+                # TEMPORARY: The following are repeated because currently locals defined in
+                # the "before" section cannot be accessed in the "after" section.
+
+                var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
+                var dcid := pkt.dst_cid;
+                var scid := pkt.hdr_cid;
+
+                if cid_mapped(dcid) {
+                    dcid := cid_to_aid(dcid);
+                };
+
+                # TODO: in draft 15, application close is not allowed in an
+                # initial packet. This will change in draft 17 so that it is
+                # allowed, but not if the RTT-1 keys are available. 
+
+                if hdr_type_bits = 0 {
+                    require forall (I:frame.idx) 0 <= I & I < pkt.payload.end ->
+                    ((pkt.payload.value(I) isa frame.ack)
+                    | (pkt.payload.value(I) isa frame.crypto)
+                    | (pkt.payload.value(I) isa frame.rst_stream)
+                    | (pkt.payload.value(I) isa frame.connection_close));
+                    # require ~conn_closed(src,scid);  # [6]
+
+                    # An initial packet with an unseen destination cid is a connection request.
+                    if ~conn_seen(dcid) {
+                        call client_initial_request(src,dst,pkt);
+                        conn_requested(src,dst,scid) := true;
+                    };
+                
+                };
+
+                conn_seen(scid) := true;  # [1]
+
+                # An ack-only packet must be in response to a non-ack-only packet
+
+                if queued_non_ack(scid) {
+                ack_credit(dcid) := ack_credit(dcid) + 1;
+                } else {
+                ack_credit(scid) := ack_credit(scid) - 1;
+                };
+
+                # If the packet contains a close frame, then set `pkt_has_close`
+
+                var e := queued_level(scid);
+                var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
+                if queued_close(scid) {
+                    pkt_has_close(scid,e,pnum) := true;
+                };
+
+                # If the sender is in the draining state, this is the draining packet.
+
+                if conn_draining(scid) {
+                    draining_pkt_sent(scid) := true
+                };
+
+                # The queued frames are deleted
+                
+                queued_frames(scid) := frame.arr.empty;
+                queued_hello(scid) := false;
+                queued_non_probing(scid) := false;
+                queued_non_ack(scid) := false;
+                queued_close(scid) := false;
+                num_queued_frames(scid) := 0;
+            }
+        }
+    }
+}
+
+object quic_packet = {
+    ...
+    object long_packet = {
+        ...
+        object handshake = {
+            ...
+            action handle(src:ip.endpoint,dst:ip.endpoint,pkt:this.long_packet.handshake)
+
+            around handle {
+                # assume fixed bit is 1, R = 0
+                require bvand(pkt.hdr_type,0x4c) = 0x40; 
+                require  (pkt.dcid > 0 & pkt.scid > 0);
+                require (hdr_type_bits = 0x20 | hdr_type_bits = 0);
+
+                var dcid := pkt.dst_cid;
+                var scid := pkt.hdr_cid;
+
+                #add 
+                if cid_mapped(dcid) {
+                    dcid := cid_to_aid(dcid);
+                };
+
+                require cid_dst_to_src_set(scid) ->
+                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)))
+                
+                var e := queued_level(scid);
+                require e = encryption_level.handshake
+
+                var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
+
+                call show_pstats(scid,e,pnum);
+
+                require ~sent_pkt(scid,e,pnum);  # [4]
+
+                # The payload may not be empty
+
+                require num_queued_frames(scid) > 0;  # [7]
+
+                # A packet is an initial packet iff it contains a client hello.
+
+                # TODO: what to say about this?
+                # assert pkt.hdr_type = 0x7f <-> queued_hello(scid);
+
+                # Record that the connection has been seen from this source, and
+                # the packet has been sent.
+
+                sent_pkt(scid,e,pnum) := true;  # [1]
+
+                # Record the packet number as latest seen
+
+                last_pkt_num(scid,e) := pnum;
+
+            
+                # The payload must exactly match the queued frames.
+
+                require pkt.payload = queued_frames(scid);
+
+                # TEMPORARY: don't allow client migration during handshake
+
+                require conn_seen(scid) & is_client(scid) -> conn_requested(src,dst,scid);
+
+                # Packet must be sent to the endpoint from which the highest numbered
+                # packet has been received.
+
+                require conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
+            
+                # If this is a non-probing packet, update the highest non-probing
+                # packet number seen on from this aid.
+                # QUESTION: what if two differenht paths send the same packet number?
+                # QUESTION: how do you compare packet numbers with different encryption levels?
+
+                if queued_non_probing(scid) {
+                    if e = encryption_level.one_rtt  {
+                        if pnum >= hi_non_probing(scid) {
+                            hi_non_probing(scid) := pnum;
+                            hi_non_probing_endpoint(scid,src) := true;
+                        }
+                    } else {
+                        hi_non_probing_endpoint(scid,src) := true;
+                    }
+                };
+
+                                # This can be removed when we have a frame queue per encryption level
+
+                require ~_generating & ~queued_non_ack(scid) -> ack_credit(scid) > 0;  # [5]
+
+                # QUESTION: THis sentence is from draft-18 section 13.1: "An
+                #   endpoint MUST NOT send a packet containing only an ACK frame
+                #   in response to a packet containing only ACK or PADDING frames,
+                #   even if there are packet gaps which precede the received
+                #   packet." Do we interpret this to mean that an ack-only packet
+                #   cannot ack *only* ack-only packets?  Or that an ack-only
+                #   packet cannot ack *any* ack-only packets?
+                
+                # If the sender is in the draining state, this is the draining packet.
+                # Make sure that a draining packet has not previously been sent and
+                # that the packet contains a connection_close frame;
+
+                if conn_draining(scid) {
+                    require ~draining_pkt_sent(scid) & queued_close(scid);
+                };
+                ...
+
+                # TEMPORARY: The following are repeated because currently locals defined in
+                # the "before" section cannot be accessed in the "after" section.
+
+                var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
+                var dcid := pkt.dst_cid;
+                var scid := pkt.hdr_cid;
+
+                if cid_mapped(dcid) {
+                    dcid := cid_to_aid(dcid);
+                };
+
+                # TODO: in draft 15, application close is not allowed in an
+                # initial packet. This will change in draft 17 so that it is
+                # allowed, but not if the RTT-1 keys are available. 
+
+                if hdr_type_bits = 0 {
+                    require forall (I:frame.idx) 0 <= I & I < pkt.payload.end ->
+                    ((pkt.payload.value(I) isa frame.ack)
+                    | (pkt.payload.value(I) isa frame.crypto)
+                    | (pkt.payload.value(I) isa frame.rst_stream)
+                    | (pkt.payload.value(I) isa frame.connection_close));
+                    # require ~conn_closed(src,scid);  # [6]
+
+                    # An initial packet with an unseen destination cid is a connection request.
+                    if ~conn_seen(dcid) {
+                        call client_initial_request(src,dst,pkt);
+                        conn_requested(src,dst,scid) := true;
+                    };
+                
+                };
+
+                conn_seen(scid) := true;  # [1]
+
+                # An ack-only packet must be in response to a non-ack-only packet
+
+                if queued_non_ack(scid) {
+                ack_credit(dcid) := ack_credit(dcid) + 1;
+                } else {
+                ack_credit(scid) := ack_credit(scid) - 1;
+                };
+
+                # If the packet contains a close frame, then set `pkt_has_close`
+
+                var e := queued_level(scid);
+                var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
+                if queued_close(scid) {
+                    pkt_has_close(scid,e,pnum) := true;
+                };
+
+                # If the sender is in the draining state, this is the draining packet.
+
+                if conn_draining(scid) {
+                    draining_pkt_sent(scid) := true
+                };
+
+                # The queued frames are deleted
+                
+                queued_frames(scid) := frame.arr.empty;
+                queued_hello(scid) := false;
+                queued_non_probing(scid) := false;
+                queued_non_ack(scid) := false;
+                queued_close(scid) := false;
+                num_queued_frames(scid) := 0;
+            }
+        }
+    }
+}
+
+
+object quic_packet = {
+    ...
+    object long_packet = {
+        ...
+        object retry = {
+            ...
+            action handle(src:ip.endpoint,dst:ip.endpoint,pkt:this.long_packet.retry)
+
+            around handle {
+                # assume fixed bit is 1, R = 0
+                require bvand(pkt.hdr_type,0x4c) = 0x40; 
+                require  (pkt.dcid > 0 & pkt.scid > 0);
+                require (hdr_type_bits = 0x20 | hdr_type_bits = 0);
+
+                var dcid := pkt.dst_cid;
+                var scid := pkt.hdr_cid;
+
+                #add 
+                if cid_mapped(dcid) {
+                    dcid := cid_to_aid(dcid);
+                };
+
+                require cid_dst_to_src_set(scid) ->
+                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)))
+                
+                #var e := queued_level(scid); TODO
+                #require e = encryption_level.handshake 
+
+
+                # TODO
+            }
+        }
+    }
+}
+
+
+object quic_packet = {
+    ...
+    object short_packet = {
+        ...
+        action handle(src:ip.endpoint,dst:ip.endpoint,pkt:this.short_packet)
+
+        around handle {
+            # assume fixed bit is 1, R,K = 0
+            require bvand(pkt.hdr_type,0x5c) = 0x40; 
+            require (pkt.dcid = 5 & pkt.scid = 0);
+
+            require cid_dst_to_src_set(dcid);
+
+            var dcid := pkt.dst_cid;
+            #add 
+            if cid_mapped(dcid) {
+                dcid := cid_to_aid(dcid);
+            };
+            var scid := cid_dst_to_src(dcid)
+            var e := queued_level(scid);
+
+            require e = encryption_level.one_rtt
+            var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
+
+            call show_pstats(scid,e,pnum);
+
+            require ~sent_pkt(scid,e,pnum);  # [4]
+
+            # The payload may not be empty
+
+            require num_queued_frames(scid) > 0;  # [7]
+
+            # A packet is an initial packet iff it contains a client hello.
+
+            # TODO: what to say about this?
+            # assert pkt.hdr_type = 0x7f <-> queued_hello(scid);
+
+            # Record that the connection has been seen from this source, and
+            # the packet has been sent.
+
+            sent_pkt(scid,e,pnum) := true;  # [1]
+
+            # Record the packet number as latest seen
+
+            last_pkt_num(scid,e) := pnum;
+
+        
+            # The payload must exactly match the queued frames.
+
+            require pkt.payload = queued_frames(scid);
+
+            # Packet must be sent to the endpoint from which the highest numbered
+            # packet has been received.
+
+            require conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
+
+            # If this is a non-probing packet, update the highest non-probing
+            # packet number seen on from this aid.
+            # QUESTION: what if two differenht paths send the same packet number?
+            # QUESTION: how do you compare packet numbers with different encryption levels?
+
+            if queued_non_probing(scid) {
+                if e = encryption_level.one_rtt  {
+                    if pnum >= hi_non_probing(scid) {
+                        hi_non_probing(scid) := pnum;
+                        hi_non_probing_endpoint(scid,src) := true;
+                    }
+                } else {
+                    hi_non_probing_endpoint(scid,src) := true;
+                }
+            };
+
+            # This can be removed when we have a frame queue per encryption level
+
+            require ~_generating & ~queued_non_ack(scid) -> ack_credit(scid) > 0;  # [5]
+
+            # QUESTION: THis sentence is from draft-18 section 13.1: "An
+            #   endpoint MUST NOT send a packet containing only an ACK frame
+            #   in response to a packet containing only ACK or PADDING frames,
+            #   even if there are packet gaps which precede the received
+            #   packet." Do we interpret this to mean that an ack-only packet
+            #   cannot ack *only* ack-only packets?  Or that an ack-only
+            #   packet cannot ack *any* ack-only packets?
+                
+            # If the sender is in the draining state, this is the draining packet.
+            # Make sure that a draining packet has not previously been sent and
+            # that the packet contains a connection_close frame;
+
+            if conn_draining(scid) {
+                require ~draining_pkt_sent(scid) & queued_close(scid);
+            };
+            ...
+
+            # TEMPORARY: The following are repeated because currently locals defined in
+            # the "before" section cannot be accessed in the "after" section.
+
+            var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
+            var dcid := pkt.dst_cid;
+            var scid := pkt.hdr_cid;
+
+            if cid_mapped(dcid) {
+                dcid := cid_to_aid(dcid);
+            };
+
+            scid := cid_dst_to_src(dcid)
+
+            conn_seen(scid) := true;  # [1]
+
+            # An ack-only packet must be in response to a non-ack-only packet
+
+            if queued_non_ack(scid) {
+                ack_credit(dcid) := ack_credit(dcid) + 1;
+            } else {
+                ack_credit(scid) := ack_credit(scid) - 1;
+            };
+
+            # If the packet contains a close frame, then set `pkt_has_close`
+
+            var e := queued_level(scid);
+            var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
+            if queued_close(scid) {
+                pkt_has_close(scid,e,pnum) := true;
+            };
+
+            # If the sender is in the draining state, this is the draining packet.
+
+            if conn_draining(scid) {
+                draining_pkt_sent(scid) := true
+            };
+
+            # The queued frames are deleted
+                
+            queued_frames(scid) := frame.arr.empty;
+            queued_hello(scid) := false;
+            queued_non_probing(scid) := false;
+            queued_non_ack(scid) := false;
+            queued_close(scid) := false;
+            num_queued_frames(scid) := 0;
+        }
+    }
 }
 
 

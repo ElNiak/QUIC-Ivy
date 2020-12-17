@@ -46,7 +46,13 @@ include file
 
 # The wire specification monitors this action.
 
-action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+#action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+
+action quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+action quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+action quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+action quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
+action quic_packet.short_packet.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
 
 # This is a ghost action representing a TLS send event.
 
@@ -219,21 +225,69 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 
 # Assume that initial packets are sent only to the server under test
 
-before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
+#before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 #    if pkt.hdr_type = 0x7f {
 #        require dst = server.ep
 #    };
     # TEMPORARY: all packets to server!
+#    if _generating {
+#        require src = client.ep | src = client_alt;
+#        require dst = server.ep;
+#        require pkt.hdr_long -> pkt.dcid = 5 & pkt.scid = 5;
+#        require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
+#        if pkt.hdr_long {
+#           require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
+#        }
+#    };
+#    require pkt.hdr_long -> pkt.hdr_version = 0xff000012
+#}
+
+before quic_packet.short_packet.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
     if _generating {
         require src = client.ep | src = client_alt;
         require dst = server.ep;
-        require pkt.hdr_long -> pkt.dcid = 5 & pkt.scid = 5;
-        require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
-        if pkt.hdr_long {
-            require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
-        }
     };
-    require pkt.hdr_long -> pkt.hdr_version = 0xff000012
+}
+
+before quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+    if _generating {
+        require src = client.ep | src = client_alt;
+        require dst = server.ep;
+        require pkt.dcid = 5 & pkt.scid = 5;
+        require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
+        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
+    };
+    pkt.hdr_version = 0xff000012
+}
+
+before quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+    if _generating {
+        require src = client.ep | src = client_alt;
+        require dst = server.ep;
+        require pkt.dcid = 5 & pkt.scid = 5;
+        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
+    };
+    pkt.hdr_version = 0xff000012
+}
+
+before quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+    if _generating {
+        require src = client.ep | src = client_alt;
+        require dst = server.ep;
+        require pkt.dcid = 5 & pkt.scid = 5;
+        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
+    };
+    pkt.hdr_version = 0xff000012
+}
+
+before quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+    if _generating {
+        require src = client.ep | src = client_alt;
+        require dst = server.ep;
+        require pkt.dcid = 5 & pkt.scid = 5;
+        require ~cid_dst_to_src_set(pkt.hdr_cid) -> pkt.dst_cid = server_cid
+    };
+    pkt.hdr_version = 0xff000012
 }
 
 # Hook up to the remote server
@@ -342,7 +396,92 @@ instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
 # encrypting it. TODO: coalesce packets. As of now, we send only one
 # QUIC packet per UDP datagram.
 
-after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
+#after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
+#    if src = client.ep | src = client_alt {
+#        var spkt := pkt_serdes.to_bytes(pkt);
+#        var rnum := reference_pkt_num(spkt);
+#        call clear_packet(rnum,spkt);
+#        var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
+#        call cipher_packet(ppkt);
+#        var pkts := prot.arr.empty;
+#        pkts := pkts.append(ppkt);
+#        if src = client.ep {
+#            call net.send(endpoint_id.client,sock,dst,pkts);
+#        } else if src = client_alt {
+#            call net.send(endpoint_id.client_alt,sock_alt,dst,pkts);
+#        } 
+#    }
+#}
+
+after quic_packet.short_packet.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+    if src = client.ep | src = client_alt {
+        var spkt := pkt_serdes.to_bytes(pkt);
+        var rnum := reference_pkt_num(spkt);
+        call clear_packet(rnum,spkt);
+        var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
+        call cipher_packet(ppkt);
+        var pkts := prot.arr.empty;
+        pkts := pkts.append(ppkt);
+        if src = client.ep {
+            call net.send(endpoint_id.client,sock,dst,pkts);
+        } else if src = client_alt {
+            call net.send(endpoint_id.client_alt,sock_alt,dst,pkts);
+        } 
+    }
+}
+
+after quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+    if src = client.ep | src = client_alt {
+        var spkt := pkt_serdes.to_bytes(pkt);
+        var rnum := reference_pkt_num(spkt);
+        call clear_packet(rnum,spkt);
+        var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
+        call cipher_packet(ppkt);
+        var pkts := prot.arr.empty;
+        pkts := pkts.append(ppkt);
+        if src = client.ep {
+            call net.send(endpoint_id.client,sock,dst,pkts);
+        } else if src = client_alt {
+            call net.send(endpoint_id.client_alt,sock_alt,dst,pkts);
+        } 
+    }
+}
+
+after quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+    if src = client.ep | src = client_alt {
+        var spkt := pkt_serdes.to_bytes(pkt);
+        var rnum := reference_pkt_num(spkt);
+        call clear_packet(rnum,spkt);
+        var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
+        call cipher_packet(ppkt);
+        var pkts := prot.arr.empty;
+        pkts := pkts.append(ppkt);
+        if src = client.ep {
+            call net.send(endpoint_id.client,sock,dst,pkts);
+        } else if src = client_alt {
+            call net.send(endpoint_id.client_alt,sock_alt,dst,pkts);
+        } 
+    }
+}
+
+after quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+    if src = client.ep | src = client_alt {
+        var spkt := pkt_serdes.to_bytes(pkt);
+        var rnum := reference_pkt_num(spkt);
+        call clear_packet(rnum,spkt);
+        var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
+        call cipher_packet(ppkt);
+        var pkts := prot.arr.empty;
+        pkts := pkts.append(ppkt);
+        if src = client.ep {
+            call net.send(endpoint_id.client,sock,dst,pkts);
+        } else if src = client_alt {
+            call net.send(endpoint_id.client_alt,sock_alt,dst,pkts);
+        } 
+    }
+}
+
+after quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
     if src = client.ep | src = client_alt {
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
@@ -374,9 +513,27 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call show_stream(res.data);
             if res.ok {
                 var pkt := pkt_serdes.from_bytes(res.data);
-	        call show_packet(src,dst,pkt);
-	        call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
-	        call packet_event(src,dst,pkt);
+                call show_packet(src,dst,pkt);
+                call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
+                #call packet_event(src,dst,pkt);
+                if ~pkt.hdr_long {
+                    call quic_packet.short_packet.handle(src,dst,pkt)
+                } else {
+                    if bvand(pkt.hdr_type,0x30) = 0x30 {
+                        # Retry
+                        call quic_packet.long_packet.retry.handle(src,dst,pkt)
+                    } else if bvand(pkt.hdr_type,0x00) = 0x00 {
+                        # Initial
+                        call quic_packet.long_packet.initial.handle(src,dst,pkt)
+                    } else if bvand(pkt.hdr_type,0x10) = 0x10 {
+                        # 0-RTT
+                        call quic_packet.long_packet.zero_rtt.handle(src,dst,pkt)
+                    } else if bvand(pkt.hdr_type,0x20) = 0x20 {
+                        # Handshake
+                        call quic_packet.long_packet.handshake.handle(src,dst,pkt)
+                    }
+                }
+
             }
             else {
                 call undecryptable_packet_event(src,dst,ppkt);
@@ -610,7 +767,14 @@ export frame.ack.handle
 export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
-export packet_event
+#export packet_event
+
+export quic_packet.long_packet.initial.handle
+export quic_packet.long_packet.zero_rtt.handle
+export quic_packet.long_packet.handshake.handle
+export quic_packet.long_packet.retry.handle
+export quic_packet.short_packet.handle
+
 export client_send_event
 export tls_recv_event
 #export frame.rst_stream.handle
