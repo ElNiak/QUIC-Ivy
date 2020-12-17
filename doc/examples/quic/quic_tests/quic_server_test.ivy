@@ -514,22 +514,26 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             if res.ok {
                 var pkt := pkt_serdes.from_bytes(res.data);
                 call show_packet(src,dst,pkt);
-                call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
                 #call packet_event(src,dst,pkt);
                 if ~pkt.hdr_long {
+                    call infer_tls_events_short(src,dst,pkt); 
                     call quic_packet.short_packet.handle(src,dst,pkt)
                 } else {
                     if bvand(pkt.hdr_type,0x30) = 0x30 {
                         # Retry
-                        call quic_packet.long_packet.retry.handle(src,dst,pkt)
-                    } else if bvand(pkt.hdr_type,0x00) = 0x00 {
+                        #call infer_tls_events_retry(src,dst,pkt);   # infer any TLS events on server side
+                        #call quic_packet.long_packet.retry.handle(src,dst,pkt)
+                    } else if bvand(pkt.hdr_type,0x30) = 0x00 {
                         # Initial
+                        call infer_tls_events_initial(src,dst,pkt); 
                         call quic_packet.long_packet.initial.handle(src,dst,pkt)
-                    } else if bvand(pkt.hdr_type,0x10) = 0x10 {
+                    } else if bvand(pkt.hdr_type,0x30) = 0x10 {
                         # 0-RTT
+                        call infer_tls_events_zero_rtt(src,dst,pkt); 
                         call quic_packet.long_packet.zero_rtt.handle(src,dst,pkt)
-                    } else if bvand(pkt.hdr_type,0x20) = 0x20 {
+                    } else if bvand(pkt.hdr_type,0x30) = 0x20 {
                         # Handshake
+                        call infer_tls_events_handshake(src,dst,pkt); 
                         call quic_packet.long_packet.handshake.handle(src,dst,pkt)
                     }
                 }

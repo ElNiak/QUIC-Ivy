@@ -16,7 +16,53 @@
 # is commented and should be removed [1].
 #
 
-action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
+action infer_tls_events_short(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) = {
+
+    # Stream frames on id 0 indicate that a `tls_send_event` has occurred.
+    # TODO: ignore duplicate frames.
+
+    #var scid := pkt.hdr_cid;
+    var dcid := pkt.dst_cid;
+
+    # On short headers, the scid is not given, so we use the recorded value
+
+    #if ~pkt.hdr_long {
+    var scid := cid_dst_to_src(dcid)
+    #};
+
+    # the encryption level of frames has to be inferred from the packet header
+
+    var e := encryption_level.one_rtt;
+    
+    call set_encryption_level(src,scid,e);
+
+    # infer sender of packet has established keys for the packet
+
+    call tls_keys_established_event(scid,e);
+
+    # Infer an open_connection event.
+    if conn_requested(dst,src,dcid) & ~cid_dst_to_src_set(dcid) & ~cid_dst_to_src_set(scid) {
+        call open_connection(src,dst,scid,dcid);
+    };
+
+    var idx := pkt.payload.begin;
+    while idx < pkt.payload.end {
+	var f := pkt.payload.value(idx);
+	if some(cf:frame.crypto) f *> cf {
+	    call tls_send_event(src,dst,scid,dcid,cf.data,cf.offset,e)
+	};
+	if some(sf:frame.stream) f *> sf {
+            # require sf.offset <= stream_app_data_end(dcid,sf.id);  # TODO: deal with gaps in stream
+            # var data := sf.data.segment(stream_app_data_end(dcid,sf.id) - sf.offset,sf.data.end);
+	    call app_send_event(src,dst,dcid,sf.id,sf.data,sf.offset,sf.fin)
+	};
+	call show_frame(src,dst,scid,dcid,f);
+	call f.handle(scid,dcid,e); #src,dst,
+        idx := idx.next
+    }
+}
+
+action infer_tls_events_initial(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.initial) = {
 
     # Stream frames on id 0 indicate that a `tls_send_event` has occurred.
     # TODO: ignore duplicate frames.
@@ -32,9 +78,99 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
 
     # the encryption level of frames has to be inferred from the packet header
 
-    var e := encryption_level.initial if (pkt.hdr_long & bvand(pkt.hdr_type,0x30) = 0x00)
-        else (encryption_level.handshake if (pkt.hdr_long & bvand(pkt.hdr_type,0x30) = 0x20)
-        else encryption_level.one_rtt);
+    var e := encryption_level.initial;
+    
+    call set_encryption_level(src,scid,e);
+
+    # infer sender of packet has established keys for the packet
+
+    call tls_keys_established_event(scid,e);
+
+    # Infer an open_connection event.
+    if conn_requested(dst,src,dcid) & ~cid_dst_to_src_set(dcid) & ~cid_dst_to_src_set(scid) {
+        call open_connection(src,dst,scid,dcid);
+    };
+
+    var idx := pkt.payload.begin;
+    while idx < pkt.payload.end {
+	var f := pkt.payload.value(idx);
+	if some(cf:frame.crypto) f *> cf {
+	    call tls_send_event(src,dst,scid,dcid,cf.data,cf.offset,e)
+	};
+	if some(sf:frame.stream) f *> sf {
+            # require sf.offset <= stream_app_data_end(dcid,sf.id);  # TODO: deal with gaps in stream
+            # var data := sf.data.segment(stream_app_data_end(dcid,sf.id) - sf.offset,sf.data.end);
+	    call app_send_event(src,dst,dcid,sf.id,sf.data,sf.offset,sf.fin)
+	};
+	call show_frame(src,dst,scid,dcid,f);
+	call f.handle(scid,dcid,e); #src,dst,
+        idx := idx.next
+    }
+}
+
+action infer_tls_events_handshake(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.handshake) = {
+
+    # Stream frames on id 0 indicate that a `tls_send_event` has occurred.
+    # TODO: ignore duplicate frames.
+
+    var scid := pkt.hdr_cid;
+    var dcid := pkt.dst_cid;
+
+    # On short headers, the scid is not given, so we use the recorded value
+
+    if ~pkt.hdr_long {
+        scid := cid_dst_to_src(dcid)
+    };
+
+    # the encryption level of frames has to be inferred from the packet header
+
+    var e := encryption_level.handshake;
+    
+    call set_encryption_level(src,scid,e);
+
+    # infer sender of packet has established keys for the packet
+
+    call tls_keys_established_event(scid,e);
+
+    # Infer an open_connection event.
+    if conn_requested(dst,src,dcid) & ~cid_dst_to_src_set(dcid) & ~cid_dst_to_src_set(scid) {
+        call open_connection(src,dst,scid,dcid);
+    };
+
+    var idx := pkt.payload.begin;
+    while idx < pkt.payload.end {
+	var f := pkt.payload.value(idx);
+	if some(cf:frame.crypto) f *> cf {
+	    call tls_send_event(src,dst,scid,dcid,cf.data,cf.offset,e)
+	};
+	if some(sf:frame.stream) f *> sf {
+            # require sf.offset <= stream_app_data_end(dcid,sf.id);  # TODO: deal with gaps in stream
+            # var data := sf.data.segment(stream_app_data_end(dcid,sf.id) - sf.offset,sf.data.end);
+	    call app_send_event(src,dst,dcid,sf.id,sf.data,sf.offset,sf.fin)
+	};
+	call show_frame(src,dst,scid,dcid,f);
+	call f.handle(scid,dcid,e); #src,dst,
+        idx := idx.next
+    }
+}
+
+action infer_tls_events_zero_rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.zero_rtt) = {
+
+    # Stream frames on id 0 indicate that a `tls_send_event` has occurred.
+    # TODO: ignore duplicate frames.
+
+    var scid := pkt.hdr_cid;
+    var dcid := pkt.dst_cid;
+
+    # On short headers, the scid is not given, so we use the recorded value
+
+    if ~pkt.hdr_long {
+        scid := cid_dst_to_src(dcid)
+    };
+
+    # the encryption level of frames has to be inferred from the packet header
+
+    var e := encryption_level.zero_rtt;
     
     call set_encryption_level(src,scid,e);
 

@@ -953,11 +953,13 @@ object quic_packet = {
             # assume fixed bit is 1, R,K = 0
             var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
             require bvand(pkt.hdr_type,0x5c) = 0x40; 
-            require pkt.dcid = 5 & pkt.scid = 0;
+            #require pkt.dcid = 5 & pkt.scid = 0;
+
+
+            var dcid := pkt.dst_cid;
 
             require cid_dst_to_src_set(dcid);
 
-            var dcid := pkt.dst_cid;
             #add 
             if cid_mapped(dcid) {
                 dcid := cid_to_aid(dcid);
@@ -1043,11 +1045,15 @@ object quic_packet = {
 
             var hdr_type_bits : type_bits := bvand(pkt.hdr_type,0x30);
             var dcid := pkt.dst_cid;
-            var scid := pkt.hdr_cid;
 
+            require cid_dst_to_src_set(dcid);
+
+            #add 
             if cid_mapped(dcid) {
                 dcid := cid_to_aid(dcid);
             };
+    
+            var scid := cid_dst_to_src(dcid);
 
             scid := cid_dst_to_src(dcid);
 
