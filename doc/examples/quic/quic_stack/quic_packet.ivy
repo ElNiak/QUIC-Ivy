@@ -479,9 +479,9 @@ object quic_packet = {
                 # An ack-only packet must be in response to a non-ack-only packet
 
                 if queued_non_ack(scid) {
-                ack_credit(dcid) := ack_credit(dcid) + 1;
+                    ack_credit(dcid) := ack_credit(dcid) + 1;
                 } else {
-                ack_credit(scid) := ack_credit(scid) - 1;
+                    ack_credit(scid) := ack_credit(scid) - 1;
                 };
 
                 # If the packet contains a close frame, then set `pkt_has_close`
@@ -653,9 +653,9 @@ object quic_packet = {
                 # An ack-only packet must be in response to a non-ack-only packet
 
                 if queued_non_ack(scid) {
-                ack_credit(dcid) := ack_credit(dcid) + 1;
+                    ack_credit(dcid) := ack_credit(dcid) + 1;
                 } else {
-                ack_credit(scid) := ack_credit(scid) - 1;
+                    ack_credit(scid) := ack_credit(scid) - 1;
                 };
 
                 # If the packet contains a close frame, then set `pkt_has_close`
@@ -824,9 +824,9 @@ object quic_packet = {
                 # An ack-only packet must be in response to a non-ack-only packet
 
                 if queued_non_ack(scid) {
-                ack_credit(dcid) := ack_credit(dcid) + 1;
+                    ack_credit(dcid) := ack_credit(dcid) + 1;
                 } else {
-                ack_credit(scid) := ack_credit(scid) - 1;
+                    ack_credit(scid) := ack_credit(scid) - 1;
                 };
 
                 # If the packet contains a close frame, then set `pkt_has_close`
@@ -883,7 +883,7 @@ object quic_packet = {
                     (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)));
                 
                 #var e := queued_level(scid); TODO
-                #require e = encryption_level.handshake 
+                #require e = encryption_level.handshake;
 
 
                 # TODO
@@ -919,10 +919,10 @@ object quic_packet = {
             if cid_mapped(dcid) {
                 dcid := cid_to_aid(dcid);
             };
-            var scid := cid_dst_to_src(dcid)
+            var scid := cid_dst_to_src(dcid);
             var e := queued_level(scid);
 
-            require e = encryption_level.one_rtt
+            require e = encryption_level.one_rtt;
             var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
 
             call show_pstats(scid,e,pnum);
