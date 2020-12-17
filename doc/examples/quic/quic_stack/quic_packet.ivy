@@ -361,11 +361,11 @@ object quic_packet = {
                 };
 
                 require cid_dst_to_src_set(scid) ->
-                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)))
+                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)));
             
                 var e := queued_level(scid);
 
-                require e = encryption_level.initial
+                require e = encryption_level.initial;
 
                 var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
 
@@ -535,12 +535,12 @@ object quic_packet = {
                 };
 
                 require cid_dst_to_src_set(scid) ->
-                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)))
+                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)));
             
                 var e := queued_level(scid);
 
                 # The header type depends on the encryption level TODO
-                require e = encryption_level.zero_rtt
+                require e = encryption_level.zero_rtt;
 
                 var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
 
@@ -708,10 +708,10 @@ object quic_packet = {
                 };
 
                 require cid_dst_to_src_set(scid) ->
-                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)))
+                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)));
                 
                 var e := queued_level(scid);
-                require e = encryption_level.handshake
+                require e = encryption_level.handshake;
 
                 var pnum := decode_packet_number(src,scid,e,pkt.hdr_pkt_num);
 
@@ -880,13 +880,21 @@ object quic_packet = {
                 };
 
                 require cid_dst_to_src_set(scid) ->
-                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)))
+                    (cid_dst_to_src(scid) = dcid | (queued_hello(scid) & is_client(scid)));
                 
                 #var e := queued_level(scid); TODO
                 #require e = encryption_level.handshake 
 
 
                 # TODO
+                # The queued frames are deleted
+                
+                queued_frames(scid) := frame.arr.empty;
+                queued_hello(scid) := false;
+                queued_non_probing(scid) := false;
+                queued_non_ack(scid) := false;
+                queued_close(scid) := false;
+                num_queued_frames(scid) := 0;
             }
         }
     }
