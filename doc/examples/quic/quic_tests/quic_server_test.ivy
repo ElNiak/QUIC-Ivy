@@ -249,7 +249,7 @@ before quic_packet.short_packet.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_
     };
 }
 
-before quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+before quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.initial) {
     if _generating {
         require src = client.ep | src = client_alt;
         require dst = server.ep;
@@ -260,7 +260,7 @@ before quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pk
     require pkt.hdr_version = 0xff000012
 }
 
-before quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+before quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.zero_rtt) {
     if _generating {
         require src = client.ep | src = client_alt;
         require dst = server.ep;
@@ -270,7 +270,7 @@ before quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,p
     require pkt.hdr_version = 0xff000012
 }
 
-before quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+before quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.handshake) {
     if _generating {
         require src = client.ep | src = client_alt;
         require dst = server.ep;
@@ -280,7 +280,7 @@ before quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,
     require pkt.hdr_version = 0xff000012
 }
 
-#before quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+#before quic_packet.long_packet.retry.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.retry) {
 #    if _generating {
 #        require src = client.ep | src = client_alt;
 #        require dst = server.ep;
@@ -430,7 +430,7 @@ after quic_packet.short_packet.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_p
     }
 }
 
-after quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+after quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.initial) {
     if src = client.ep | src = client_alt {
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
@@ -447,7 +447,7 @@ after quic_packet.long_packet.initial.handle(src:ip.endpoint,dst:ip.endpoint,pkt
     }
 }
 
-after quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+after quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.zero_rtt) {
     if src = client.ep | src = client_alt {
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
@@ -464,7 +464,7 @@ after quic_packet.long_packet.zero_rtt.handle(src:ip.endpoint,dst:ip.endpoint,pk
     }
 }
 
-after quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.short_packet) {
+after quic_packet.long_packet.handshake.handle(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet.long_packet.handshake) {
     if src = client.ep | src = client_alt {
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
