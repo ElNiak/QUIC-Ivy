@@ -40,6 +40,7 @@ module deserializer(index,bytes,datatype,deser) = {
 
             catch(deser_err &err) {
                 std::cerr << "error: failed to deserialize data" << std::endl;
+                std::cerr << exc.what() << std::endl;
                 std::cerr << "hex dump of data follows." << std::endl;
                 for (unsigned i = 0; i < buf.size(); i++) {
                     if (i > 0 && i % 16 == 0) 
