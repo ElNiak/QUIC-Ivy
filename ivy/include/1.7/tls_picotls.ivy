@@ -384,7 +384,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         handshake_properties->collected_extensions = tls_collected_extensions_cb;
         
         ptls_iovec_t *alpn_vec = new(ptls_iovec_t);  // TODO: will leak this
-        #alpn_vec->base = (uint8_t*)"hq-17";
+        //alpn_vec->base = (uint8_t*)"hq-17";
         alpn_vec->base = (uint8_t*)"h3-23";
         alpn_vec->len = strlen((char *)(alpn_vec->base));
         handshake_properties->client.negotiated_protocols.count = 1;
@@ -463,7 +463,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     implement set_initial_keys(c:cid,salt:bytes,ikm:bytes) {
         <<< impure
         
-	picotls_connection *s = `cid_map`[c];
+	    picotls_connection *s = `cid_map`[c];
         setup_initial_traffic_keys(s,salt,ikm);
         
         >>>
@@ -474,7 +474,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     implement iv_size(c:cid,l:level) returns (sz:index) {
         <<< impure
         
-	picotls_connection *s = `cid_map`[c];
+	    picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_enc);
         if (!pn_enc)
             pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);
@@ -490,7 +490,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     implement encrypt_cipher(c:cid,l:level,clear:bytes,iv:bytes,recv:bool) returns (cipher:bytes) {
         <<< impure
 
-	picotls_connection *s = `cid_map`[c];
+	    picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc;
         if (recv) pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);
         else pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_enc);
@@ -502,7 +502,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     implement decrypt_cipher(c:cid,l:level,cipher:bytes,iv:bytes) returns (clear:bytes) {
         <<< impure
 
-	picotls_connection *s = `cid_map`[c];
+	    picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);
         encrypt_symm(pn_enc,cipher,iv,clear);
 
@@ -512,7 +512,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     implement encrypt_aead(c:cid,l:level,clear:bytes,seq:seq_num,ad:bytes) returns (cipher:bytes) {
         <<< impure
 
-	picotls_connection *s = `cid_map`[c];
+	    picotls_connection *s = `cid_map`[c];
         ptls_aead_context_t *aead = (ptls_aead_context_t *)(s->crypto_context[l].aead_encrypt);
         uint32_t checksum_length = aead->algo->tag_size;
         std::vector<uint8_t> bytes;
