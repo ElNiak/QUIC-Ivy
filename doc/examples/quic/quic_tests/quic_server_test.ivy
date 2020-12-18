@@ -42,7 +42,7 @@ include quic_locale
 <<<
 
 
-const value_string quic_version_vals[] = {
+/*const quic_version_vals[] = {
     { 0x00000000, "Version Negotiation" },
     { 0x51303434, "Google Q044" },
     { 0x51303530, "Google Q050" },
@@ -81,7 +81,7 @@ const value_string quic_version_vals[] = {
     { 0xff00001f, "draft-31" },
     { 0xff000020, "draft-32", "0xafbfec289993d24c9e9786f19c6111e04390a899"},
     { 0, NULL }
-};
+};*/
 
 >>>
 
