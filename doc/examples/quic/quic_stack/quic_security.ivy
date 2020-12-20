@@ -147,7 +147,7 @@ relation established_handshake_keys(C:cid)
 
 after init {
     crypto_handler_pos(C,L) := 0;
-    conn_enc_level(E,C) := quic_packet_type.initial;
+    conn_enc_level(E,C) := quic_packet_type.zero_rtt;
     established_1rtt_keys(C:cid) := false;
     established_handshake_keys(C:cid) := false;
 }
@@ -190,9 +190,9 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
         var byte := data.value(jdx);
         require crypto_data_present(scid,e,cpos) -> crypto_data(scid,e).value(cpos) = byte;
         crypto_data_end(scid,e) := end;
-	crypto_data(scid,e) := crypto_data(scid,e).set(cpos,byte);  # [4]
+	    crypto_data(scid,e) := crypto_data(scid,e).set(cpos,byte);  # [4]
         crypto_data_present(scid,e,cpos) := true;
-	jdx := jdx.next
+	    jdx := jdx.next
     };
     crypto_data_end(scid,e) := crypto_data(scid,e).end;
     var max_present : stream_pos := 0;
@@ -250,7 +250,7 @@ around tls_recv_event {
 
 
 after tls_keys_established_event {
-#    call show_tls_keys_established_event(scid,e);
+    call show_tls_keys_established_event(scid,e);
     if e = quic_packet_type.handshake {
         established_handshake_keys(scid) := true
     } else if e = quic_packet_type.one_rtt {

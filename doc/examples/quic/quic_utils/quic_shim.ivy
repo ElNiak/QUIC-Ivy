@@ -100,7 +100,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data,0));
             call recv_packet(src,dst,pkt);
             call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
-            call packet_event(src,dst,pkt); # also an inferred event
+            call packet_event(src,dst,pkt);       # also an inferred event
         }
         else {
             call undecryptable_packet_event(src,dst,ppkt);
@@ -196,7 +196,7 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
     var ikm := cid_to_bytes(nonce,8);
     var salt : stream_data := stream_data.empty;
-
+    #0xc3eef712c72ebb5a11a7d2432bb46365bef9f502
     salt := salt.append(0xc3);
     salt := salt.append(0xee);
     salt := salt.append(0xf7);
@@ -231,7 +231,7 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
 
 action packet_encryption_level(h:prot.header_info) returns (e:quic_packet_type) = {
     e := quic_packet_type.zero_rtt if ~h.hdr_long
-            else (quic_packet_type.initial if h.hdr_type = 0x7f
+            else (quic_packet_type.initial if h.hdr_type = 0x0 #0x7f
                   else quic_packet_type.handshake);
 }
 
