@@ -331,6 +331,7 @@ object quic_deser = {}
             }
             break;
             default:
+            std::cerr << "quic_deser 3" << std::endl;  
             throw deser_err();
             }
         }
@@ -443,6 +444,7 @@ object quic_deser = {}
                 }
                 std::cerr << "saw tag " << ft << std::endl;  
             }
+            std::cerr << "quic_deser 2" << std::endl;  
             throw deser_err();
         }
 
@@ -467,6 +469,7 @@ object quic_deser = {}
                 return data_remaining-- > 0;
             if (state == quic_s_init)
                 return more(1);
+            std::cerr << "quic_deser 1" << std::endl;  
             throw deser_err();
         }
 

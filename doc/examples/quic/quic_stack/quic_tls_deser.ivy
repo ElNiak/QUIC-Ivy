@@ -114,6 +114,7 @@ object quic_tls_deser = {}
                    return i;
                 }
             }
+            std::cerr << "quic_tls_deser 1" << std::endl;  
             throw deser_err();
         }
 
@@ -143,6 +144,5 @@ object quic_tls_deser = {}
     quic_tls_make_name_map(quic_tls_field_length_bytes,quic_tls_field_length_bytes_map);
     quic_tls_make_name_map(quic_tls_field_bytes,quic_tls_field_bytes_map);
     quic_tls_make_name_map(quic_tls_tags,quic_tls_tags_map);
-
 
 >>>

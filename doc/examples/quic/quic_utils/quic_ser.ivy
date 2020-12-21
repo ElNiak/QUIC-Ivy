@@ -298,6 +298,7 @@ object quic_ser = {}
             }
             break;
             default:
+            std::cerr << "quic_ser 2" << std::endl;  
             throw deser_err();
             }
         }
@@ -401,6 +402,7 @@ object quic_ser = {}
 	        setn(frame_type,1);
 	        return;
             }
+            std::cerr << "quic_ser 1" << std::endl;  
             throw deser_err();
         }
 
