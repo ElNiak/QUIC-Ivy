@@ -64,7 +64,7 @@ object quic_ser = {}
         int scil;
         char frame_type;
         int data_remaining;
-       long long ack_blocks_expected;
+        long long ack_blocks_expected;
         long long ack_block_count;
         int payload_length_pos;
         int fence;
@@ -78,7 +78,7 @@ object quic_ser = {}
             {
                 long_format = res != 3;
                 hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
-		setn(hdr_type | (long_format ? 0x80 : 0), 1);
+		        setn(hdr_type | (long_format ? 0x80 : 0), 1);
                 state = quic_s_version;
             }
             break;
@@ -94,7 +94,7 @@ object quic_ser = {}
                 if (long_format) {
                     setn(8,1);
                 }
-		setn(res,8);
+		        setn(res,8);
                 state = quic_s_scid;
             }
             break;
@@ -102,7 +102,7 @@ object quic_ser = {}
             {
                 if (long_format) {
                     setn(8,1);
-		    setn(res,8);
+		            setn(res,8);
                 }
                 state = quic_s_retry_token_length;
             }
@@ -128,7 +128,7 @@ object quic_ser = {}
             case quic_stream_fin:
             {
                 frame_type |= res ? 0x01 : 0;
-		setn(frame_type,1);
+		        setn(frame_type,1);
                 state = quic_stream_id;
             }
             break;
@@ -306,7 +306,7 @@ object quic_ser = {}
 	    long long val = res & 0x3fffffffffffffff;
 	    int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
 	    int bytes = 1 << bytecode;
-            val |= bytecode << ((bytes << 3) - 2);
+        val |= bytecode << ((bytes << 3) - 2);
 	    setn(val,bytes);
         }
 
@@ -319,7 +319,7 @@ object quic_ser = {}
         virtual void open_tag(int tag, const std::string &) {
             if (state == quic_s_payload) {
                 if (tag == 0) {
-		    frame_type = 0x08;
+		            frame_type = 0x08;
                     state = quic_stream_off;
                     return;
                 }
@@ -394,10 +394,10 @@ object quic_ser = {}
                     state = quic_retire_connection_id_seq_num;
                     frame_type = 0x19;
                 }
-	        else {
+	            else {
                     std::cerr << "saw frame tag " << tag << std::endl;  
                     throw deser_err();
-	        }
+	            }
 	        setn(frame_type,1);
 	        return;
             }

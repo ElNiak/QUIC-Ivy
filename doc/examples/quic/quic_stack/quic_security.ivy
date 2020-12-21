@@ -250,7 +250,7 @@ around tls_recv_event {
 
 
 after tls_keys_established_event {
-    call show_tls_keys_established_event(scid,e);
+    #call show_tls_keys_established_event(scid,e);
     if e = quic_packet_type.handshake {
         established_handshake_keys(scid) := true
     } else if e = quic_packet_type.one_rtt {
