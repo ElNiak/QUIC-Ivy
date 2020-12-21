@@ -132,6 +132,7 @@ module udp_impl(host,pkt,ser,des) = {
 		`des` ds(buf);
 		__deser(ds,pkt);
 		if (ds.pos < buf.size())
+		    std::cerr << "udp impl" << std::endl; 
 		    throw deser_err();
 	    } catch (deser_err &){
 		std::cout << "BAD PACKET RECEIVED\n";

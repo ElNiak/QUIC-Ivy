@@ -94,8 +94,10 @@ module udp_wrapper(addr,pkt,me,port_base) = {
 	        try {
 		    ivy_binary_deser ds(buf);
 		    __deser(ds,pkt);
-	            if (ds.pos < buf.size())
-	                throw deser_err();
+	            if (ds.pos < buf.size()){
+					std::cerr << "udp" << std::endl; 
+					 throw deser_err();
+				}
                 } catch (deser_err &){
 		    std::cout << "BAD PACKET RECEIVED\n";
 		    return;
