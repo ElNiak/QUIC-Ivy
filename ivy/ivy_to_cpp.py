@@ -2161,8 +2161,10 @@ struct ivy_binary_deser : public ivy_deser {
        getn(res,8);
     }
     void getn(long long &res, int bytes) {
-        if (!more(bytes))
-            throw deser_err();
+        if (!more(bytes)) {
+             std::cerr << "ivy_binary_deser getn 0" << std::endl;  
+             throw deser_err();
+        }  
         res = 0;
         for (int i = 0; i < bytes; i++)
             res = (res << 8) | (((long long)inp[pos++]) & 0xff);
@@ -2173,8 +2175,10 @@ struct ivy_binary_deser : public ivy_deser {
 //                throw deser_err();
             res.push_back(inp[pos++]);
         }
-        if(!(more(1) && inp[pos] == 0))
+        if(!(more(1) && inp[pos] == 0)) {
+            std::cerr << "ivy_binary_deser getn 1" << std::endl; 
             throw deser_err();
+        }
         pos++;
     }
     void open_list() {
@@ -2198,13 +2202,17 @@ struct ivy_binary_deser : public ivy_deser {
     int open_tag(const std::vector<std::string> &tags) {
         long long res;
         get(res);
-        if (res >= tags.size())
+        if (res >= tags.size()) {
+            std::cerr << "ivy_binary_deser open_tag 1" << std::endl; 
             throw deser_err();
+        }    
         return res;
     }
     void end() {
-        if (!can_end())
+        if (!can_end()) {
+            std::cerr << "ivy_binary_deser end 1" << std::endl; 
             throw deser_err();
+        }
     }
 };
 struct ivy_socket_deser : public ivy_binary_deser {

@@ -3,9 +3,7 @@
 module file_io(buf,name) = {
 
     action read(fname:name, b:buf) returns (b:buf, ok : bool) = {
-
         <<<
-
         std::string fn;
         for (size_t i = 0; i < fname.size(); i++)
             fn.push_back(fname[i]);
