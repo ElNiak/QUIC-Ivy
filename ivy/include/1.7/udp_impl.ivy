@@ -129,14 +129,15 @@ module udp_impl(host,pkt,ser,des) = {
    	    buf.resize(bytes);
 	    `pkt` pkt;
 	    try {
-		`des` ds(buf);
-		__deser(ds,pkt);
-		if (ds.pos < buf.size())
-		    std::cerr << "udp impl" << std::endl; 
-		    throw deser_err();
+			`des` ds(buf);
+			__deser(ds,pkt);
+			if (ds.pos < buf.size()) {
+				std::cerr << "udp impl" << std::endl; 
+				throw deser_err();
+			}
 	    } catch (deser_err &){
-		std::cout << "BAD PACKET RECEIVED\n";
-		return;
+			std::cout << "BAD PACKET RECEIVED\n";
+			return;
 	    }
 	`ip.endpoint` src;
 	src.protocol = `ip.udp`;
@@ -266,6 +267,7 @@ object impl(me:host) = {
 		     { perror("sendto failed"); exit(1); }
 #endif
 	>>>
+	
     }
 
 
