@@ -298,7 +298,7 @@ object quic_ser = {}
             }
             break;
             default:
-            std::cerr << "quic_ser 2" << std::endl;  
+            std::cout << "quic_ser 2" << std::endl;  
             throw deser_err();
             }
         }
@@ -396,13 +396,13 @@ object quic_ser = {}
                     frame_type = 0x19;
                 }
 	            else {
-                    std::cerr << "saw frame tag " << tag << std::endl;  
+                    std::cout << "saw frame tag " << tag << std::endl;  
                     throw deser_err();
 	            }
 	        setn(frame_type,1);
 	        return;
             }
-            std::cerr << "quic_ser 1" << std::endl;  
+            std::cout << "quic_ser 1" << std::endl;  
             throw deser_err();
         }
 

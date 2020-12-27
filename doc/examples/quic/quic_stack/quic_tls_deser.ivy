@@ -114,7 +114,7 @@ object quic_tls_deser = {}
                    return i;
                 }
             }
-            std::cerr << "quic_tls_deser 1" << std::endl;  
+            std::cout << "quic_tls_deser 1" << std::endl;  
             throw deser_err();
         }
 
