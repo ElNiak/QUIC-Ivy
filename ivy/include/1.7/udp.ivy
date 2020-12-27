@@ -54,31 +54,32 @@ module udp_wrapper(addr,pkt,me,port_base) = {
 	    }
 	    virtual ~udp_reader() {
 #ifdef _WIN32
-                closesocket(sock);
+            closesocket(sock);
 #else
 	        close(sock);
 #endif
 	    }
 	    virtual void get_addr(int my_id, sockaddr_in &myaddr) {
-		memset((char *)&myaddr, 0, sizeof(myaddr));
-		unsigned long inetaddr;
-		unsigned long inetport;
-	        if (!conf) {
-	            conf = ivy -> get_udp_config();
-                }
-		conf -> get(my_id,inetaddr,inetport);
-		myaddr.sin_family = AF_INET;
-		myaddr.sin_addr.s_addr = htonl(inetaddr);
-		myaddr.sin_port = htons(inetport);
+			memset((char *)&myaddr, 0, sizeof(myaddr));
+			unsigned long inetaddr;
+			unsigned long inetport;
+			if (!conf) {
+				conf = ivy -> get_udp_config();
+			}
+			conf -> get(my_id,inetaddr,inetport);
+			myaddr.sin_family = AF_INET;
+			myaddr.sin_addr.s_addr = htonl(inetaddr);
+			myaddr.sin_port = htons(inetport);
 	    }
 
 	    virtual int fdes() {
-		return sock;
+			return sock;
 	    }
+
 	    virtual void read() {
-		//std::cout << "RECEIVING\n";
+			//std::cout << "RECEIVING\n";
 	        int len=0;
-                socklen_t lenlen=4;
+            socklen_t lenlen=4;
 #ifdef _WIN32
 	        if (getsockopt(sock,SOL_SOCKET,SO_RCVBUF,(char *)&len,&lenlen))
 #else
@@ -92,16 +93,16 @@ module udp_wrapper(addr,pkt,me,port_base) = {
 	        buf.resize(bytes);
 	        `pkt` pkt;
 	        try {
-		    ivy_binary_deser ds(buf);
-		    __deser(ds,pkt);
+		    	ivy_binary_deser ds(buf);
+		    	__deser(ds,pkt);
 	            if (ds.pos < buf.size()){
-					std::cerr << "udp" << std::endl; 
+					 std::cout << "udp" << std::endl; 
 					 throw deser_err();
 				}
-                } catch (deser_err &){
-		    std::cout << "BAD PACKET RECEIVED\n";
-		    return;
-		}
+            } catch (deser_err &){
+				std::cout << "BAD PACKET RECEIVED\n";
+				return;
+			}
 		ivy->__lock();
 		rcb(pkt);
 		ivy->__unlock();
@@ -123,7 +124,7 @@ module udp_wrapper(addr,pkt,me,port_base) = {
 	};
     >>>
     <<< member
-	udp_reader *`rdr`;
+		udp_reader *`rdr`;
 
         udp_config *the_udp_config;        
 

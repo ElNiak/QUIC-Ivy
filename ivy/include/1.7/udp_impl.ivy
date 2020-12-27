@@ -107,46 +107,48 @@ module udp_impl(host,pkt,ser,des) = {
         virtual void read() {
             // std::cout << "RECEIVING\n";
 
-	    int len=0;
-	    socklen_t lenlen=4;
+			int len=0;
+			socklen_t lenlen=4;
 #ifdef _WIN32
-	    if (getsockopt(sock,SOL_SOCKET,SO_RCVBUF,(char *)&len,&lenlen))
+			if (getsockopt(sock,SOL_SOCKET,SO_RCVBUF,(char *)&len,&lenlen))
 #else
-	    if (getsockopt(sock,SOL_SOCKET,SO_RCVBUF,&len,&lenlen))
+			if (getsockopt(sock,SOL_SOCKET,SO_RCVBUF,&len,&lenlen))
 #endif
-		{ perror("getsockopt failed"); exit(1); }
-	    std::vector<char> buf(len);
-	    int bytes;
-	    sockaddr_in srcaddr;
-	    socklen_t addrlen = sizeof(srcaddr);
-	    if ((bytes = recvfrom(sock,&buf[0],len,0,(sockaddr *)&srcaddr,&addrlen)) < 0)
-		{ std::cerr << "recvfrom failed\n"; exit(1); }
-	    if (bytes == 0) {
-	        close(sock);
-	        sock = -1;  // will cause this thread to exit and reader object to be deleted
-	        return;
-	    }
-   	    buf.resize(bytes);
-	    `pkt` pkt;
-	    try {
-			`des` ds(buf);
-			__deser(ds,pkt);
-			if (ds.pos < buf.size()) {
-				std::cerr << "udp impl" << std::endl; 
-				throw deser_err();
+			{ perror("getsockopt failed"); exit(1); }
+			std::vector<char> buf(len);
+			int bytes;
+			sockaddr_in srcaddr;
+			socklen_t addrlen = sizeof(srcaddr);
+			if ((bytes = recvfrom(sock,&buf[0],len,0,(sockaddr *)&srcaddr,&addrlen)) < 0)
+			{ std::cerr << "recvfrom failed\n"; exit(1); }
+			if (bytes == 0) {
+				close(sock);
+				sock = -1;  // will cause this thread to exit and reader object to be deleted
+				return;
 			}
-	    } catch (deser_err &){
-			std::cout << "BAD PACKET RECEIVED\n";
-			return;
-	    }
-	`ip.endpoint` src;
-	src.protocol = `ip.udp`;
-	src.addr = ntohl(srcaddr.sin_addr.s_addr);
-	src.port = ntohs(srcaddr.sin_port);
-	    ivy->__lock();
-	    cb.rcb(sock,src,pkt);
-	    ivy->__unlock();
-	}
+			buf.resize(bytes);
+			`pkt` pkt;
+			try {
+				`des` ds(buf);
+				__deser(ds,pkt);
+				if (ds.pos < buf.size()) {
+					std::cout << pkt << std::endl; 
+					std::cout << ds << std::endl; 
+					std::cout << "udp impl" << std::endl; 
+					throw deser_err();
+				}
+			} catch (deser_err &){
+				std::cout << "BAD PACKET RECEIVED\n";
+				return;
+			}
+			`ip.endpoint` src;
+			src.protocol = `ip.udp`;
+			src.addr = ntohl(srcaddr.sin_addr.s_addr);
+			src.port = ntohs(srcaddr.sin_port);
+			ivy->__lock();
+			cb.rcb(sock,src,pkt);
+			ivy->__unlock();
+		}
 
     };
 

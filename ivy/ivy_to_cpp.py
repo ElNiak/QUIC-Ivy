@@ -2162,7 +2162,7 @@ struct ivy_binary_deser : public ivy_deser {
     }
     void getn(long long &res, int bytes) {
         if (!more(bytes)) {
-             std::cerr << "ivy_binary_deser getn 0" << std::endl;  
+             std::out << "ivy_binary_deser getn 0" << std::endl;  
              throw deser_err();
         }  
         res = 0;
@@ -2176,7 +2176,7 @@ struct ivy_binary_deser : public ivy_deser {
             res.push_back(inp[pos++]);
         }
         if(!(more(1) && inp[pos] == 0)) {
-            std::cerr << "ivy_binary_deser getn 1" << std::endl; 
+            std::out << "ivy_binary_deser getn 1" << std::endl; 
             throw deser_err();
         }
         pos++;
@@ -2203,14 +2203,14 @@ struct ivy_binary_deser : public ivy_deser {
         long long res;
         get(res);
         if (res >= tags.size()) {
-            std::cerr << "ivy_binary_deser open_tag 1" << std::endl; 
+            std::out << "ivy_binary_deser open_tag 1" << std::endl; 
             throw deser_err();
         }    
         return res;
     }
     void end() {
         if (!can_end()) {
-            std::cerr << "ivy_binary_deser end 1" << std::endl; 
+            std::out << "ivy_binary_deser end 1" << std::endl; 
             throw deser_err();
         }
     }
