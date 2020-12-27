@@ -202,10 +202,13 @@ object tls_ser_server = {}
             std::cout << bytes << std::endl;  
             getn(tag,bytes);
             std::cout << tag << std::endl;  
+            
             //std::cout << "tls_desert 1" << std::endl;  
             for (int i = 0; i < tags.size(); i++) {
                 if (tag == tls_tags_map[tags[i]]) {
                    open_field(tags[i]);
+                   std::cout << tags[i] << std::endl;  
+                   std::cout << std::endl;  
                    return i;
                 }
             }
@@ -213,6 +216,8 @@ object tls_ser_server = {}
                 if (-1 == tls_tags_map[tags[i]]) {
                     pos -= bytes; // leave the unknown tag to parse again
                     open_field(tags[i]);
+                    std::cout << tags[i] << std::endl;  
+                    std::cout << std::endl;  
                     return i;
                 }
             }
