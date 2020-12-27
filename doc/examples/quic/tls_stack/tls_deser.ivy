@@ -193,10 +193,11 @@ object tls_ser_server = {}
         // TODO error
         virtual int open_tag(const std::vector<std::string> &tags) {
             int bytes = 1;
-            std::cout << tags[0] << std::endl; 
-            std::cout << tls_tag_bytes_map[tags[0]] << std::endl;  
-            if (tls_tag_bytes_map.find(tags[0]) != tls_tag_bytes_map.end())
+            if (tls_tag_bytes_map.find(tags[0]) != tls_tag_bytes_map.end())   {
+                std::cout << tags[0] << std::endl; 
+                std::cout << tls_tag_bytes_map[tags[0]] << std::endl;  
                 bytes = tls_tag_bytes_map[tags[0]];
+            }
             long long tag;
             std::cout << bytes << std::endl;  
             getn(tag,bytes);
