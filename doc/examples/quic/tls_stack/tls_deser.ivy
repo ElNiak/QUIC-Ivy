@@ -155,7 +155,7 @@ object tls_ser_server = {}
         }
     
         virtual void open_field(const std::string &name) {
-            if (name == "random_bytes") {
+            if (name == "random_bytes") { //28 bytes tls1.2, 32bytes tls1.3
                 fence.push_back(pos+28);
                 field_bytes = 1;
             }
@@ -199,6 +199,7 @@ object tls_ser_server = {}
                 bytes = tls_tag_bytes_map[tags[0]];
             }
             long long tag;
+            std::cout << "tags" << tags << std::endl;
             std::cout << bytes << std::endl;  
             getn(tag,bytes);
             std::cout << tag << std::endl;  

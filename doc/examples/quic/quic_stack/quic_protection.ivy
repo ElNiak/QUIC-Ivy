@@ -51,7 +51,7 @@ module quic_protection(tls_id,tls) = {
         var hdr_len := pnum_pos + pnum_len;
 
         # Tricky: before encrypting the payload, we need to adjust the length field
-        # so that it includes the aead checksum. Of course, we don't know what
+        # so that it includes the AEAD checksum. Of course, we don't know what
         # that actually is. Here we assume it is 16 bytes. Even worse, the length of
         # the length field could grow. Here, we assume the length field format is
         # always two bytes. 

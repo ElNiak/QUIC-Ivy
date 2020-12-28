@@ -51,18 +51,18 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
 
     var idx := pkt.payload.begin;
     while idx < pkt.payload.end {
-	var f := pkt.payload.value(idx);
-	if some(cf:frame.crypto) f *> cf {
-	    call tls_send_event(src,dst,scid,dcid,cf.data,cf.offset,e)
-	};
-	if some(sf:frame.stream) f *> sf {
-            # require sf.offset <= stream_app_data_end(dcid,sf.id);  # TODO: deal with gaps in stream
-            # var data := sf.data.segment(stream_app_data_end(dcid,sf.id) - sf.offset,sf.data.end);
-	    call app_send_event(src,dst,dcid,sf.id,sf.data,sf.offset,sf.fin)
-	};
-	call infer_frame(scid,dcid,f);
-	call f.handle(scid,dcid,e);
-        idx := idx.next
+        var f := pkt.payload.value(idx);
+        if some(cf:frame.crypto) f *> cf {
+            call tls_send_event(src,dst,scid,dcid,cf.data,cf.offset,e)
+        };
+        if some(sf:frame.stream) f *> sf {
+                # require sf.offset <= stream_app_data_end(dcid,sf.id);  # TODO: deal with gaps in stream
+                # var data := sf.data.segment(stream_app_data_end(dcid,sf.id) - sf.offset,sf.data.end);
+            call app_send_event(src,dst,dcid,sf.id,sf.data,sf.offset,sf.fin)
+        };
+        call infer_frame(scid,dcid,f);
+        call f.handle(scid,dcid,e);
+            idx := idx.next
     }
 }
 

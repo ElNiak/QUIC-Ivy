@@ -194,7 +194,7 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
         crypto_data_present(scid,e,cpos) := true;
 	    jdx := jdx.next
     };
-    crypto_data_end(scid,e) := crypto_data(scid,e).end;
+    crypto_data_end(scid,e) := crypto_data(scid,e).end;# - 1;
     var max_present : stream_pos := 0;
     while max_present < crypto_data_end(scid,e) & crypto_data_present(scid,e,max_present) {
         max_present := max_present.next

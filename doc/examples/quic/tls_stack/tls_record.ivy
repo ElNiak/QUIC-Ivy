@@ -85,7 +85,7 @@ object tls = {
     interpret gmt -> bv[32]
 
     # Random information is encoded in the following form. The
-    # `random_bytes` field consists of exactly 28 bytes.
+    # `random_bytes` field consists of exactly (before:28) now:32 bytes.
 
     type random = struct {
         gmt_unix_time : gmt,
