@@ -444,6 +444,8 @@ object quic_deser = {}
                 }
                 std::cerr << "saw tag " << ft << std::endl;  
             }
+            std::cout << "state          = " << state << std::endl;  
+            std::cout << "quic_s_payload = " << quic_s_payload << std::endl;
             std::cout << "quic_deser 2" << std::endl;  
             throw deser_err();
         }

@@ -122,7 +122,8 @@ object active_connection_id_limit = {
     instantiate trans_params_ops(this)
 }
 
-
+# https://tools.ietf.org/html/draft-ferrieuxhamchaoui-quic-lossbits-03
+# TODO implement test
 object loss_bits = {
     variant this of transport_parameter = struct {  # tag = 4183
         stream_pos_32 : stream_pos
