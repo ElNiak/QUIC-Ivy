@@ -25,7 +25,7 @@ object tls_ser_server = {}
 
     struct tls_name_map : hash_space::hash_map<std::string,int> {};
 
-    struct tls_name_struct tls_field_length_bytes[27] = {
+    struct tls_name_struct tls_field_length_bytes[28] = {
         {"fragment",2},
         {"content",2},
         {"tls.client_hello",3},
@@ -47,18 +47,19 @@ object tls_ser_server = {}
         {"stateless_reset_token",2},
         {"ack_delay_exponent",2},
         {"initial_max_stream_id_uni",2},
-        {"disable_migration",2},
+        {"disable_active_migration ",2},
         {"active_connection_id_limit",2},
         {"initial_max_stream_data_bidi_remote",2},
         {"initial_max_stream_data_uni",2},
         {"max_ack_delay",2},
+        {"loss_bits",2}, //for picoquic TODO
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
 
     struct tls_name_struct tls_field_bytes[20] = {
         {"version",2},
-        {"client_version",2},
+        {"client_version",2}, //0x0303 = 2 bytes
         {"server_version",2},
         {"etype",2},
         {"mtype",1},
@@ -79,8 +80,9 @@ object tls_ser_server = {}
         {0,0}
     };
     tls_name_map tls_field_bytes_map;
-
-    struct tls_name_struct tls_tags[24] = {
+    //ERROR : LOSS BIT
+    //TODO check old version
+    struct tls_name_struct tls_tags[25] = {
         {"tls.handshake_record",22},
         {"tls.application_data_record",23},
         {"tls.change_cipher_spec",20},
@@ -99,16 +101,17 @@ object tls_ser_server = {}
         {"stateless_reset_token",2},
         {"ack_delay_exponent",0xa},
         {"initial_max_stream_id_uni",9},
-        {"disable_migration",0xc},
+        {"disable_active_migration ",0xc},
         {"active_connection_id_limit",0xe},
         {"initial_max_stream_data_bidi_remote",6},
         {"initial_max_stream_data_uni",7},
         {"max_ack_delay",0xb}, 
+        {"loss_bits",0x1057}, //for picoquic TODO add in transport_parameter.ivy
        {0,0}
     };
     tls_name_map tls_tags_map;
 
-    struct tls_name_struct tls_tag_bytes[17] = {
+    struct tls_name_struct tls_tag_bytes[18] = {
         {"tls.unknown_extension",2},
         {"quic_transport_parameters",2},
         {"initial_max_stream_data_bidi_local",2},
@@ -125,6 +128,7 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_remote",2},
         {"initial_max_stream_data_uni",2},
         {"max_ack_delay",2},
+        {"loss_bits",2}, //for picoquic TODO
         {0,0}
     };
     tls_name_map tls_tag_bytes_map;
@@ -199,7 +203,7 @@ object tls_ser_server = {}
                 bytes = tls_tag_bytes_map[tags[0]];
             }
             long long tag;
-            std::cout << "tags" << tags << std::endl;
+            //std::cout << "tags" << tags << std::endl;
             std::cout << bytes << std::endl;  
             getn(tag,bytes);
             std::cout << tag << std::endl;  

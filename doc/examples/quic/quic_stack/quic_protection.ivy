@@ -208,7 +208,8 @@ module quic_protection(tls_id,tls) = {
 
     # Get the length of a packet number at position `pos`
 
-    action get_pnum_len(pkt:stream_data,pnum_pos:stream_pos) returns (pnum_len:stream_pos) = {
+    action get_pnum_len(pkt:stream_data,pnum_pos:stream_pos) 
+    returns (pnum_len:stream_pos) = {
         var len_minus_one : stream_pos := bfe[0][1](pkt.value(0));
         pnum_len := len_minus_one + 1;
     }
@@ -216,8 +217,7 @@ module quic_protection(tls_id,tls) = {
     # Given the length of the packet number, get the number it encodes.
 
     action get_pnum(pkt:stream_data,pnum_pos:stream_pos,pnum_len:stream_pos)
-    returns (seq:pkt_num) =
-    {
+    returns (seq:pkt_num) = {
         var data := pkt.segment(pnum_pos,pnum_pos + pnum_len);
         seq := 0;
         var idx:stream_pos := 0;
