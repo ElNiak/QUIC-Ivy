@@ -80,7 +80,7 @@ object frame = {
         # object ecn = {
         #     type this = struct {
         #         ect0 : pkt_num,       # total number of packets received with the ECT(0)
-		# 		ect1 : pkt_num,       # total number of packets received with the ECT(1)
+		# 		  ect1 : pkt_num,       # total number of packets received with the ECT(1)
         #         ecn_ce : pkt_num      # total number of packets received with the CE codepoint
         #     }
         #     instance idx : unbounded_sequence
