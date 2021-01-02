@@ -283,7 +283,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require dst = server.ep;
         require pkt.token.end = 0; 
     };
-    require pkt.long -> pkt.pversion = 0xff000017
+    require pkt.long -> pkt.pversion = 0xff00001b  #version 27
 }
 
 # The protocol specification describes all the events occurring the
@@ -359,9 +359,9 @@ before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
     }
 }
 
-# Generate max_stream_id frames only for the environment process(es).
+# Generate max_streams frames only for the environment process(es).
 
-before frame.max_stream_id.handle(f:frame.max_stream_id,scid:cid,dcid:cid) {
+before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
     }
@@ -394,7 +394,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
     }
 }
 
-# Generate connection_close frames only for the environment process(es).
+# Generate application_close frames only for the environment process(es).
 
 before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
     if _generating {
@@ -412,10 +412,10 @@ before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
     }
 }
 
-# Generate stream_blocked frames only for the environment process(es).
+# Generate stream_data_blocked frames only for the environment process(es).
 # We restrict the frame id.
 
-before frame.stream_blocked.handle(f:frame.stream_blocked,scid:cid,dcid:cid) {
+before frame.stream_data_blocked.handle(f:frame.stream_blocked,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
         require f.id = 4;
@@ -504,7 +504,7 @@ export tls_recv_event
 
 export action _finalize = {
     # chris TODO 
-    # ERROR quic-http 0x0106 => resolve
+    # ERROR quic-http 0x0106 => resolved hq instead of h3
     require conn_total_data(the_cid) > 0;
 }
 

@@ -36,6 +36,7 @@ include quic_stream
 # Data structures
 # ===============
 
+
 object frame = {
 
     # The base type for frames
@@ -44,12 +45,12 @@ object frame = {
 
     # Stream frames
 
+    # (0x08 -> 0x0f)
     object stream = {
 
         # Stream frames are a variant of frame
 
         variant this of frame = struct {
-        
             off : bool,        # is there an offset field
             len : bool,        # is there a length field
             fin : bool,        # is this the final offset
@@ -60,33 +61,63 @@ object frame = {
             data : stream_data         # the stream data
         }
     }
+	
+	# (0x00) 
+    object padding = {
+        # PADDING frame frames are a variant of frame and contains nothing
+		# 1 byte frame to increase the size of a packet
+        variant this of frame = struct {
+			
+        }
+    }
+	
+	# (0x01)
+    object ping = {
+        # Ping frames contain no data, check peers still alive
+        variant this of frame = struct {
 
+        }
+    }
+
+	# (0x02 and 0x03) 
     object ack = {
 
-        object block = {
+        object range = {
             type this = struct {
-                gap : pkt_num,       # gap, or zero for first block
-                blocks : pkt_num     # number of packets in block - 1
+                gap : pkt_num,       # gap, or zero for first range
+                ranges : pkt_num     # number of packets in range - 1
             }
             instance idx : unbounded_sequence
             instance arr : array(idx,this)
         }
 
+		# TODO: module counter ? variable ecn ?
+		
+        object ecn = {
+            type this = struct {
+                ect0 : pkt_num,       # total number of packets received with the ECT(0)
+				ect1 : pkt_num,       # total number of packets received with the ECT(1)
+                ecn_ce : pkt_num      # total number of packets received with the CE codepoint
+            }
+            instance idx : unbounded_sequence
+            instance arr : array(idx,this)
+        }
+		
         # Ack frames are a variant of frame
 
         variant this of frame = struct {
         
             largest_acked   : pkt_num,    # largest acknowledged packet number
             ack_delay       : microsecs,  # delay of largest acked packet
-            ack_blocks      : block.arr   # ack blocks
-            
+            ack_ranges      : range.arr,   # ack ranges
+			ecnp            : bool,        # is this the final offset
+			ecn_counts      : ecn.arr
         }
     }
 
+	# (0x04) RESET_STREAM Frame
     object rst_stream = {
-
-        # Rst_stream frames are a variant of frame
-
+        # RESET_STREAM frames are a variant of frame
         variant this of frame = struct {
         
             id              : stream_id,  # id of stream being reset
@@ -95,33 +126,80 @@ object frame = {
             
         }
     }
-
-    object max_stream_id = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
-
-        # Max_stream_id frames are a variant of frame.
-
+	
+	# (0x05)
+    object stop_sending = {
+        # Stop sending frames are a variant of frame.
         variant this of frame = struct {
-        
-            id              : stream_id  # maximum stream id
-            
+            id                : stream_id,  # the stream id
+            err_code          : error_code  # the error code
         }
     }
 
-    object connection_close = {
-        
-        # Connection close frames are a variant of frame.
-
+	# (0x06)
+	object crypto = {
+        # Crypto frames are a variant of frame
         variant this of frame = struct {
-            err_code               : error_code, # the error code
-            frame_type             : error_code, # TODO: not the real type
-            reason_phrase_length   : stream_pos, # number of bytes in reason phrase
-            reason_phrase          : stream_data # bytes of reason phrase
+            offset : stream_pos,       # the stream offset (zero if ~off)
+            length : stream_pos,       # length of the data
+            data : stream_data         # the stream data
         }
     }
 
-    object max_stream_data = {
-        
+	# (0x07)    
+	object new_token = {
+        # New token frames are a variant of frame.
+        variant this of frame = struct {
+            length : stream_pos,                  # length of the token
+            data : stream_data                    # the token
+        }
+    }
+       
+	   
+	# (0x10) The MAX_DATA frame is used in flow control to inform the
+    # peer of the maximum amount of data that can be sent on the connection
+    # as a whole.
+    object max_data = {
+        # Max data frames are a variant of frame.
+        variant this of frame = struct {
+            pos               : stream_pos  # max number of bytes
+        }
+    }
+	
+	# (0x11) The MAX_STREAM_DATA frame is used in flow control to
+    # inform a peer of the maximum amount of data that can be sent on a
+    # stream
+	object max_stream_data = {
         # Max stream data frames are a variant of frame.
+        variant this of frame = struct {
+            id                : stream_id,  # the stream id
+            pos               : stream_pos  # max number of bytes
+        }
+    }
+	
+	
+	# (0x12 and 0x13) 
+    object max_streams = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
+        # max_streams frames are a variant of frame.
+        variant this of frame = struct {
+            id              : stream_id  # maximum stream id
+        }
+    }
+	
+    # (0x14) DATA_BLOCKED FRAME 
+    object data_blocked = {
+        
+        # data_blocked frames are a variant of frame.
+
+        variant this of frame = struct {
+            pos               : stream_pos  # max number of bytes
+        }
+    }
+    
+    # (0x15) STREAM_DATA_BLOCKED 
+    object stream_data_blocked = {
+        
+        # Stream blocked frames are a variant of frame.
 
         variant this of frame = struct {
             id                : stream_id,  # the stream id
@@ -129,7 +207,8 @@ object frame = {
         }
     }
 
-    object stream_id_blocked = { # TODO: handle bidi and uni cases
+    # (0x16 or 0x17)
+    object streams_blocked = { # TODO: handle bidi and uni cases
         
         # Stream id blocked frames are a variant of frame.
 
@@ -138,37 +217,7 @@ object frame = {
         }
     }
 
-    object crypto = {
-
-        # Crypto frames are a variant of frame
-
-        variant this of frame = struct {
-        
-            offset : stream_pos,       # the stream offset (zero if ~off)
-            length : stream_pos,       # length of the data
-            data : stream_data         # the stream data
-        }
-    }
-
-    object ping = {
-
-        # Ping frames contain no data
-
-        variant this of frame = struct {
-        }
-    }
-
-    object application_close = {
-        
-        # Application close frames are a variant of frame.
-
-        variant this of frame = struct {
-            err_code               : error_code, # the error code
-            reason_phrase_length   : stream_pos, # number of bytes in reason phrase
-            reason_phrase          : stream_data # bytes of reason phrase
-        }
-    }
-
+     # (0x18) 
     object new_connection_id = {
         
         # New connection id frames are a variant of frame.
@@ -182,73 +231,8 @@ object frame = {
         }
         
     }
-
-    object path_challenge = {
-        
-        # Path challenge frames are a variant of frame.
-
-        variant this of frame = struct {
-            data : stream_data                    # 8-byte payload
-        }
-    }
-
-    object path_response = {
-        
-        # Path response frames are a variant of frame.
-
-        variant this of frame = struct {
-            data : stream_data                    # 8-byte payload
-        }
-    }
-
-    object new_token = {
-
-        # New token frames are a variant of frame.
-
-        variant this of frame = struct {
-            length : stream_pos,                  # length of the token
-            data : stream_data                    # the token
-        }
-    }
-        
-    object max_data = {
-        
-        # Max data frames are a variant of frame.
-
-        variant this of frame = struct {
-            pos               : stream_pos  # max number of bytes
-        }
-    }
-
-    object stream_blocked = {
-        
-        # Stream blocked frames are a variant of frame.
-
-        variant this of frame = struct {
-            id                : stream_id,  # the stream id
-            pos               : stream_pos  # max number of bytes
-        }
-    }
-
-    object stop_sending = {
-        
-        # Stop sending frames are a variant of frame.
-
-        variant this of frame = struct {
-            id                : stream_id,  # the stream id
-            err_code          : error_code  # the error code
-        }
-    }
-
-    object blocked = {
-        
-        # Blocked frames are a variant of frame.
-
-        variant this of frame = struct {
-            pos               : stream_pos  # max number of bytes
-        }
-    }
-
+    
+    # (0x19)
     object retire_connection_id = {
         
         # Retire connection id frames are a variant of frame.
@@ -258,6 +242,53 @@ object frame = {
         }
         
     }
+ 
+    # (0x1a)
+    object path_challenge = {
+        # Path challenge frames are a variant of frame.
+        variant this of frame = struct {
+            data : stream_data                    # 8-byte payload
+        }
+    }
+    
+    # (0x1b)
+    object path_response = {
+        # Path response frames are a variant of frame.
+        variant this of frame = struct {
+            data : stream_data                    # 8-byte payload
+        }
+    }
+    
+    # (0x1c or 0x1d) 
+    object connection_close = {
+        # Connection close frames are a variant of frame.
+        variant this of frame = struct {
+            err_code               : error_code, # the error code
+            frame_type             : error_code, # TODO: not the real type
+            reason_phrase_length   : stream_pos, # number of bytes in reason phrase
+            reason_phrase          : stream_data # bytes of reason phrase
+        }
+    }
+
+    # (0x1e) HANDSHAKE_DONE
+    object handshake_done = {
+        # HANDSHAKE_DONE frames are a variant of frame.
+        variant this of frame = struct {
+
+        }
+    }
+    
+    # NOT PRESENT ANYMORE TOCHECK IF CAN BE REMOVED TODO
+    object application_close = {
+        # Application close frames are a variant of frame.
+        variant this of frame = struct {
+            err_code               : error_code, # the error code
+            reason_phrase_length   : stream_pos, # number of bytes in reason phrase
+            reason_phrase          : stream_data # bytes of reason phrase
+        }
+    }
+
+    #TODO EXTENSION Frames
 
     instance idx : unbounded_sequence
     instance arr : array(idx,this)
