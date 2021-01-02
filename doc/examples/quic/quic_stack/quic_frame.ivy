@@ -77,15 +77,15 @@ object frame = {
 
 		# TODO: module counter ? variable ecn ?
 		
-        object ecn = {
-            type this = struct {
-                ect0 : pkt_num,       # total number of packets received with the ECT(0)
-				ect1 : pkt_num,       # total number of packets received with the ECT(1)
-                ecn_ce : pkt_num      # total number of packets received with the CE codepoint
-            }
-            instance idx : unbounded_sequence
-            instance arr : array(idx,this)
-        }
+        # object ecn = {
+        #     type this = struct {
+        #         ect0 : pkt_num,       # total number of packets received with the ECT(0)
+		# 		ect1 : pkt_num,       # total number of packets received with the ECT(1)
+        #         ecn_ce : pkt_num      # total number of packets received with the CE codepoint
+        #     }
+        #     instance idx : unbounded_sequence
+        #     instance arr : array(idx,this)
+        # }
 		
         # Ack frames are a variant of frame
 
@@ -93,9 +93,9 @@ object frame = {
         
             largest_acked   : pkt_num,    # largest acknowledged packet number
             ack_delay       : microsecs,  # delay of largest acked packet
-            ack_ranges      : range.arr,   # ack ranges
-			ecnp            : bool,        # is this the final offset
-			ecn_counts      : ecn.arr
+            ack_ranges      : range.arr   # ack ranges
+			# ecnp            : bool,        # is this the final offset
+			# ecn_counts      : ecn.arr
         }
     }
 
@@ -271,21 +271,21 @@ object frame = {
     }
 
 	# (0x00) 
-    object padding = {
+    # object padding = {
         # PADDING frame frames are a variant of frame and contains nothing
 		# 1 byte frame to increase the size of a packet
-        variant this of frame = struct {
+    #     variant this of frame = struct {
 			
-        }
-    }
+    #     }
+    # }
 	
     # (0x1e) HANDSHAKE_DONE
-    object handshake_done = {
+    # object handshake_done = {
         # HANDSHAKE_DONE frames are a variant of frame.
-        variant this of frame = struct {
+    #     variant this of frame = struct {
 
-        }
-    }
+    #     }
+    # }
     
 
     #TODO EXTENSION Frames
