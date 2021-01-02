@@ -486,7 +486,7 @@ object frame = {
             require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);  # [4]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            var idx : frame.ack.block.idx := 0;
+            var idx : frame.ack.range.idx := 0;
             var last := f.largest_acked;
             if max_acked(dcid,e) < last {
                 max_acked(dcid,e) := last;  # [3]

@@ -415,7 +415,7 @@ before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
 # Generate stream_data_blocked frames only for the environment process(es).
 # We restrict the frame id.
 
-before frame.stream_data_blocked.handle(f:frame.stream_blocked,scid:cid,dcid:cid) {
+before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
         require f.id = 4;
@@ -524,7 +524,7 @@ interpret error_code -> bv[16]
 interpret stream_id -> bv[16]
 
 attribute frame.idx.cardinality = 1
-attribute frame.ack.block.idx.cardinality = 1
+attribute frame.ack.range.idx.cardinality = 1
 attribute pkt_num.cardinality = 1
 attribute stream_pos.cardinality = 4
 #attribute ip.addr.override = bv[1]
