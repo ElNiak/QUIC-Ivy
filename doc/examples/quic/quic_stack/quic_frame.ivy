@@ -444,7 +444,7 @@ after init {
 # #### ACK event
 
 # The set of packet numbers acknowledged by an ACK frame is determined
-# by the `largest_ack` field and the `ack_blocks` field. Each ACK
+# by the `largest_ack` field and the `ack_ranges` field. Each ACK
 # block acknowledges packet numbers in the inclusive range `[last - gap, last -
 # gap - blocks]` where `gap` and `blocks` are the fields of the ACK
 # block and `last` is `largest_ack` minus the sum of `gap + blocks`
@@ -491,26 +491,26 @@ object frame = {
             if max_acked(dcid,e) < last {
                 max_acked(dcid,e) := last;  # [3]
             };
-            require f.ack_blocks.end > 0;
+            require f.ack_ranges.end > 0;
             var some_new_ack := false;
-            while idx < f.ack_blocks.end {
-                var ack_block := f.ack_blocks.value(idx);
-                require idx > 0 -> ack_block.gap < last - 1;
-                var upper := last - ((ack_block.gap+2) if idx > 0 else 0);
-                require ack_block.blocks <= upper;
-                last := upper - ack_block.blocks;
-		var jdx := last;
-		while jdx <= upper {
-                    require sent_pkt(dcid,e,jdx);  # [1]
-                    if pkt_has_close(dcid,e,jdx) {
-                        conn_draining(scid) := true  # [5]
-                    };
-                    if ~acked_pkt(dcid,e,jdx) {
-                        some_new_ack := true;
-                    };
-		    acked_pkt(dcid,e,jdx) := true;
-		    jdx := jdx + 1
-		};
+            while idx < f.ack_ranges.end {
+                var ack_range := f.ack_ranges.value(idx);
+                require idx > 0 -> ack_range.gap < last - 1;
+                var upper := last - ((ack_range.gap+2) if idx > 0 else 0);
+                require ack_range.ranges <= upper;
+                last := upper - ack_range.ranges;
+                var jdx := last;
+                while jdx <= upper {
+                            require sent_pkt(dcid,e,jdx);  # [1]
+                            if pkt_has_close(dcid,e,jdx) {
+                                conn_draining(scid) := true  # [5]
+                            };
+                            if ~acked_pkt(dcid,e,jdx) {
+                                some_new_ack := true;
+                            };
+                    acked_pkt(dcid,e,jdx) := true;
+                    jdx := jdx + 1
+                };
 #                acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2]
                 idx := idx.next;
             };
