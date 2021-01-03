@@ -314,9 +314,9 @@ object tls_ser_server = {}
             std::vector<char> temp;
             temp.swap(res);
             int len = end-start;
-            setn(len,flb);
-            //temp.swap(res); //[xx] remove
-            //std::copy(temp.begin(),temp.end(),res.begin()+start-flb); //[xx] remove
+            //setn(len,flb);
+            temp.swap(res); //[xx] remove
+            std::copy(temp.begin(),temp.end(),res.begin()+start); //-flb [xx] remove
             field_start.pop_back();
             field_length_bytes.pop_back();
         }
