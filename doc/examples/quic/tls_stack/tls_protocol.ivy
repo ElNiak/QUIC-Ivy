@@ -10,7 +10,7 @@
 #
 
 include tls_record
-include tls_deser
+include tls_deser_sers
 include deserializer
 include ip
 
@@ -23,7 +23,7 @@ object tls = { ...
 # =============
 
     instance handshakes : vector(handshake)
-    instance handshake_parser : deserializer(stream_pos,stream_data,handshakes,tls_deser)
+    instance handshake_parser : deserializer(stream_pos,stream_data,handshakes,tls_deser_ser)
 
 # Protocol event
 # ==============
