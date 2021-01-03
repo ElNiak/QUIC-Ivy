@@ -52,7 +52,7 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_remote",2},
         {"initial_max_stream_data_uni",2},
         {"max_ack_delay",2},
-        {"loss_bits",2}, //for picoquic TODO
+        {"loss_bits",2}, //for picoquic TODO test
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
@@ -80,7 +80,6 @@ object tls_ser_server = {}
         {0,0}
     };
     tls_name_map tls_field_bytes_map;
-    //ERROR : LOSS BIT
     //TODO check old version
     struct tls_name_struct tls_tags[25] = {
         {"tls.handshake_record",22},
@@ -106,10 +105,12 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_remote",6},
         {"initial_max_stream_data_uni",7},
         {"max_ack_delay",0xb}, 
-        {"loss_bits",0x1057}, //for picoquic TODO add in transport_parameter.ivy
+        {"loss_bits",0x1057}, //for picoquic
        {0,0}
     };
     tls_name_map tls_tags_map;
+
+    // TODO remove "parameter length" field of quic_parameter [xx]
 
     struct tls_name_struct tls_tag_bytes[18] = {
         {"tls.unknown_extension",2},
@@ -314,8 +315,8 @@ object tls_ser_server = {}
             temp.swap(res);
             int len = end-start;
             setn(len,flb);
-            temp.swap(res);
-            std::copy(temp.begin(),temp.end(),res.begin()+start-flb);
+            //temp.swap(res); //[xx] remove
+            //std::copy(temp.begin(),temp.end(),res.begin()+start-flb); //[xx] remove
             field_start.pop_back();
             field_length_bytes.pop_back();
         }
@@ -340,11 +341,11 @@ object tls_ser_server = {}
         }
 
         void set_var_int(long long res) {
-	    long long val = res & 0x3fffffffffffffff;
-	    int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
-	    int bytes = 1 << bytecode;
+            long long val = res & 0x3fffffffffffffff;
+            int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
+            int bytes = 1 << bytecode;
             val |= bytecode << ((bytes << 3) - 2);
-	    setn(val,bytes);
+            setn(val,bytes);
         }
 
         void open_list(int len) {

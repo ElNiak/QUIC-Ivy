@@ -304,11 +304,11 @@ object quic_ser = {}
         }
 
         void set_var_int(long long res) {
-	    long long val = res & 0x3fffffffffffffff;
-	    int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
-	    int bytes = 1 << bytecode;
-        val |= bytecode << ((bytes << 3) - 2);
-	    setn(val,bytes);
+            long long val = res & 0x3fffffffffffffff;
+            int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
+            int bytes = 1 << bytecode;
+            val |= bytecode << ((bytes << 3) - 2);
+            setn(val,bytes);
         }
 
         void set_pkt_num(long long &res) {
