@@ -46,7 +46,7 @@ object initial_max_stream_id_bidi = {
     instantiate trans_params_ops(this)
 }
 
-object idle_timeout = {
+object max_idle_timeout  = {
     variant this of transport_parameter = struct {  # tag = 3
         seconds_16 : microsecs
     }

@@ -16,7 +16,7 @@ object quic_tls = {
         variant this of transport_parameter
          initial_max_data(1),
          initial_max_stream_id_bidi(2),
-         idle_timeout(3),
+         max_idle_timeout(3),
          omit_connection_id(4),
          max_packet_size(5),
          stateless_reset_token(6),
