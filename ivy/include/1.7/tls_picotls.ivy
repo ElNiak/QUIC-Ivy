@@ -419,6 +419,10 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ptls_exts[e.size()].type = 0xffff;
         ptls_exts[e.size()].data.base = NULL;
         ptls_exts[e.size()].data.len = 0;
+        std::cerr << "ptls_exts =" << *ptls_exts << std::endl;  
+        for (unsigned i = 0; i < ptls_exts.size(); i++) {
+            std::cerr << "ptls_exts[i] = " << ptls_exts[i] << std::endl;  
+        }
         handshake_properties->additional_extensions = ptls_exts;
 
         // Read the certificate, if we are a server
