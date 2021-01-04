@@ -422,8 +422,8 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         std::cerr << "ptls_exts =" << *ptls_exts << std::endl;  
         for (unsigned i = 0; i < e.size(); i++) {
             std::cerr << "ptls_exts[i].type = " << ptls_exts[i].type << std::endl;  
-            std::cerr << "ptls_exts[i].base = " << ptls_exts[i].data << std::endl;
-            std::cerr << "ptls_exts[i].len = " << ptls_exts[i].len << std::endl;
+            std::cerr << "ptls_exts[i].base = " << ptls_exts[i].data.base << std::endl;
+            std::cerr << "ptls_exts[i].len = " << ptls_exts[i].data.len << std::endl;
         }
         handshake_properties->additional_extensions = ptls_exts;
 
