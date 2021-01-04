@@ -387,7 +387,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         //alpn_vec->base = (uint8_t*)"hq-17";
         // TODO h3-x == http/3 over QUIC 
         // hq-x == HTTP/2 over QUIC
-        alpn_vec->base = (uint8_t*)"hq-23";
+        alpn_vec->base = (uint8_t*)"hq-27";
         alpn_vec->len = strlen((char *)(alpn_vec->base));
         handshake_properties->client.negotiated_protocols.count = 1;
         handshake_properties->client.negotiated_protocols.list = alpn_vec;
@@ -403,8 +403,11 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             unsigned char *data = new unsigned char[ser.res.size()-4];
             std::copy(ser.res.begin()+4,ser.res.end(),data);
             ptls_exts[i].type = etype;
+            std::cout << "etype =" << etype << std::endl;  
             ptls_exts[i].data.base = data;
+            std::cout << "data =" << data << std::endl;  
             ptls_exts[i].data.len = len;
+            std::cout << "len =" << len << std::endl;  
             // int eres = gnutls_session_ext_register (session, "ext_name", etype,
             //   GNUTLS_EXT_APPLICATION, gnutls_ext_supp_recv_params,
             //   gnutls_ext_supp_send_params, 0,0,0,0);
@@ -438,7 +441,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         picotls_connection *s = new picotls_connection(c,session,*`cb`,handshake_properties,is_server);
         *ptls_get_data_ptr(session) = s;        
 
-	`cid_map`[c] = s;
+	    `cid_map`[c] = s;
 	
         // Start the handshake if we are the client. The in_epoch is zero for "initial".
 
@@ -537,7 +540,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     returns (res:decrypt_result) {
         <<< impure
 
-	picotls_connection *s = `cid_map`[c];
+	    picotls_connection *s = `cid_map`[c];
         ptls_aead_context_t *aead = (ptls_aead_context_t *)(s->crypto_context[l].aead_decrypt);
         uint32_t checksum_length = aead->algo->tag_size;
         std::vector<uint8_t> bytes;
@@ -571,11 +574,11 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
     implement lower.recv(c:cid,data:bytes,lev:lower.level) {
         <<< impure
-	picotls_connection *s = `cid_map`[c];
-        std::vector<char> &input = s->input;
-	for (unsigned i = 0; i < data.size(); i++) {
-	    input.push_back(data[i]);
-	}
+        picotls_connection *s = `cid_map`[c];
+            std::vector<char> &input = s->input;
+        for (unsigned i = 0; i < data.size(); i++) {
+            input.push_back(data[i]);
+        }
         // TODO: make the epoch a parameter of this call
         // For now, we assume that the epochs come in order
         size_t in_epoch = ptls_get_read_epoch(s->gs);
