@@ -25,7 +25,7 @@ object tls_ser_server = {}
 
     struct tls_name_map : hash_space::hash_map<std::string,int> {};
 
-    struct tls_name_struct tls_field_length_bytes[28] = {
+    struct tls_name_struct tls_field_length_bytes[27] = {
         {"fragment",2},
         {"content",2},
         {"tls.client_hello",3},
@@ -37,21 +37,21 @@ object tls_ser_server = {}
         {"compression_methods",1},
         {"extensions",2},
         {"quic_transport_parameters",2},
-        {"transport_parameters",2},
-        {"initial_max_stream_data_bidi_local",2},
-        {"initial_max_data",2},
-        {"initial_max_stream_id_bidi",2},
-        {"max_idle_timeout",2},
-        {"preferred_address",2},
-        {"max_packet_size",2},
-        {"stateless_reset_token",2},
-        {"ack_delay_exponent",2},
-        {"initial_max_stream_id_uni",2},
-        {"disable_active_migration ",2},
-        {"active_connection_id_limit",2},
-        {"initial_max_stream_data_bidi_remote",2},
-        {"initial_max_stream_data_uni",2},
-        {"max_ack_delay",2},
+        //{"transport_parameters",2},
+        {"initial_max_stream_data_bidi_local",1},
+        {"initial_max_data",1},
+        {"initial_max_stream_id_bidi",1},
+        {"max_idle_timeout",1},
+        {"preferred_address",1},
+        {"max_packet_size",1},
+        {"stateless_reset_token",1},
+        {"ack_delay_exponent",1},
+        {"initial_max_stream_id_uni",1},
+        {"disable_active_migration ",1},
+        {"active_connection_id_limit",1},
+        {"initial_max_stream_data_bidi_remote",1},
+        {"initial_max_stream_data_uni",1},
+        {"max_ack_delay",1},
         {"loss_bits",2}, //for picoquic TODO test
         {0,0}
     };
