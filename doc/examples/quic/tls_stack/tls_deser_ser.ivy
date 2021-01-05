@@ -280,6 +280,7 @@ object tls_ser_server = {}
 
         virtual void open_field(const std::string &name) {
             int flb = 0;
+            std::cout << "open_field: name : " << name << std::endl;  
             if (name == "random_bytes") {
                 field_bytes = 1;
             }
@@ -294,6 +295,7 @@ object tls_ser_server = {}
                 flb = tls_field_length_bytes_map[name];
                 res.resize(res.size() + flb);
             }
+
             field_start.push_back(res.size());
             field_length_bytes.push_back(flb);
             if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
@@ -302,6 +304,7 @@ object tls_ser_server = {}
             if (name == "tls.encrypted_extensions") {
                 in_encrypted_extensions = field_start.size();
             }
+            std::cout << "open_field: res.size() : " << res.size() << std::endl;
         }
         //TODO [xx]
         virtual void close_field() {
