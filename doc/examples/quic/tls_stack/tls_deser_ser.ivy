@@ -25,7 +25,7 @@ object tls_ser_server = {}
 
     struct tls_name_map : hash_space::hash_map<std::string,int> {};
 
-    struct tls_name_struct tls_field_length_bytes[27] = {
+    struct tls_name_struct tls_field_length_bytes[28] = {
         {"fragment",2},
         {"content",2},
         {"tls.client_hello",3},
@@ -51,6 +51,7 @@ object tls_ser_server = {}
         {"active_connection_id_limit",1},
         {"initial_max_stream_data_bidi_remote",1},
         {"initial_max_stream_data_uni",1},
+        {"initial_source_connection_id ",1},
         {"max_ack_delay",1},
         {"loss_bits",2}, //for picoquic TODO test
         {0,0}
@@ -105,6 +106,7 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_remote",0x06},
         {"initial_max_stream_data_uni",0x07},
         {"max_ack_delay",0xb}, 
+        {"initial_source_connection_id ",0x0f},
         {"loss_bits",0x1057}, //for picoquic
        {0,0}
     };
@@ -129,6 +131,7 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_remote",1},
         {"initial_max_stream_data_uni",1},
         {"max_ack_delay",1},
+        {"initial_source_connection_id ",1},
         {"loss_bits",2}, //for picoquic 
         {0,0}
     };
