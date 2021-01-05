@@ -116,49 +116,48 @@ module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
     
     specification {
 
-	relation open(C:cid)
-	relation established(C:cid)
-	
-	after init {
-	    open(C) := false;
-	    established(C) := false;
-	}
+        relation open(C:cid)
+        relation established(C:cid)
+        
+        after init {
+            open(C) := false;
+            established(C) := false;
+        }
 
-	around create {
-	    require ~open(c);
-	    ...
-	    open(c) := true;
-	}
+        around create {
+            require ~open(c);
+            ...
+            open(c) := true;
+        }
 
-	around destroy {
-	    require open(c);
-	    ...
-	    open(c) := false;
-	    established(c) := false;
-	}
+        around destroy {
+            require open(c);
+            ...
+            open(c) := false;
+            established(c) := false;
+        }
 
-	before recv {
-	    require open(c);
-	}
+        before recv {
+            require open(c);
+        }
 
-	before send {
-	    require open(c) & established(c);
-	}
+        before send {
+            require open(c) & established(c);
+        }
 
-	before session_established {
-	    require open(c) & ~established(c);
-	    established(c) := true
-	}
+        before session_established {
+            require open(c) & ~established(c);
+            established(c) := true
+        }
 
-	before key_material_export {
-	    require open(c) & established(c);
-	}
+        before key_material_export {
+            require open(c) & established(c);
+        }
 
-	invariant established(C) -> open(C)
+        invariant established(C) -> open(C)
     }
     
     instance foo : tls_gnutls(cid,index,bytes,extens,exten_ser,lower,this)
-
 
 }
 

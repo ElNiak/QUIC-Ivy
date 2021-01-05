@@ -11,7 +11,7 @@
 #     upper : the upper interface
 #
 
-module tls_impl(cid,index,bytes,extens,exten_ser,lower,upper) = {
+module tls_botan(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
     # The Botan header requires C++11 and the libbotan-2 library
 
