@@ -319,7 +319,7 @@ object quic_ser = {}
 
         virtual void open_tag(int tag, const std::string &) {
             if (state == quic_s_payload) {
-                if (tag == 0) {
+                if (tag == 6) {
 		            frame_type = 0x08;
                     state = quic_stream_off;
                     return;
@@ -332,66 +332,66 @@ object quic_ser = {}
                     state = quic_reset_stream_id;
                     frame_type = 0x04;
                 }
-                else if (tag == 3) {
+                else if (tag == 9) {
                     state = quic_reset_stream_id; // max_stream_id state equivalent to this
                     frame_type = 0x12;
                 }
-                else if (tag == 4) {
+                else if (tag == 17) {
                     state = quic_connection_close_err_code;
                     frame_type = 0x1c;
                 }
-                else if (tag == 5) {
+                else if (tag == 8) {
                     state = quic_max_stream_data_id;
                     frame_type = 0x11;
                 }
-                else if (tag == 6) {
+                else if (tag == 12) {
                     state = quic_reset_final_offset;
                     frame_type = 0x16;
                 }
-                else if (tag == 7) {
+                else if (tag == 4) {
                     frame_type = 0x06;
                     state = quic_crypto_offset;
                 }
-                else if (tag == 8) {
+                else if (tag == 0) {
                     frame_type = 0x01;
                 }
-                else if (tag == 9) {
+                else if (tag == 18) {
                     frame_type = 0x1d;
                     state = quic_application_close_err_code;
                 }
-                else if (tag == 10) {
+                else if (tag == 13) {
                     frame_type = 0x18;
                     state = quic_new_connection_id_seq_num;
                 }
-                else if (tag == 11) {
+                else if (tag == 15) {
                     frame_type = 0x1a;
                     state = quic_path_challenge_data;
                 }
-                else if (tag == 12) {
+                else if (tag == 16) {
                     frame_type = 0x1b;
                     state = quic_path_challenge_data;
                 }
-                else if (tag == 13) {
+                else if (tag == 5) {
                     frame_type = 0x07;
                     state = quic_crypto_length;  // new token equivalent to this
                 }
-                else if (tag == 14) {
+                else if (tag == 7) {
                     frame_type = 0x10;  // max_data
                     state = quic_reset_final_offset;
                 }
-                else if (tag == 15) {
+                else if (tag == 11) {
                     state = quic_max_stream_data_id;
                     frame_type = 0x15;
                 }
-                else if (tag == 16) {
+                else if (tag == 3) {
                     state = quic_stop_sending_id;
                     frame_type = 0x05;
                 }
-                else if (tag == 17) {
+                else if (tag == 10) {
                     state = quic_reset_final_offset;
                     frame_type = 0x14;
                 }
-                else if (tag == 18) {
+                else if (tag == 14) {
                     state = quic_retire_connection_id_seq_num;
                     frame_type = 0x19;
                 }
