@@ -254,7 +254,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ptls_buffer_init(&sendbuf, (void *)"", 0);
         int ret = ptls_handle_message(s->gs, &sendbuf, epoch_offsets, in_epoch, input, inlen, s->hsp);
         if (ret == PTLS_ERROR_IN_PROGRESS) {
-            std::cerr << "PICOTLS RETURNED PTLS_ERROR_IN_PROGRESS\n";
+            //std::cerr << "PICOTLS RETURNED PTLS_ERROR_IN_PROGRESS\n";
         } else if (ret != 0) {
             std::cerr << "PICOTLS RETURNED ERROR: " << ret << "\n";
         }

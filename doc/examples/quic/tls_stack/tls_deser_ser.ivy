@@ -25,7 +25,7 @@ object tls_ser_server = {}
 
     struct tls_name_map : hash_space::hash_map<std::string,int> {};
 
-    struct tls_name_struct tls_field_length_bytes[28] = {
+    struct tls_name_struct tls_field_length_bytes[27] = {
         {"fragment",2},
         {"content",2},
         {"tls.client_hello",3},
@@ -37,7 +37,7 @@ object tls_ser_server = {}
         {"compression_methods",1},
         {"extensions",2},
         {"quic_transport_parameters",2},
-        {"transport_parameters",2},
+        //{"transport_parameters",2},
         {"initial_max_stream_data_bidi_local",2},
         {"initial_max_data",2},
         {"initial_max_stream_id_bidi",2},
