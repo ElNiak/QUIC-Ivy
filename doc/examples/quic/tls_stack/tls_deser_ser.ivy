@@ -278,7 +278,7 @@ object tls_ser_server = {}
             in_encrypted_extensions = 0;
         }
 
-        /**
+        /** 
           * Allocate memory for each transport parameters
           */
         virtual void open_field(const std::string &name) {
