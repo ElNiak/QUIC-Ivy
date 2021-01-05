@@ -281,28 +281,30 @@ object tls_ser_server = {}
         virtual void open_field(const std::string &name) {
             int flb = 0;
             std::cout << "open_field: name : " << name << std::endl;  
-            if (name == "random_bytes") {
-                field_bytes = 1;
-            }
-            else if (name == "versions") {
-                field_bytes = 4;
-                if (in_encrypted_extensions) {
-                    flb = 1;
+            if(name != "transport_parameters") { //TODO ugly see how to avoid bypass
+                if (name == "random_bytes") {
+                    field_bytes = 1;
+                }
+                else if (name == "versions") {
+                    field_bytes = 4;
+                    if (in_encrypted_extensions) {
+                        flb = 1;
+                        res.resize(res.size() + flb);
+                    }
+                }
+                else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
+                    flb = tls_field_length_bytes_map[name];
                     res.resize(res.size() + flb);
                 }
-            }
-            else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
-                flb = tls_field_length_bytes_map[name];
-                res.resize(res.size() + flb);
-            }
 
-            field_start.push_back(res.size());
-            field_length_bytes.push_back(flb);
-            if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
-                field_bytes = tls_field_bytes_map[name];
-            }
-            if (name == "tls.encrypted_extensions") {
-                in_encrypted_extensions = field_start.size();
+                field_start.push_back(res.size());
+                field_length_bytes.push_back(flb);
+                if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
+                    field_bytes = tls_field_bytes_map[name];
+                }
+                if (name == "tls.encrypted_extensions") {
+                    in_encrypted_extensions = field_start.size();
+                }
             }
             std::cout << "open_field: res.size() : " << res.size() << std::endl;
         }
