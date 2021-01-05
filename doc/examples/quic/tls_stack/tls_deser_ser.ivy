@@ -37,7 +37,7 @@ object tls_ser_server = {}
         {"compression_methods",1},
         {"extensions",2},
         {"quic_transport_parameters",2},
-        {"transport_parameters",0},
+        {"transport_parameters",2},
         {"initial_max_stream_data_bidi_local",2},
         {"initial_max_data",2},
         {"initial_max_stream_id_bidi",2},
@@ -278,6 +278,9 @@ object tls_ser_server = {}
             in_encrypted_extensions = 0;
         }
 
+        /**
+          * Allocate memory for each transport parameters
+          */
         virtual void open_field(const std::string &name) {
             int flb = 0;
             std::cout << "open_field: name : " << name << std::endl;  
@@ -292,14 +295,14 @@ object tls_ser_server = {}
                         res.resize(res.size() + flb);
                     }
                 }
-                else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
+                else if (name != "transport_parameters" && tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
                     flb = tls_field_length_bytes_map[name];
                     res.resize(res.size() + flb);
                 }
 
                 field_start.push_back(res.size());
                 field_length_bytes.push_back(flb);
-                if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
+                if (name != "transport_parameters" && tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
                     field_bytes = tls_field_bytes_map[name];
                 }
                 if (name == "tls.encrypted_extensions") {
