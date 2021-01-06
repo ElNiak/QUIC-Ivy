@@ -60,6 +60,7 @@ object quic_deser = {}
               quic_new_connection_id_token,
               quic_path_challenge_data,
               quic_retire_connection_id_seq_num,
+              quic_handshake_done,
               quic_s_done} state;
         bool long_format;
         char hdr_type;
@@ -203,6 +204,7 @@ object quic_deser = {}
             case quic_crypto_data:
             case quic_path_challenge_data:
             case quic_connection_close_reason:
+            case quic_handshake_done: // TODO ?
             case quic_s_retry_token:
             {
                 ivy_binary_deser::getn(res,1);
@@ -442,11 +444,15 @@ object quic_deser = {}
                     state = quic_application_close_err_code;
                     return 18;
                 }
+                if (frame_type == 0x1e) {
+                    state = quic_handshake_done;
+                    return 19;
+                }
                 std::cerr << "saw tag " << ft << std::endl;  
             }
             std::cout << "state          = " << state << std::endl;  
             std::cout << "quic_s_payload = " << quic_s_payload << std::endl;
-            std::cout << "quic_s_payload == " << quic_s_payload == state << std::endl;
+            std::cout << "quic_s_payload == " << (quic_s_payload == state) << std::endl;
             std::cout << "quic_deser 2" << std::endl;  
             throw deser_err();
         }

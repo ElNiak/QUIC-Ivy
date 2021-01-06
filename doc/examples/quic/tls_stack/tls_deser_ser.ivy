@@ -72,13 +72,13 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_remote",1},
         {"initial_max_stream_data_uni",1},
         {"max_ack_delay",1},
-        {"initial_source_connection_id",8},
+        {"initial_source_connection_id",1},
         {"loss_bits",2}, //for picoquic TODO test
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
 
-    struct tls_name_struct tls_field_bytes[21] = {
+    struct tls_name_struct tls_field_bytes[20] = {
         {"version",2},
         {"client_version",2}, //0x0303 = 2 bytes
         {"server_version",2},
@@ -93,7 +93,6 @@ object tls_ser_server = {}
         {"content",1},
         {"initial_version",4},
         {"stream_pos_32",-1},
-        {"stream_pos_64",-1},
         {"stream_id_16",-1},
         {"seconds_16",-1},
         {"stream_pos_16",-1},
@@ -198,12 +197,7 @@ object tls_ser_server = {}
             else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
                 int length_field_bytes = tls_field_length_bytes_map[name];
                 long long bytes;
-                if(std::find(std::begin(quic_params), std::end(quic_params), name) != std::end(quic_params)) {
-                    getn(bytes,length_field_bytes);
-                } else {
-                    getn(bytes,length_field_bytes);
-                    //get_var_int(bytes);
-                }
+                getn(bytes,length_field_bytes);
                 fence.push_back(pos+bytes);
             }
             else if (fence.size() > 0)
