@@ -25,6 +25,26 @@ object tls_ser_server = {}
 
     struct tls_name_map : hash_space::hash_map<std::string,int> {};
 
+    std::string quic_params[17] = { 
+        "quic_transport_parameters",
+        "initial_max_stream_data_bidi_local",
+        "initial_max_data",
+        "initial_max_stream_id_bidi",
+        "max_idle_timeout",
+        "preferred_address",
+        "max_packet_size",
+        "stateless_reset_token",
+        "ack_delay_exponent",
+        "initial_max_stream_id_uni",
+        "disable_migration",
+        "active_connection_id_limit",
+        "initial_max_stream_data_bidi_remote",
+        "initial_max_stream_data_uni",
+        "max_ack_delay",
+        "initial_source_connection_id",
+        "loss_bits"
+    };
+
     struct tls_name_struct tls_field_length_bytes[28] = {
         {"fragment",2},
         {"content",2},
@@ -177,8 +197,11 @@ object tls_ser_server = {}
             else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
                 int length_field_bytes = tls_field_length_bytes_map[name];
                 long long bytes;
-                //getn(bytes,length_field_bytes);
-                get_var_int(bytes);
+                if(std::find(std::begin(quic_params), std::end(quic_params), name) != std::end(quic_params)) {
+                    getn(bytes,length_field_bytes);
+                } else {
+                    get_var_int(bytes);
+                }
                 fence.push_back(pos+bytes);
             }
             else if (fence.size() > 0)
