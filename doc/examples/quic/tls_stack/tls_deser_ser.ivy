@@ -72,7 +72,7 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_remote",1},
         {"initial_max_stream_data_uni",1},
         {"max_ack_delay",1},
-        {"initial_source_connection_id",1},
+        {"initial_source_connection_id",8},
         {"loss_bits",2}, //for picoquic TODO test
         {0,0}
     };
@@ -200,7 +200,8 @@ object tls_ser_server = {}
                 if(std::find(std::begin(quic_params), std::end(quic_params), name) != std::end(quic_params)) {
                     getn(bytes,length_field_bytes);
                 } else {
-                    get_var_int(bytes);
+                    getn(bytes,length_field_bytes);
+                    //get_var_int(bytes);
                 }
                 fence.push_back(pos+bytes);
             }
@@ -232,8 +233,8 @@ object tls_ser_server = {}
             long long tag;
             //std::cout << "tags" << tags << std::endl;
             std::cout << bytes << std::endl;  
-            //getn(tag,bytes);
-            get_var_int(tag);
+            getn(tag,bytes);
+            //get_var_int(tag);
             std::cout << tag << std::endl;  
             
             //std::cout << "tls_desert 1" << std::endl;  
