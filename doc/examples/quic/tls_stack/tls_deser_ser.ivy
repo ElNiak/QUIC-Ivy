@@ -78,7 +78,7 @@ object tls_ser_server = {}
     };
     tls_name_map tls_field_length_bytes_map;
 
-    struct tls_name_struct tls_field_bytes[20] = {
+    struct tls_name_struct tls_field_bytes[21] = {
         {"version",2},
         {"client_version",2}, //0x0303 = 2 bytes
         {"server_version",2},
@@ -93,6 +93,7 @@ object tls_ser_server = {}
         {"content",1},
         {"initial_version",4},
         {"stream_pos_32",-1},
+        {"stream_pos_64",-1},
         {"stream_id_16",-1},
         {"seconds_16",-1},
         {"stream_pos_16",-1},

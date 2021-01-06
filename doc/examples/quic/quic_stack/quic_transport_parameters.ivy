@@ -124,7 +124,7 @@ object active_connection_id_limit = {
 
 object initial_source_connection_id  = { # hcid picoquic ?
     variant this of transport_parameter = struct {  # tag = 15
-        stream_pos_32 : stream_pos
+        stream_pos_64 : stream_pos
     }
     instantiate trans_params_ops(this)
 }
