@@ -37,7 +37,7 @@ object tls_ser_server = {}
         {"compression_methods",1},
         {"extensions",2},
         {"quic_transport_parameters",2},
-        //{"transport_parameters",2},
+        //{"transport_parameters",2}, // Parameter length field
         {"initial_max_stream_data_bidi_local",1},
         {"initial_max_data",1},
         {"initial_max_stream_id_bidi",1},
@@ -51,8 +51,8 @@ object tls_ser_server = {}
         {"active_connection_id_limit",1},
         {"initial_max_stream_data_bidi_remote",1},
         {"initial_max_stream_data_uni",1},
-        {"initial_source_connection_id ",1},
         {"max_ack_delay",1},
+        {"initial_source_connection_id",1},
         {"loss_bits",2}, //for picoquic TODO test
         {0,0}
     };
@@ -106,13 +106,11 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_remote",0x06},
         {"initial_max_stream_data_uni",0x07},
         {"max_ack_delay",0xb}, 
-        {"initial_source_connection_id ",0x0f},
+        {"initial_source_connection_id",0x0f},
         {"loss_bits",0x1057}, //for picoquic
        {0,0}
     };
     tls_name_map tls_tags_map;
-
-    // TODO remove "parameter length" field of quic_parameter [xx]
 
     struct tls_name_struct tls_tag_bytes[19] = {
         {"tls.unknown_extension",2},
@@ -131,7 +129,7 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_remote",1},
         {"initial_max_stream_data_uni",1},
         {"max_ack_delay",1},
-        {"initial_source_connection_id ",1},
+        {"initial_source_connection_id",1},
         {"loss_bits",2}, //for picoquic 
         {0,0}
     };
@@ -163,6 +161,7 @@ object tls_ser_server = {}
         }
     
         virtual void open_field(const std::string &name) {
+            std::cout << "open_field: name : " << name << std::endl;  
             if (name == "random_bytes") { //28 bytes tls1.2, 32bytes tls1.3
                 fence.push_back(pos+28);
                 field_bytes = 1;
@@ -178,7 +177,8 @@ object tls_ser_server = {}
             else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
                 int length_field_bytes = tls_field_length_bytes_map[name];
                 long long bytes;
-                getn(bytes,length_field_bytes);
+                //getn(bytes,length_field_bytes);
+                get_var_int(bytes);
                 fence.push_back(pos+bytes);
             }
             else if (fence.size() > 0)
@@ -209,7 +209,8 @@ object tls_ser_server = {}
             long long tag;
             //std::cout << "tags" << tags << std::endl;
             std::cout << bytes << std::endl;  
-            getn(tag,bytes);
+            //getn(tag,bytes);
+            get_var_int(tag);
             std::cout << tag << std::endl;  
             
             //std::cout << "tls_desert 1" << std::endl;  
@@ -338,7 +339,7 @@ object tls_ser_server = {}
                 bytes = tls_tag_bytes_map[name];
             long long tag = tls_tags_map[name];
             if (tag !=-1) 
-                setn(tag,bytes);
+                setn(tag,bytes); // var int ?
             open_field(name);
         }
 
