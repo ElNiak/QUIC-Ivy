@@ -161,7 +161,7 @@ object tls_ser_server = {}
         }
     
         virtual void open_field(const std::string &name) {
-            std::cout << "open_field: name : " << name << std::endl;  
+            std::cout << "open_field1: name : " << name << std::endl;  
             if (name == "random_bytes") { //28 bytes tls1.2, 32bytes tls1.3
                 fence.push_back(pos+28);
                 field_bytes = 1;
@@ -287,7 +287,7 @@ object tls_ser_server = {}
           */
         virtual void open_field(const std::string &name) {
             int flb = 0;
-            std::cout << "open_field: name : " << name << std::endl;  
+            std::cout << "open_field2: name : " << name << std::endl;  
             //if(name != "transport_parameters") { //TODO ugly see how to
                 if (name == "random_bytes") {
                     field_bytes = 1;
@@ -299,21 +299,21 @@ object tls_ser_server = {}
                         res.resize(res.size() + flb);
                     }
                 }
-                else if (name != "transport_parameters" && tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
+                else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
                     flb = tls_field_length_bytes_map[name];
                     res.resize(res.size() + flb);
                 }
 
                 field_start.push_back(res.size());
                 field_length_bytes.push_back(flb);
-                if (name != "transport_parameters" && tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
+                if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
                     field_bytes = tls_field_bytes_map[name];
                 }
                 if (name == "tls.encrypted_extensions") {
                     in_encrypted_extensions = field_start.size();
                 }
             //}
-            std::cout << "open_field: res.size() : " << res.size() << std::endl;
+            std::cout << "open_field2: res.size() : " << res.size() << std::endl;
         }
         //TODO [xx]
         virtual void close_field() {
