@@ -83,9 +83,16 @@ module quic_endpoint(ep_id) = {
 instance client : quic_endpoint(endpoint_id.client)
 instance server : quic_endpoint(endpoint_id.server)
 
+var client_alt : ip.endpoint
+
+after init {
+    client_alt := endpoint_id_addr(endpoint_id.client_alt)
+}
+
 # a socket for the server
 
 var sock : net.socket
+var sock_alt : net.socket
 
 instance tls_extensions : vector(tls.extension)
 
@@ -219,11 +226,11 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        require pkt.hdr_long -> pkt.dcid = 5 & pkt.scid = 5;
-        require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
-        require cid_dst_to_src_set(pkt.hdr_cid);
+        #require pkt.long -> pkt.dcid = 5 & pkt.scid = 5;
+        #require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
+        #require cid_dst_to_src_set(pkt.hdr_cid);
     };
-    require pkt.hdr_long -> pkt.hdr_version = 0xff00001b
+    require pkt.long -> pkt.pversion = 0xff00001b
 }
     
 
@@ -244,12 +251,13 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 # send all of the available stream data. We never allow the fin bt to be set, since
 # we don't really have good rules for this yet.
 
-before frame.stream.handle(f:frame.stream,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:quic_packet_type) {
+before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
         require scid = the_cid;
-        require cid_dst_to_src_set(the_cid) & dcid = cid_dst_to_src(the_cid);
+        #before: require cid_dst_to_src_set(the_cid) & dcid = cid_dst_to_src(the_cid);
+        require connected(the_cid) & dcid = connected_to(the_cid);
         # TEMPORARY: only send on client-initiated streams
         require get_stream_role(f.id) = role.client & get_stream_kind(f.id) = bidir;
         require f.len & f.off; # TODO: when can f.off be false? We make len true here, since len=false implies last fram of packet.
@@ -268,7 +276,7 @@ before frame.stream.handle(f:frame.stream,src:ip.endpoint,dst:ip.endpoint,scid:c
 # handshake to 1rtt. This is because we are prohibiting retransmissions, so an early-arriving handshake
 # frame would be dropped because keys are not available and then permanently lost [1]. (nb:chris: other before)
 
-before frame.crypto.handle(f:frame.crypto,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:quic_packet_type) {
+before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -285,7 +293,7 @@ before frame.crypto.handle(f:frame.crypto,src:ip.endpoint,dst:ip.endpoint,scid:c
 
 # Generate ack frames only for the client.
 
-before frame.ack.handle(f:frame.ack,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -296,7 +304,7 @@ before frame.ack.handle(f:frame.ack,src:ip.endpoint,dst:ip.endpoint,scid:cid,dci
 
 # Generate rst_stream frames only for the client.
 
-before frame.rst_stream.handle(f:frame.rst_stream,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -307,7 +315,7 @@ before frame.rst_stream.handle(f:frame.rst_stream,src:ip.endpoint,dst:ip.endpoin
 
 # Generate stop_sending frames only for the client.
 
-before frame.stop_sending.handle(f:frame.stop_sending,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -318,7 +326,7 @@ before frame.stop_sending.handle(f:frame.stop_sending,src:ip.endpoint,dst:ip.end
 
 # Generate max_streams frames only for the client.
 
-before frame.max_streams.handle(f:frame.max_streams,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -328,7 +336,7 @@ before frame.max_streams.handle(f:frame.max_streams,src:ip.endpoint,dst:ip.endpo
 
 # Generate connection_close frames only for the client.
 
-before frame.connection_close.handle(f:frame.connection_close,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -340,7 +348,7 @@ before frame.connection_close.handle(f:frame.connection_close,src:ip.endpoint,ds
 
 # Generate connection_close frames only for the client.
 
-before frame.application_close.handle(f:frame.application_close,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -350,7 +358,7 @@ before frame.application_close.handle(f:frame.application_close,src:ip.endpoint,
 
 # Generate max_stream_data frames only for the client.
 
-before frame.max_stream_data.handle(f:frame.max_stream_data,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -361,7 +369,7 @@ before frame.max_stream_data.handle(f:frame.max_stream_data,src:ip.endpoint,dst:
 
 # Generate stream_data_blocked frames only for the client.
 
-before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -372,7 +380,7 @@ before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,src:ip.endpo
 
 # Generate max_data frames only for the client.
 
-before frame.max_data.handle(f:frame.max_data,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid) {
+before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -401,7 +409,8 @@ around client_send_event {
     require stream_seen(dcid,s); # TODO: wait until client request is finished?
     require src = server.ep;
     require dst = client.ep;
-    require cid_dst_to_src_set(the_cid) & dcid = cid_dst_to_src(the_cid);
+    #require cid_dst_to_src_set(the_cid) & dcid = cid_dst_to_src(the_cid);
+    require connected(the_cid) & dcid = connected_to(the_cid);
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);
     require stream_length(dcid,s) < http_response.end;
     ...
