@@ -560,12 +560,6 @@ object frame = {
 #   value of `max_stream_data_val` for the given destination and cid, if
 #   it has been set [2].
 #
-#chris
-# - The upper bound of the stream frame may not exceed the current
-#   value of `max_data_val` for the given destination and cid, if
-#   it has been set [14].
-#chris
-#
 # - If the stream is finished, the the frame offset plus length must
 #   not exceed the stream length [5].
 #
@@ -614,7 +608,7 @@ object frame = {
 
             var offset := f.offset if f.off else 0;
 	        require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
-#            call show_offset_length(offset,f.length);
+            call show_offset_length(offset,f.length);
 	        require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
 
             require f.fin <-> (stream_app_data_finished(dcid,f.id)
@@ -639,9 +633,6 @@ object frame = {
             if stream_length(dcid,f.id) < length {
                 conn_total_data(dcid) := conn_total_data(dcid) +
                                              (length - stream_length(dcid,f.id));  # [12]
-                #chris
-                require conn_total_data(dcid) < max_data_val(scid); # [13]
-                #chris
                 stream_length(dcid,f.id) := length
             };
             if f.fin {
@@ -1169,7 +1160,7 @@ object frame = { ...
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); #Will change with implementing TODO
             #chris
-            require f.length >= 1 & f.length <= 20; #[1]
+            require f.length >= 0x1 & f.length <= 0x14; #[1]
             require f.retire_prior_to <= f.seq_num; #[4]
             require f.seq_num < max_rtp_num(scid) -> send_retire_cid(dcid); #[6] 
             #chris
