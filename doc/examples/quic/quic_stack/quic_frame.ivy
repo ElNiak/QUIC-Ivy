@@ -1160,7 +1160,7 @@ object frame = { ...
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); #Will change with implementing TODO
             #chris
-            require f.length >= 0x1 & f.length <= 0x14; #[1]
+            #require f.length >= 0x1 & f.length <= 0x14; #[1]
             require f.retire_prior_to <= f.seq_num; #[4]
             require f.seq_num < max_rtp_num(scid) -> send_retire_cid(dcid); #[6] 
             #chris
