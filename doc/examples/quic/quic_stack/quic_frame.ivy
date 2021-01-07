@@ -608,7 +608,7 @@ object frame = {
 
             var offset := f.offset if f.off else 0;
 	        require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
-            call show_offset_length(offset,f.length);
+            #call show_offset_length(offset,f.length); #todo import 
 	        require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
 
             require f.fin <-> (stream_app_data_finished(dcid,f.id)

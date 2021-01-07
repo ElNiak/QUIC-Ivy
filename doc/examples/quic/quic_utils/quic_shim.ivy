@@ -209,7 +209,7 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 #	idx := idx.next
 #    };
 #    call botan.lower.recv(tls_id,data)
-}
+#}
 
 # TLS client initial request shim
 # ===============================
@@ -228,7 +228,7 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
     var ikm := cid_to_bytes(nonce,8);
     var salt : stream_data := stream_data.empty;
     #0xc3eef712c72ebb5a11a7d2432bb46365bef9f502
-    
+
     salt := salt.append(0xc3);
     salt := salt.append(0xee);
     salt := salt.append(0xf7);
