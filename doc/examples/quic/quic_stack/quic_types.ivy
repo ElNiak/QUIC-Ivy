@@ -124,7 +124,7 @@ interpret reset_token -> bv[31]
 # Packet type, also determines encryption keys
 
 object quic_packet_type = {
-    type this = {initial,zero_rtt,handshake,one_rtt}
+    type this = {initial,zero_rtt,handshake,one_rtt, retry, version_negociation}
 
     # The `next` action computes the next packet type
     # according to the normal sequence.
