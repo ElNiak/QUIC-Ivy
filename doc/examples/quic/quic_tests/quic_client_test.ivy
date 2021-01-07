@@ -74,7 +74,7 @@ module quic_endpoint(ep_id) = {
     var enc_level : quic_packet_type
     after init {
 	ep := endpoint_id_addr(ep_id);
-        enc_level := encryption_level.initial;
+        enc_level := quic_packet_type.initial;
     }
 }
     
@@ -244,7 +244,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 # send all of the available stream data. We never allow the fin bt to be set, since
 # we don't really have good rules for this yet.
 
-before frame.stream.handle(f:frame.stream,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:encryption_level) {
+before frame.stream.handle(f:frame.stream,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -268,7 +268,7 @@ before frame.stream.handle(f:frame.stream,src:ip.endpoint,dst:ip.endpoint,scid:c
 # handshake to 1rtt. This is because we are prohibiting retransmissions, so an early-arriving handshake
 # frame would be dropped because keys are not available and then permanently lost [1]. (nb:chris: other before)
 
-before frame.crypto.handle(f:frame.crypto,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:encryption_level) {
+before frame.crypto.handle(f:frame.crypto,src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
         require client.ep.addr ~= 0;
         require src = server.ep & dst = client.ep; 
@@ -277,9 +277,9 @@ before frame.crypto.handle(f:frame.crypto,src:ip.endpoint,dst:ip.endpoint,scid:c
 #        call show_level_offset_length(e,crypto_length(scid,e),crypto_data_end(src,scid,e))
         require f.offset = crypto_length(scid,e);
         require f.length = (crypto_data_end(scid,e)) - f.offset;
-        require e = encryption_level.handshake -> crypto_length(scid,encryption_level.initial) = crypto_data_end(scid,encryption_level.initial);  # [1]
-        require e = encryption_level.one_rtt -> crypto_length(scid,encryption_level.initial) = crypto_data_end(scid,encryption_level.initial);  # [1]
-        require e = encryption_level.one_rtt -> crypto_length(scid,encryption_level.handshake) = crypto_data_end(scid,encryption_level.handshake);  # [1]
+        require e = quic_packet_type.handshake -> crypto_length(scid,quic_packet_type.initial) = crypto_data_end(scid,quic_packet_type.initial);  # [1]
+        require e = quic_packet_type.one_rtt -> crypto_length(scid,quic_packet_type.initial) = crypto_data_end(scid,quic_packet_type.initial);  # [1]
+        require e = quic_packet_type.one_rtt -> crypto_length(scid,quic_packet_type.handshake) = crypto_data_end(scid,quic_packet_type.handshake);  # [1]
     }
 }
 
@@ -453,7 +453,7 @@ attribute stream_pos.cardinality = 4
 #attribute ip.port.override = bv[1]
 
 action show_tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data:stream_data,
-                           pos:stream_pos, e:encryption_level) = {}
+                           pos:stream_pos, e:quic_packet_type) = {}
 
 import show_tls_send_event
 
@@ -463,7 +463,7 @@ import show_tls_send_event
 action show_packet(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
 import show_packet
 
-import action show_level_offset_length(e:encryption_level,offset:stream_pos,length:stream_pos)
+import action show_level_offset_length(e:quic_packet_type,offset:stream_pos,length:stream_pos)
 
 import action clear_packet(rnum:pkt_num,pkt:stream_data)
 import action cipher_packet(pkt:stream_data)
