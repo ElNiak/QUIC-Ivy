@@ -493,7 +493,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             sz = 0;
         }
         else sz = pn_enc->algo->iv_size;
-
+        std::cerr << "sz == " << sz << "\n";
         >>>
     }
 

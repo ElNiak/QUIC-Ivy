@@ -221,7 +221,7 @@ action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
 # TODO: shouldn't be needed.
 
 action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
-    tls_id := client.tls_id
+    tls_id := client.tls_id;
 }
 
 #

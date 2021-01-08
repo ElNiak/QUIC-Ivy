@@ -70,12 +70,7 @@ after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating { # src = server.ep ?? for client
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
-        if host = endpoint_id.server {
-            var tls_id := server.tls_id; #should use "dst_tls_id"
-        } else {
-            var tls_id := client.tls_id; #should use "dst_tls_id"
-        };
-        #var tls_id := dst_tls_id(dst);
+        var tls_id := dst_tls_id(dst);
         var ppkt := prot.encrypt(tls_id,rnum,spkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
@@ -101,11 +96,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
     var idx := pkts.begin;
     while idx < pkts.end {
         var ppkt := pkts.value(idx);
-        if host = endpoint_id.server {
-            var tls_id := server.tls_id; #should use "dst_tls_id"
-        } else {
-            var tls_id := client.tls_id; #should use "dst_tls_id"
-        };
+        var tls_id := dst_tls_id(dst);
         if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 {
             call tls_client_initial_response(src,dst,ppkt)
         };
@@ -120,9 +111,8 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0  { # & ~cid_dst_to_src_set(the_cid)
                 call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
             }
-        }
-        else {
-            call undecryptable_packet_event(src,dst,ppkt);
+        } else {
+            call undecryptable_packet_event(src,dst,ppkt); #TODO not working for client test
         };
         idx := idx.next;
     }
@@ -270,6 +260,19 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
     call tls_api.upper.set_initial_keys(0,salt,ikm);
 }
 
+# TLS client initial response shim TODO
+# ===============================
+#
+
+# This event corresponds to the client creating a new connection. We
+# set up the initial keys based on the nonce cid, which is used as
+# initial key material. Note, the "salt" is specified in the QUIC-TLS
+# document.
+#
+# TODO: this assumes the cid length is 8 bytes. Also, the ikm and salt
+# should really be computed in the protection layer and passed to
+# TLS here in the shim.
+
 var initial_keys_set : bool
 
 after init {
@@ -285,7 +288,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         dcil := dcil + 3 if dcil ~= 0 else 0;
         var ikm := spkt.segment(6,6+dcil);
         var salt : stream_data := stream_data.empty;
-
+        
         salt := salt.append(0xc3);
         salt := salt.append(0xee);
         salt := salt.append(0xf7);
