@@ -121,7 +121,7 @@ module quic_endpoint(ep_id) = {
     var tls_id : tls_api.id
     var enc_level : quic_packet_type
     after init {
-	ep := endpoint_id_addr(ep_id);
+        ep := endpoint_id_addr(ep_id);
         enc_level := quic_packet_type.initial;
     }
 }

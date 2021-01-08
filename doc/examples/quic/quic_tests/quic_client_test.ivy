@@ -73,7 +73,7 @@ module quic_endpoint(ep_id) = {
     var tls_id : tls_api.id
     var enc_level : quic_packet_type
     after init {
-	ep := endpoint_id_addr(ep_id);
+	    ep := endpoint_id_addr(ep_id);
         enc_level := quic_packet_type.initial;
     }
 }
@@ -92,7 +92,6 @@ after init {
 # a socket for the server
 
 var sock : net.socket
-var sock_alt : net.socket
 
 instance tls_extensions : vector(tls.extension)
 
@@ -124,17 +123,13 @@ action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
 # Get the IP endpoint associated to a host id and socket number.
 
 action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
-    src := client.ep if host = endpoint_id.client else client_alt
+    src := server.ep;
 }
     
 # Get the socket number associated to an IP endpoint.
 
 action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
-    if src = client.ep {
-        socket := sock;
-    } else if src = client_alt {
-        socket := sock_alt;
-    } 
+    socket := sock;
 }
 
 # Get the source IP endpoint associated to a TLS instance
@@ -161,14 +156,14 @@ action tls_id_to_cid(tls_id:tls_api.id) returns (scid:cid) = {
 # TODO: shouldn't be needed.
 
 action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
-    res := dst = client.ep | dst = client_alt
+    res := dst = server.ep | dst = client_alt
 }
 
 # Returns the TLS instance associated to a destination IP endppoint.
 # TODO: shouldn't be needed.
 
 action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
-    tls_id := client.tls_id
+    tls_id := server.tls_id
 }
 
 #
@@ -188,6 +183,13 @@ instance http_response_file : binary_input_file(stream_data,cid)
 after init {
     http_response := http_response_file.read;
 }
+
+# This selects the client's nonce CID
+
+# after init {
+#     nonce_cid(the_cid) := the_cid;
+# }
+
 
 # HACK: we fix the initial client transport parameters here
 
