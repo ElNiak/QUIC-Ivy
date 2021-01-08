@@ -70,7 +70,8 @@ after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating { # src = server.ep ?? for client
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
-        var ppkt := prot.encrypt(client.tls_id,rnum,spkt);
+        var tls_id := dst_tls_id(dst);
+        var ppkt := prot.encrypt(tls_id,rnum,spkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
         call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
@@ -95,8 +96,12 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
     var idx := pkts.begin;
     while idx < pkts.end {
         var ppkt := pkts.value(idx);
+        var tls_id := dst_tls_id(dst);
+        if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 {
+            call tls_client_initial_response(src,dst,ppkt)
+        };
         var rnum := reference_pkt_num(ppkt);
-        var res := prot.decrypt(client.tls_id,rnum,ppkt);
+        var res := prot.decrypt(tls_id,rnum,ppkt);
         if res.ok {
             var pkt := pkt_serdes.from_bytes(res.data);
             pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data,0));
@@ -251,6 +256,48 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
     salt := salt.append(0x02);
 
     call tls_api.upper.set_initial_keys(0,salt,ikm);
+}
+
+var initial_keys_set : bool
+
+after init {
+    initial_keys_set := false;
+}
+
+after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
+    client.ep := src; # TODO: migration?
+    if ~initial_keys_set {
+        #TODO check value
+        var lens := spkt.value(5);
+        var dcil : stream_pos := bfe[4][7](lens);
+        dcil := dcil + 3 if dcil ~= 0 else 0;
+        var ikm := spkt.segment(6,6+dcil);
+        var salt : stream_data := stream_data.empty;
+
+        salt := salt.append(0xc3);
+        salt := salt.append(0xee);
+        salt := salt.append(0xf7);
+        salt := salt.append(0x12);
+        salt := salt.append(0xc7);
+        salt := salt.append(0x2e);
+        salt := salt.append(0xbb);
+        salt := salt.append(0x5a);
+        salt := salt.append(0x11);
+        salt := salt.append(0xa7);
+        salt := salt.append(0xd2);
+        salt := salt.append(0x43);
+        salt := salt.append(0x2b);
+        salt := salt.append(0xb4);
+        salt := salt.append(0x63);
+        salt := salt.append(0x65);
+        salt := salt.append(0xbe);
+        salt := salt.append(0xf9);
+        salt := salt.append(0xf5);
+        salt := salt.append(0x02);
+
+        call tls_api.upper.set_initial_keys(0,salt,ikm);
+        initial_keys_set := true;
+    }
 }
 
 
