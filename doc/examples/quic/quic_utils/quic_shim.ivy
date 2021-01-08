@@ -108,6 +108,9 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call recv_packet(src,dst,pkt);
             call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
             call packet_event(src,dst,pkt);       # also an inferred event
+            if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0  { # & ~cid_dst_to_src_set(the_cid)
+                call open_connection(dst,src,the_cid,pkt.hdr_cid);  # [1]
+            }
         }
         else {
             call undecryptable_packet_event(src,dst,ppkt);
@@ -264,7 +267,7 @@ after init {
     initial_keys_set := false;
 }
 
-after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
+after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
     client.ep := src; # TODO: migration?
     if ~initial_keys_set {
         #TODO check value
