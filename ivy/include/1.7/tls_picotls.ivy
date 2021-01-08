@@ -551,13 +551,16 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         std::vector<uint8_t> bytes;
         bytes.resize(ad.size());
         std::copy(ad.begin(),ad.end(),bytes.begin());
+
+        std::cerr << "aead == " << aead << "\n";
+
         std::vector<uint8_t> input, output;
         input.resize(cipher.size());
         std::copy(cipher.begin(),cipher.end(),input.begin());
         output.resize(cipher.size() - checksum_length);
         size_t decrypted = ptls_aead_decrypt(aead,
-          &output[0], &input[0], input.size(), seq,
-          &bytes[0], bytes.size());
+                                            &output[0], &input[0], input.size(), seq,
+                                            &bytes[0], bytes.size());
         res.ok = decrypted < input.size();
         if (res.ok) {
             res.data.resize(output.size());

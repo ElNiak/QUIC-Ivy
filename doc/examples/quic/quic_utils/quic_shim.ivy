@@ -284,8 +284,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     if ~initial_keys_set {
         #TODO check value
         var lens := spkt.value(5);
-        var dcil : stream_pos := bfe[4][7](lens);
-        dcil := dcil + 3 if dcil ~= 0 else 0;
+        var dcil : stream_pos := bfe[0][7](spkt.value(5));
         var ikm := spkt.segment(6,6+dcil);
         var salt : stream_data := stream_data.empty;
         

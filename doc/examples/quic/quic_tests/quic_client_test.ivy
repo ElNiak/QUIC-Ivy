@@ -53,7 +53,7 @@ parameter initial_max_streams_bidi : stream_id = 2
 # can model migration.
 
 object endpoint_id = {
-    type this = {client, client_alt, server}
+    type this = {client, server}
 }
 
 # Map test endpoint ids to the ip endpoints
@@ -83,13 +83,7 @@ module quic_endpoint(ep_id) = {
 instance client : quic_endpoint(endpoint_id.client)
 instance server : quic_endpoint(endpoint_id.server)
 
-# An ip endpoint for the client to migrate to.
-
-var client_alt : ip.endpoint
-
-after init {
-    client_alt := endpoint_id_addr(endpoint_id.client_alt)
-}
+# An ip endpoint for the client to migrate to. TODO
 
 # a socket for the server
 
