@@ -139,6 +139,14 @@ object loss_bits = {
     instantiate trans_params_ops(this)
 }
 
+object unknown_transport_parameter = {
+    variant this of transport_parameter = struct {  # tag = x
+        data_8 : stream_data
+    }
+    instantiate trans_params_ops(this)
+}
+
+
 object quic_transport_parameters = {
     variant this of tls.extension = struct {
 #        initial_version : version,  # holds negotiated version in encrypted extensions
