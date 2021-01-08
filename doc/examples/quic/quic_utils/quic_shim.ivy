@@ -70,7 +70,12 @@ after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating { # src = server.ep ?? for client
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
-        var tls_id := dst_tls_id(dst);
+        if host = endpoint_id.server {
+            var tls_id := server.tls_id; #should use "dst_tls_id"
+        } else {
+            var tls_id := client.tls_id; #should use "dst_tls_id"
+        };
+        #var tls_id := dst_tls_id(dst);
         var ppkt := prot.encrypt(tls_id,rnum,spkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
@@ -96,7 +101,11 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
     var idx := pkts.begin;
     while idx < pkts.end {
         var ppkt := pkts.value(idx);
-        var tls_id := dst_tls_id(dst);
+        if host = endpoint_id.server {
+            var tls_id := server.tls_id; #should use "dst_tls_id"
+        } else {
+            var tls_id := client.tls_id; #should use "dst_tls_id"
+        };
         if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 {
             call tls_client_initial_response(src,dst,ppkt)
         };
