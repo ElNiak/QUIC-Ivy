@@ -98,6 +98,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var ppkt := pkts.value(idx);
         var tls_id := dst_tls_id(dst);
         if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 {
+            # for client test
             call tls_client_initial_response(src,dst,ppkt)
         };
         var rnum := reference_pkt_num(ppkt);
@@ -109,6 +110,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
             call packet_event(src,dst,pkt);       # also an inferred event
             if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0  { # & ~cid_dst_to_src_set(the_cid)
+                # for client test
                 call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
             }
         } else {
@@ -260,14 +262,14 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
     call tls_api.upper.set_initial_keys(0,salt,ikm);
 }
 
-# TLS client initial response shim TODO
-# ===============================
+# TLS client initial response shim
+# ================================
 #
 
-# This event corresponds to the client creating a new connection. We
-# set up the initial keys based on the nonce cid, which is used as
-# initial key material. Note, the "salt" is specified in the QUIC-TLS
-# document.
+# This event corresponds to the server responding to client
+# creating a new connection. We set up the initial keys based on 
+# the destination cid, which is used as initial key material. 
+# Note, the "salt" is specified in the QUIC-TLS document.
 #
 # TODO: this assumes the cid length is 8 bytes. Also, the ikm and salt
 # should really be computed in the protection layer and passed to

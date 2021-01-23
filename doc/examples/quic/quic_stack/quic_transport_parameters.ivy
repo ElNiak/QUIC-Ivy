@@ -139,9 +139,24 @@ object loss_bits = {
     instantiate trans_params_ops(this)
 }
 
+object grease_quic_bit = {
+    variant this of transport_parameter = struct {  # tag = 0x2ab2
+        stream_pos_32 : stream_pos
+    }
+    instantiate trans_params_ops(this)
+}
+
+object enable_time_stamp = {
+    variant this of transport_parameter = struct {  # tag = 0x7158
+        stream_pos_32 : stream_pos
+    }
+    instantiate trans_params_ops(this)
+}
+
+# check if good
 object unknown_transport_parameter = {
     variant this of transport_parameter = struct {  # tag = x
-        data_8 : stream_data
+        content : stream_data
     }
     instantiate trans_params_ops(this)
 }

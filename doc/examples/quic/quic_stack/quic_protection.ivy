@@ -143,17 +143,28 @@ module quic_protection(tls_id,tls) = {
 
     # This returns the encryption level of a protected or unprotected
     # packet.
-
+    # TODO check
     action get_level(pkt:stream_data) returns (level:tls.level) = {
         if bvand(pkt.value(0),0x80) ~= 0 {
             var hdr_type := bvand(pkt.value(0),0x30);
             if hdr_type = 0x00 {
+                #INITIAL
                 level := 0;
-            } else  { 
-                # if hdr_type = 0x20, TODO: other packet types
+            } 
+            else if hdr_type = 0x10 {
+                #0RTT
+                level := 1;
+            }
+            else if hdr_type = 0x20 {
+                #HANDSHAKE
                 level := 2;
             }
+            else  { 
+                #1RTT
+                level := 3;
+            }
         } else {
+            #1RTT
             level := 3;
         }
     }
@@ -174,6 +185,7 @@ module quic_protection(tls_id,tls) = {
             h.scid := bytes_to_cid(pkt.segment(7+dcil,7+dcil+scil));
             var pos := 7 + dcil + scil;
             if bvand(h.hdr_type,0x30) = 0x00 {
+                #Retry packet
                 var len := get_var_int_len(pkt,pos);
                 var retry_token_len := get_var_int(pkt,pos,len);
                 pos := pos + len + retry_token_len;
