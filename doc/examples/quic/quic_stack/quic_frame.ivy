@@ -437,7 +437,7 @@ relation queued_ack_eliciting(C:cid)
 
 #chris
 function queued_level_type(C:cid,T:quic_packet_type) : frame.arr
-relation send_retire_cid(C:cid) # ?? S:stream_id
+relation send_retire_cid(C:cid)       # ?? S:stream_id
 function max_rtp_num(C:cid) : cid_seq
 #chris
 
@@ -818,7 +818,7 @@ object frame = { ...
             var kind := bidir;
             if ~ (max_stream_set(dcid,kind) & f.id < max_stream(dcid,kind)) { #[5]
                 max_stream_set(dcid,kind) := true;
-                max_stream(dcid,kind) := f.id; #  [1]
+                max_stream(dcid,kind) := f.id;     # [1]
             }
 	        ...
             call enqueue_frame(scid,f,e,false);

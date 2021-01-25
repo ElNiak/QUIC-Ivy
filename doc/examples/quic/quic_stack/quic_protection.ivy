@@ -208,9 +208,7 @@ module quic_protection(tls_id,tls) = {
     
     action correct_pnum(last:pkt_num, pnum:pkt_num, pnum_len:stream_pos)
     returns (pnum:pkt_num) = {
-
         # TODO: for now we assume always 30-bit packet number format
-        
         var diff : pkt_num := bfe[0][29](pnum - last);
         pnum := last + diff;
         if diff >= 0x20000000 {

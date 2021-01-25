@@ -279,6 +279,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if cid_mapped(dcid) {
 	    dcid := cid_to_aid(dcid);
     };
+    
     # The destination cid must represent an existing connection,
     # except in the case of a client initial packet, when the
     # destination cid may be the nonce cid chosen by the client for
