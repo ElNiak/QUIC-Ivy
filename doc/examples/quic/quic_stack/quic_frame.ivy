@@ -430,7 +430,7 @@ relation queued_non_ack(C:cid)
 relation queued_close(C:cid)
 function num_queued_frames(C:cid) : frame.idx
 relation path_challenge_pending(C:cid,D:stream_data)
-relation stream_data_offset(O:stream_pos,C:cid,D:stream_data) [JF]
+relation stream_data_offset(O:stream_pos,C:cid,D:stream_data) #[JF]
 function conn_total_data(C:cid) : stream_pos
 #Hamid
 relation queued_ack_eliciting(C:cid)
@@ -446,6 +446,7 @@ after init {
     stream_seen(C,S) := false;
     stream_length(C,S) := 0;
     max_stream_data_set(C,S) := false;
+    stream_data_offset(O,C,D) := false;
     max_data_set(C) := false;
     stream_finished(C,S) := false;
     stream_reset(C,S) := false;
@@ -629,7 +630,7 @@ object frame = {
 
             require ~stream_data_offset(offset,dcid,f.data) #[JF]
 	        ...
-            stream_data_offset(offset,dcid,f.data) := true;
+            #stream_data_offset(offset,dcid,f.data) := true;
             var offset := f.offset if f.off else 0;
             var length := offset + f.length;
             # require stream_finished(dcid,f.id) -> length <= stream_length(dcid,f.id);  # [5]
