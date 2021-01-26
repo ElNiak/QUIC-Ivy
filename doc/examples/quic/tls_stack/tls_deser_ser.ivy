@@ -48,7 +48,7 @@ object tls_ser_server = {}
         "loss_bits"
     };
 
-    struct tls_name_struct tls_field_length_bytes[30] = {
+    struct tls_name_struct tls_field_length_bytes[31] = {
         {"fragment",2},
         {"content",2},
         {"tls.client_hello",3},
@@ -79,7 +79,7 @@ object tls_ser_server = {}
         {"loss_bits",2}, //for picoquic TODO test
         {"grease_quic_bit",0}, //for picoquic
         {"enable_time_stamp",1}, //for picoquic TODO test
-        //{"unknown_transport_parameter",2},
+        {"unknown_transport_parameter",2},
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
@@ -142,7 +142,7 @@ object tls_ser_server = {}
     };
     tls_name_map tls_tags_map;
 
-    struct tls_name_struct tls_tag_bytes[21] = {
+    struct tls_name_struct tls_tag_bytes[22] = {
         {"tls.unknown_extension",2},
         {"quic_transport_parameters",2},
         {"initial_max_stream_data_bidi_local",1},
@@ -163,7 +163,7 @@ object tls_ser_server = {}
         {"loss_bits",2}, //for picoquic 
         {"grease_quic_bit",2}, //for picoquic
         {"enable_time_stamp",2}, //for picoquic 
-        //{"unknown_transport_parameter",2},
+        {"unknown_transport_parameter",2},
         {0,0}
     };
     tls_name_map tls_tag_bytes_map;
@@ -212,15 +212,17 @@ object tls_ser_server = {}
                 long long bytes;
                 getn(bytes,length_field_bytes);
                 fence.push_back(pos+bytes);
-            }
-            else if (fence.size() > 0)
+            } //TODO change transport parameter var name (not ..._8)
+            else if (fence.size() > 0) {
                 fence.push_back(fence.back());
+            } 
             if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
                 field_bytes = tls_field_bytes_map[name];
             }
             if (name == "tls.encrypted_extensions") {
                 in_encrypted_extensions = fence.size();
             }
+	    std::cout << std::endl; 
         }
 
         virtual void close_field() {
@@ -239,9 +241,9 @@ object tls_ser_server = {}
                 bytes = tls_tag_bytes_map[tags[0]];
             }
             long long tag;
-            long long tag_unknown;
+        
             //std::cout << "tags" << tags << std::endl;
-            std::cout << bytes << std::endl;  
+            std::cout << "bytes" << bytes << std::endl;  
             getn(tag,bytes);
             //get_var_int(tag);
             std::cout << tag << std::endl;  
@@ -251,7 +253,7 @@ object tls_ser_server = {}
                 if (tag == tls_tags_map[tags[i]]) {
                    open_field(tags[i]);
                    std::cout << "tls_desert  << " << tags[i] << std::endl;  
-                   std::cout << std::endl;  
+                   //std::cout << std::endl;  
                    return i;
                 }
             }
@@ -260,17 +262,28 @@ object tls_ser_server = {}
                     pos -= bytes; // leave the unknown tag to parse again
                     open_field(tags[i]);
                     std::cout << tags[i] << std::endl;  
-                    std::cout << std::endl;  
+                    //std::cout << std::endl;  
                     return i;
                 }
             }
             for (int i = 0; i < tags.size(); i++) {
                 if (-2 == tls_tags_map[tags[i]]) {
-                    bytes = 2;
                     pos -= bytes; // leave the unknown tag to parse again
+		    long long tag_unknown;
+		    getn(tag_unknown,2);
+		    long long tag_concat = tag_unknown-16384;
+                    if(tag_concat % 31 == 27)
+			std::cout <<  "found " << std::endl;  
+		    pos -= bytes; 
+		    std::cout <<  "tag 1 " << tag << std::endl; 
+		    std::cout <<  "tag 2 " << tag_unknown << std::endl; 
+		    std::cout <<  "tag_concat " << tag_concat << std::endl; 
+                    //bytes = 2;
+	            tls_field_length_bytes_map[tags[i]] = 4;
+		    std::cout <<  "tls_field_length_bytes_map[tags[i]] " << tls_field_length_bytes_map[tags[i]] << std::endl; 
                     open_field(tags[i]);
-                    std::cout << tags[i] << std::endl;  
-                    std::cout << std::endl;  
+                    std::cout <<  "tags_i[2] " << tags[i] << std::endl;  
+                    //std::cout << std::endl;  
                     return i;
                 }
             }
