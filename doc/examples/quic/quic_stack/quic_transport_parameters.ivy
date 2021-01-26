@@ -139,6 +139,13 @@ object loss_bits = {
     instantiate trans_params_ops(this)
 }
 
+object min_ack_delay = {
+    variant this of transport_parameter = struct {  # tag = 0xff02de1a
+        exponent_8 : microsecs
+    }
+    instantiate trans_params_ops(this)
+}
+
 object grease_quic_bit = {
     variant this of transport_parameter = struct {  # tag = 0x2ab2
         stream_pos_32 : stream_pos

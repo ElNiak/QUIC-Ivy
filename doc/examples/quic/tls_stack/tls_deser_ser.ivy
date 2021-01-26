@@ -77,6 +77,7 @@ object tls_ser_server = {}
         {"max_ack_delay",1},
         {"initial_source_connection_id",1},
         {"loss_bits",2}, //for picoquic TODO test
+        {"min_ack_delay",1},
         {"grease_quic_bit",0}, //for picoquic
         {"enable_time_stamp",1}, //for picoquic TODO test
         {"unknown_transport_parameter",2},
@@ -135,6 +136,7 @@ object tls_ser_server = {}
         {"max_ack_delay",0xb}, 
         {"initial_source_connection_id",0x0f},
         {"loss_bits",0x1057}, //for picoquic
+        {"min_ack_delay",0xff02de1a},
         {"grease_quic_bit",0x2ab2}, //for picoquic
         {"enable_time_stamp",0x7158}, //for picoquic
         {"unknown_transport_parameter",-2},
@@ -161,6 +163,7 @@ object tls_ser_server = {}
         {"max_ack_delay",1},
         {"initial_source_connection_id",1},
         {"loss_bits",2}, //for picoquic 
+        {"min_ack_delay",1},
         {"grease_quic_bit",2}, //for picoquic
         {"enable_time_stamp",2}, //for picoquic 
         {"unknown_transport_parameter",2},
