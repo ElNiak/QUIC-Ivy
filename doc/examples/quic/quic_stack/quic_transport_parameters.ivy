@@ -141,7 +141,8 @@ object loss_bits = {
 
 object min_ack_delay = {
     variant this of transport_parameter = struct {  # tag = 0xff02de1a
-        exponent_8 : microsecs
+        #stream_pos_32 : stream_pos
+	stream_id_16 : stream_id
     }
     instantiate trans_params_ops(this)
 }
