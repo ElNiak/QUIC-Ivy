@@ -250,24 +250,32 @@ object tls_ser_server = {}
             getn(tag,bytes);
 
 
-	    u_int tag_int = (u_int) tag;
-	    int first = (tag_int >> 6) & ((1 << 2) -1);
-	    //int first =  tag_int & ((1 << 0) -1);
- 	    if(first == 0)
-		first = 1;
-	    else if(first == 1)
-		first = 2;
+            u_int tag_int = (u_int) tag;
+            int first = (tag_int >> 6) & ((1 << 2) -1);
+            //int first =  tag_int & ((1 << 0) -1);
+            if(first == 0)
+                first = 1;
+            else if(first == 1)
+                first = 2;
             else if(first == 2)
-		first = 4;
-	    else if(first == 3)
-		first = 8;
-	    std::cout <<  "first size: " <<  first << std::endl; 
+                first = 4;
+            else if(first == 3)
+                first = 8;
+            std::cout <<  "first size: " <<  first << std::endl; 
+            long long tag_final;
+            if(bytes != first) {
+                bytes = first;
+                getn(tag_final,bytes);
+            } else {
+                tag_final = tag;
+            }
+
             //get_var_int(tag);
-            std::cout << tag << std::endl;  
+            std::cout << tag_final << std::endl;  
             
             //std::cout << "tls_desert 1" << std::endl;  
             for (int i = 0; i < tags.size(); i++) {
-                if (tag == tls_tags_map[tags[i]]) {
+                if (tag_final == tls_tags_map[tags[i]]) {
                    open_field(tags[i]);
                    std::cout << "tls_desert  << " << tags[i] << std::endl;  
                    //std::cout << std::endl;  
@@ -286,36 +294,35 @@ object tls_ser_server = {}
             for (int i = 0; i < tags.size(); i++) {
                 if (-2 == tls_tags_map[tags[i]]) {
                     pos -= bytes; // leave the unknown tag to parse again
-		    long long tag_unknown;
-		    long long size;
-		    
-		    getn(tag_unknown,2);
-		    getn(size,3);
-		    long long tag_concat = tag_unknown-16384;
+                    long long tag_unknown;
+                    long long size;
+                    getn(tag_unknown,2);
+                    getn(size,3);
+                    long long tag_concat = tag_unknown-16384;
                     if(tag_concat % 31 == 27)
-			std::cout <<  "found " << std::endl;  
-		    pos -= bytes; 
-		    pos -= bytes; 
-		    std::cout <<  "tag 1 " << tag << std::endl; 
-		    std::cout <<  "tag 2 " << tag_unknown << std::endl; 
-		    std::cout <<  "tag_concat " << tag_concat << std::endl; 
-		    while(size > 3)
-		    	size = size % 256;
-		    std::cout <<  "size " << size << std::endl; 
-		    if(size == 0)
-			size = 1;
-		    else if(size == 1)
-			size = 2;
-		    else if(size == 2)
-			size = 4;
-		    else if(size == 3)
-			size = 8;
-		    long long size_off = size;
-		    pos -= size_off; 
-   		    std::cout <<  "size " << size << std::endl; 
-                    //bytes = 2;
-	            tls_field_length_bytes_map[tags[i]] = size;
-		    std::cout <<  "tls_field_length_bytes_map[tags[i]] " << tls_field_length_bytes_map[tags[i]] << std::endl; 
+                        std::cout <<  "found " << std::endl;  
+                    //pos -= bytes; 
+                    //pos -= bytes; 
+                    std::cout <<  "tag 1 " << tag_final << std::endl; 
+                    //std::cout <<  "tag 2 " << tag_unknown << std::endl; 
+                    std::cout <<  "tag_concat " << tag_concat << std::endl; 
+                    while(size > 3)
+                        size = size % 256;
+                    std::cout <<  "size " << size << std::endl; 
+                    if(size == 0)
+                        size = 1;
+                    else if(size == 1)
+                        size = 2;
+                    else if(size == 2)
+                        size = 4;
+                    else if(size == 3)
+                        size = 8;
+                    long long size_off = size;
+                    pos -= size_off; 
+                    std::cout <<  "size " << size << std::endl; 
+                            //bytes = 2;
+                        tls_field_length_bytes_map[tags[i]] = size;
+                    std::cout <<  "tls_field_length_bytes_map[tags[i]] " << tls_field_length_bytes_map[tags[i]] << std::endl; 
                     open_field(tags[i]);
                     std::cout <<  "tags_i[2] " << tags[i] << std::endl;  
                     //std::cout << std::endl;  
