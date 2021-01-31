@@ -410,7 +410,7 @@ object frame = {
 #chris 
 # - the function `queued_level_type(C:cid,T:quic_packet_type) : frame.arr` is used to  queue frames a separate frame queue for each packet type.  TODO
 # - the relation `send_retire_cid(C:cid,S:stream_id)` is used to say that the next frame should be a retire_CID frame
-# - the function `max_rtp_num(C:cid) : cid_seq` is used to get the maximum retire_prior_to field in new_cid frame
+# - the function `max_rtp_num(C:cid) : cid_seq``is used to get the maximum retire_prior_to field in new_cid frame
 #chris
 
 relation stream_seen(C:cid,S:stream_id)
@@ -430,7 +430,6 @@ relation queued_non_ack(C:cid)
 relation queued_close(C:cid)
 function num_queued_frames(C:cid) : frame.idx
 relation path_challenge_pending(C:cid,D:stream_data)
-relation stream_data_offset(O:stream_pos,C:cid,D:stream_data) #[JF]
 function conn_total_data(C:cid) : stream_pos
 #Hamid
 relation queued_ack_eliciting(C:cid)
@@ -438,7 +437,7 @@ relation queued_ack_eliciting(C:cid)
 
 #chris
 function queued_level_type(C:cid,T:quic_packet_type) : frame.arr
-relation send_retire_cid(C:cid)       # ?? S:stream_id
+relation send_retire_cid(C:cid) # ?? S:stream_id
 function max_rtp_num(C:cid) : cid_seq
 #chris
 
@@ -446,7 +445,6 @@ after init {
     stream_seen(C,S) := false;
     stream_length(C,S) := 0;
     max_stream_data_set(C,S) := false;
-    stream_data_offset(O,C,D) := false;
     max_data_set(C) := false;
     stream_finished(C,S) := false;
     stream_reset(C,S) := false;
@@ -627,10 +625,8 @@ object frame = {
             require stream_reset(dcid,f.id) ->
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
             require stream_id_allowed(dcid,f.id);  # [6]
-
-            require ~stream_data_offset(offset,dcid,f.data) #[JF]
 	        ...
-            #stream_data_offset(offset,dcid,f.data) := true;
+            stream_seen(scid,f.id) := true;
             var offset := f.offset if f.off else 0;
             var length := offset + f.length;
             # require stream_finished(dcid,f.id) -> length <= stream_length(dcid,f.id);  # [5]
@@ -822,7 +818,7 @@ object frame = { ...
             var kind := bidir;
             if ~ (max_stream_set(dcid,kind) & f.id < max_stream(dcid,kind)) { #[5]
                 max_stream_set(dcid,kind) := true;
-                max_stream(dcid,kind) := f.id;     # [1]
+                max_stream(dcid,kind) := f.id; #  [1]
             }
 	        ...
             call enqueue_frame(scid,f,e,false);
