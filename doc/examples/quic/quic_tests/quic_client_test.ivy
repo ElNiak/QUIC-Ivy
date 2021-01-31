@@ -224,7 +224,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         #require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
         #require cid_dst_to_src_set(pkt.hdr_cid);
     };
-    require pkt.long -> pkt.pversion = 0xff00001b
+    require pkt.long -> pkt.pversion = 0xff00001d
 }
     
 
