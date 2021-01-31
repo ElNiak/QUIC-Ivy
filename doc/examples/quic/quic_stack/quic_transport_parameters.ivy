@@ -139,14 +139,8 @@ object loss_bits = {
     instantiate trans_params_ops(this)
 }
 
-object min_ack_delay = {
-    variant this of transport_parameter = struct {  # tag = 0xff02de1a
-        #stream_pos_32 : stream_pos
-	stream_id_16 : stream_id
-    }
-    instantiate trans_params_ops(this)
-}
-
+#TODO for now, used for picoquic client as marker for the last tls.unknown_extension that bug to 
+#parse without hardcode
 object grease_quic_bit = {
     variant this of transport_parameter = struct {  # tag = 0x2ab2
         stream_pos_32 : stream_pos
@@ -154,6 +148,7 @@ object grease_quic_bit = {
     instantiate trans_params_ops(this)
 }
 
+#TODO not implememented, considered as unknown_transport_parameter for now
 object enable_time_stamp = {
     variant this of transport_parameter = struct {  # tag = 0x7158
         stream_pos_32 : stream_pos
@@ -164,7 +159,7 @@ object enable_time_stamp = {
 # check if good
 object unknown_transport_parameter = {
     variant this of transport_parameter = struct {  # tag = x
-        stream_pos_32 : stream_pos
+        unknown : stream_pos
     }
     instantiate trans_params_ops(this)
 }

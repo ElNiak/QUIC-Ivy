@@ -21,7 +21,6 @@ include tls
 # 
 #
 
-
 # The wire specification monitors this action.
 
 action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
@@ -102,8 +101,8 @@ around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, pcid:cid, lo : stream_po
     var data := stream_data.empty;
     var idx := lo;
     while idx < hi {
-	data := data.append(stream_app_data(dst,pcid,0).value(idx));
-	idx := idx.next
+        data := data.append(stream_app_data(dst,pcid,0).value(idx));
+        idx := idx.next
     };
     call botan.lower.recv(tls_id,data)
 }

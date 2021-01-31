@@ -60,7 +60,7 @@ object tls_ser_server = {}
         {"compression_methods",1},
         {"extensions",2},
         {"quic_transport_parameters",2},
-        //{"transport_parameters",2}, // Parameter length field removal
+        //{"transport_parameters",2}, // Parameter length field
         {"initial_max_stream_data_bidi_local",1},
         {"initial_max_data",1},
         {"initial_max_stream_id_bidi",1},
@@ -77,14 +77,14 @@ object tls_ser_server = {}
         {"max_ack_delay",1},
         {"initial_source_connection_id",1},
         {"loss_bits",2}, //for picoquic TODO test
-        {"grease_quic_bit",1}, //for picoquic
-        //{"enable_time_stamp",1}, //for picoquic TODO test
-	    {"unknown_transport_parameter",1},
+        {"grease_quic_bit",0}, //for picoquic
+        {"enable_time_stamp",1}, //for picoquic TODO test
+	{"unknown_transport_parameter",2},
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
 
-    struct tls_name_struct tls_field_bytes[23] = {
+    struct tls_name_struct tls_field_bytes[20] = {
         {"version",2},
         {"client_version",2}, //0x0303 = 2 bytes
         {"server_version",2},
@@ -99,7 +99,7 @@ object tls_ser_server = {}
         {"content",1},
         {"initial_version",4},
         {"stream_pos_32",-1},
-	    {"unknown",0},
+	//{"unknown",2},
         {"stream_id_16",-1},
         {"seconds_16",-1},
         {"stream_pos_16",-1},
@@ -136,13 +136,13 @@ object tls_ser_server = {}
         {"initial_source_connection_id",0x0f},
         {"loss_bits",0x1057}, //for picoquic
         {"grease_quic_bit",0x2ab2}, //for picoquic
-        //{"enable_time_stamp",0x7158}, //for picoquic
+        {"enable_time_stamp",0x7158}, //for picoquic
         {"unknown_transport_parameter",-2},
        {0,0}
     };
     tls_name_map tls_tags_map;
 
-    struct tls_name_struct tls_tag_bytes[22] = {
+    struct tls_name_struct tls_tag_bytes[21] = {
         {"tls.unknown_extension",2},
         {"quic_transport_parameters",2},
         {"initial_max_stream_data_bidi_local",1},
@@ -188,14 +188,13 @@ object tls_ser_server = {}
         }
 
         virtual bool more(unsigned bytes) {
-            if (fence.size() > 0 && pos + bytes > fence.back()) {
+            if (fence.size() > 0 && pos + bytes > fence.back())
                 return false;
-	        }
             return ivy_binary_deser::more(bytes);
         }
     
         virtual void open_field(const std::string &name) {
-            std::cout << "deser-open_field: name : " << name << std::endl;  
+            std::cout << "open_field1: name : " << name << std::endl;  
             if (name == "random_bytes") { //28 bytes tls1.2, 32bytes tls1.3
                 fence.push_back(pos+28);
                 field_bytes = 1;
@@ -208,19 +207,20 @@ object tls_ser_server = {}
                 }
                 fence.push_back(pos+bytes);
             }
+	    /*else if (name == "unknown_transport_parameter") {
+		
+	    }*/
             else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
+		if (name == "unknown") {
+			std::cout << "unknown: " << tls_field_length_bytes_map[name] << std::endl;  
+	    	}
                 int length_field_bytes = tls_field_length_bytes_map[name];
                 long long bytes;
                 getn(bytes,length_field_bytes);
-                //TODO hardcoded for parsing last tls.unknow_extension of picoquic client
-		        if(name == "grease_quic_bit") bytes += 10;
                 fence.push_back(pos+bytes);
             }
-            else if (fence.size() > 0) {
-                unsigned b = fence.back();
-                std::cout << "4) fence.back() +=  " << b << std::endl; 
-                fence.push_back(b);
-            } 
+            else if (fence.size() > 0)
+                fence.push_back(fence.back());
             if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
                 field_bytes = tls_field_bytes_map[name];
             }
@@ -236,21 +236,24 @@ object tls_ser_server = {}
                 fence.pop_back();
         }
 
+        // TODO error
         virtual int open_tag(const std::vector<std::string> &tags) {
             std::cout << std::endl; 
-	        //std::cout << "open_tag : " << tags << std::endl;  
             int bytes = 1;
             if (tls_tag_bytes_map.find(tags[0]) != tls_tag_bytes_map.end())   {
+                std::cout << "tag(1): " << tags[0] << std::endl; 
+                std::cout << "tag(2): " << tls_tag_bytes_map[tags[0]] << std::endl;  
                 bytes = tls_tag_bytes_map[tags[0]];
             }
             long long tag;
             long long tag_new;
             unsigned long long tag_final;
-	        long long mask;
+	    long long mask;
+            std::cout << bytes << std::endl;  
             getn(tag,bytes);
             std::cout << "tag v1: " << tag << std::endl;  
 
-	        u_int tag_int = (u_int) tag;
+	    u_int tag_int = (u_int) tag;
             int tag_size = (tag_int >> 6) & ((1 << 2) -1);
             if(tag_size == 0) {
                 tag_size = 1;
@@ -265,32 +268,38 @@ object tls_ser_server = {}
                 tag_size = 8;
                 mask = 0x3fffffffffffffff;
             } 
-
+	    //tls_tag_bytes_map["unknown_transport_parameter"] = tag_size;
             std::cout <<  "Tag size: " <<  tag_size << std::endl;
-            long long value_size;
-            if(tag_size != bytes && tags[0] != "tls.unknown_extension") {
-                tls_tag_bytes_map["unknown_transport_parameter"] = tag_size;
-                pos -= bytes;
+	    long long value_size;
+	    if(tag_size != bytes && tags[0] != "tls.unknown_extension") {
+		pos -= bytes;
+		bytes = tag_size;
+		getn(tag_new,bytes);
+		std::cout << "tag_new: " << tag_new << std::endl;
 
-                bytes = tag_size;
-                getn(tag_new,bytes);
                 unsigned long long tag_intt = (unsigned long long) tag_new; 
+		std::cout << "tag_intt: " << tag_intt << std::endl;
                 tag_final = (tag_intt & mask);
-                
-                getn(value_size,1);                value_size = value_size & 0xff;
-                pos -= 1;
 
-                tls_field_bytes_map["unknown"] = value_size;
+		//pos -= bytes;
+		//getn(value_size,bytes+1);
+
+		getn(value_size,1);
+		//pos -= bytes;
+		std::cout << "value_size: " << value_size << std::endl;
+		value_size = value_size & 0xff;
+		tls_field_length_bytes_map["unknown"] = value_size;
+		//tls_field_bytes_map["unknown"] = value_size;
             } else 
-                tag_final = tag;
-	
+		tag_final = tag;
 
-	        std::cout << "value_size: " << value_size << std::endl;
+	    std::cout << "va_siz: " << value_size << std::endl;
             std::cout << "tag v2: " << tag_final << std::endl;
   
             for (int i = 0; i < tags.size(); i++) {
                 if (tag_final == tls_tags_map[tags[i]]) {
                    open_field(tags[i]);
+                   std::cout << "tag == tls_tags_map[tags[i]]: "<< tags[i] << std::endl;  
                    return i;
                 }
             }
@@ -298,12 +307,16 @@ object tls_ser_server = {}
                 if (-1 == tls_tags_map[tags[i]]) {
                     pos -= bytes; // leave the unknown tag to parse again
                     open_field(tags[i]);
+                    std::cout << "-1 == tls_tags_map[tags[i]]: " << tags[i] << std::endl;  
+
                     return i;
                 }
             }
             for (int i = 0; i < tags.size(); i++) {
                 if (-2 == tls_tags_map[tags[i]]) {
+                    //pos -= 1; // leave the unknown tag to parse again
                     open_field(tags[i]);
+                    std::cout << "-2 == tls_tags_map[tags[i]]: "<< tags[i] << std::endl;  
                     return i;
                 }
             }
@@ -363,31 +376,33 @@ object tls_ser_server = {}
           */
         virtual void open_field(const std::string &name) {
             int flb = 0;
-            std::cout << "ser-open_field: name : " << name << std::endl;  
-            if (name == "random_bytes") {
-                field_bytes = 1;
-            }
-            else if (name == "versions") {
-                field_bytes = 4;
-                if (in_encrypted_extensions) {
-                    flb = 1;
+            std::cout << "open_field2: name : " << name << std::endl;  
+            //if(name != "transport_parameters") { //TODO ugly see how to
+                if (name == "random_bytes") {
+                    field_bytes = 1;
+                }
+                else if (name == "versions") {
+                    field_bytes = 4;
+                    if (in_encrypted_extensions) {
+                        flb = 1;
+                        res.resize(res.size() + flb);
+                    }
+                }
+                else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
+                    flb = tls_field_length_bytes_map[name];
                     res.resize(res.size() + flb);
                 }
-            }
-            else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
-                flb = tls_field_length_bytes_map[name];
-                res.resize(res.size() + flb);
-            }
 
-            field_start.push_back(res.size());
-            field_length_bytes.push_back(flb);
-            if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
-                field_bytes = tls_field_bytes_map[name];
-            }
-            if (name == "tls.encrypted_extensions") {
-                in_encrypted_extensions = field_start.size();
-            }
-            std::cout << "ser-open_field: res.size() : " << res.size() << std::endl;
+                field_start.push_back(res.size());
+                field_length_bytes.push_back(flb);
+                if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
+                    field_bytes = tls_field_bytes_map[name];
+                }
+                if (name == "tls.encrypted_extensions") {
+                    in_encrypted_extensions = field_start.size();
+                }
+            //}
+            std::cout << "open_field2: res.size() : " << res.size() << std::endl;
         }
         //TODO [xx]
         virtual void close_field() {
@@ -455,5 +470,6 @@ object tls_ser_server = {}
     tls_make_name_map(tls_field_bytes,tls_field_bytes_map);
     tls_make_name_map(tls_tags,tls_tags_map);
     tls_make_name_map(tls_tag_bytes,tls_tag_bytes_map);
+
 
 >>>
