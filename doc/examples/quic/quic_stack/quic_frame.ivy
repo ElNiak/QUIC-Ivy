@@ -410,7 +410,7 @@ object frame = {
 #chris 
 # - the function `queued_level_type(C:cid,T:quic_packet_type) : frame.arr` is used to  queue frames a separate frame queue for each packet type.  TODO
 # - the relation `send_retire_cid(C:cid,S:stream_id)` is used to say that the next frame should be a retire_CID frame
-# - the function `max_rtp_num(C:cid) : cid_seq``is used to get the maximum retire_prior_to field in new_cid frame
+# - the function `max_rtp_num(C:cid) : cid_seq` is used to get the maximum retire_prior_to field in new_cid frame
 #chris
 
 relation stream_seen(C:cid,S:stream_id)

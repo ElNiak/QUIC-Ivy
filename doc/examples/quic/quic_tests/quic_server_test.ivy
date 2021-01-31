@@ -76,7 +76,7 @@ include quic_locale
     { 0xff00001a, "draft-26" },
     { 0xff00001b, "draft-27", "0xc3eef712c72ebb5a11a7d2432bb46365bef9f502" },
     { 0xff00001c, "draft-28" },
-    { 0xff00001d, "draft-29" },
+    { 0xff00001d, "draft-29" , "0xafbfec289993d24c9e9786f19c6111e04390a899"},
     { 0xff00001e, "draft-30" },
     { 0xff00001f, "draft-31" },
     { 0xff000020, "draft-32", "0xafbfec289993d24c9e9786f19c6111e04390a899"},

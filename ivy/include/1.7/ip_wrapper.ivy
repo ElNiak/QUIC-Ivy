@@ -35,7 +35,7 @@ module ip_wrapper(pkt,protocol) = {
             }
 	    virtual ~ip_reader() {
 #ifdef _WIN32
-                closesocket(sock);
+            closesocket(sock);
 #else
 	        close(sock);
 #endif
@@ -59,11 +59,11 @@ module ip_wrapper(pkt,protocol) = {
 		    { std::cerr << "recv failed\n"; exit(1); }
 	        buf.resize(bytes);
 	        `pkt` pkt;
-                pkt.resize(bytes);
-                std::copy(buf.begin(),buf.end(),pkt.begin());
-		ivy->__lock();
-		rcb(pkt);
-		ivy->__unlock();
+            pkt.resize(bytes);
+            std::copy(buf.begin(),buf.end(),pkt.begin());
+			ivy->__lock();
+			rcb(pkt);
+			ivy->__unlock();
 	    }
 	    virtual void write(`pkt` pkt) {
 	        std::vector<char> buf;
