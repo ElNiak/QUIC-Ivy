@@ -270,6 +270,9 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(it);
     tp.transport_parameters := tp.transport_parameters.append(imsdbr);
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
+    var min_d : min_ack_delay;
+    min_d.seconds_16 := 20;
+    tp.transport_parameters := tp.transport_parameters.append(min_d);
 }
 
 #

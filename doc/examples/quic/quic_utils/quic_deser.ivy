@@ -61,6 +61,7 @@ object quic_deser = {}
               quic_path_challenge_data,
               quic_retire_connection_id_seq_num,
               quic_handshake_done,
+              quic_ack_frequency,
               quic_s_done} state;
         bool long_format;
         char hdr_type;
@@ -205,6 +206,11 @@ object quic_deser = {}
             case quic_path_challenge_data:
             case quic_connection_close_reason:
             case quic_handshake_done: // TODO ?
+            case quic_ack_frequency: //TODO
+            {
+                //ivy_binary_deser::getn(res,1);
+            }
+            break;
             case quic_s_retry_token:
             {
                 ivy_binary_deser::getn(res,1);
@@ -447,6 +453,10 @@ object quic_deser = {}
                 if (frame_type == 0x1e) {
                     state = quic_handshake_done;
                     return 19;
+                }
+                 if (frame_type == 0xaf) {
+                    state = quic_ack_frequency;
+                    return 20;
                 }
                 std::cerr << "saw tag " << ft << std::endl;  
             }

@@ -58,6 +58,7 @@ object quic_ser = {}
               quic_new_connection_id_token,
               quic_retire_connection_id_seq_num,
               quic_handshake_done,
+              quic_ack_frequency,
               quic_s_done} state;
         bool long_format;
         char hdr_type;
@@ -172,6 +173,11 @@ object quic_ser = {}
             case quic_connection_close_reason:
             case quic_path_challenge_data:
             case quic_handshake_done: // TODO
+            case quic_ack_frequency: //TODO
+            {
+                setn(res,1);
+            }
+            break;
             case quic_s_retry_token:
             {
                 setn(res,1);
@@ -400,6 +406,10 @@ object quic_ser = {}
                 else if (tag == 19) {
                     state = quic_handshake_done;
                     frame_type = 0x1e;
+                }
+                else if (tag == 20) {
+                    state = quic_ack_frequency;
+                    frame_type = 0xaf;
                 }
 	            else {
                     std::cout << "saw frame tag " << tag << std::endl;  
