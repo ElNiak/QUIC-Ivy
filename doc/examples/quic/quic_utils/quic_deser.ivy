@@ -61,7 +61,10 @@ object quic_deser = {}
               quic_path_challenge_data,
               quic_retire_connection_id_seq_num,
               quic_handshake_done,
-              quic_ack_frequency,
+              quic_ack_frequency, //seq_num
+              quic_ack_frequency_packet_tolerence,
+              quic_ack_frequency_update_max_ack_delay,
+              quic_ack_frequency_ignore_order,
               quic_s_done} state;
         bool long_format;
         char hdr_type;
@@ -208,7 +211,25 @@ object quic_deser = {}
             case quic_handshake_done: // TODO ?
             case quic_ack_frequency: //TODO
             {
-                //ivy_binary_deser::getn(res,1);
+                get_var_int(res);
+                state = quic_ack_frequency_packet_tolerence;
+            }
+            break;
+            case quic_ack_frequency_packet_tolerence: 
+            {
+                get_var_int(res);
+                state = quic_ack_frequency_update_max_ack_delay;
+            }
+            break;
+            case quic_ack_frequency_update_max_ack_delay: 
+            {
+                get_var_int(res);
+                state = quic_ack_frequency_ignore_order;
+            }
+            break;
+            case quic_ack_frequency_ignore_order:
+            {
+                ivy_binary_deser::getn(res,1);
             }
             break;
             case quic_s_retry_token:
