@@ -23,10 +23,10 @@ object tls_ser_server = {}
     
     typedef struct tls_name_struct {
         const char *name;
-        int value;
+        long long value;
     } *tls_name_struct_ptr;
 
-    struct tls_name_map : hash_space::hash_map<std::string,int> {};
+    struct tls_name_map : hash_space::hash_map<std::string,long long> {};
 
     std::string quic_params[17] = { 
         "quic_transport_parameters",
@@ -79,8 +79,8 @@ object tls_ser_server = {}
         {"loss_bits",2}, //for picoquic TODO test
         {"grease_quic_bit",1}, //for picoquic
         //{"enable_time_stamp",1}, //for picoquic TODO test
-        {"min_ack_delay ",1},
-	    {"unknown_transport_parameter",1},
+        {"min_ack_delay",1},
+	{"unknown_transport_parameter",1},
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
@@ -100,7 +100,7 @@ object tls_ser_server = {}
         {"content",1},
         {"initial_version",4},
         {"stream_pos_32",-1},
-	    {"unknown",0},
+	{"unknown",2},
         {"stream_id_16",-1},
         {"seconds_16",-1},
         {"stream_pos_16",-1},
@@ -138,7 +138,7 @@ object tls_ser_server = {}
         {"loss_bits",0x1057}, //for picoquic
         {"grease_quic_bit",0x2ab2}, //for picoquic
         //{"enable_time_stamp",0x7158}, //for picoquic
-        {"min_ack_delay ",0xff02de1a}, //for picoquic
+        {"min_ack_delay",4278378010}, //for picoquic 0xff02de1a
         {"unknown_transport_parameter",-2},
        {0,0}
     };
@@ -165,7 +165,7 @@ object tls_ser_server = {}
         {"loss_bits",2}, //for picoquic 
         {"grease_quic_bit",2}, //for picoquic
         {"enable_time_stamp",2}, //for picoquic 
-        {"min_ack_delay ",4},
+        {"min_ack_delay",8},
         //{"unknown_transport_parameter",2},
         {0,0}
     };
@@ -249,11 +249,11 @@ object tls_ser_server = {}
             long long tag;
             long long tag_new;
             unsigned long long tag_final;
-	        long long mask;
+	    long long mask;
             getn(tag,bytes);
             std::cout << "tag v1: " << tag << std::endl;  
 
-	        u_int tag_int = (u_int) tag;
+	    u_int tag_int = (u_int) tag;
             int tag_size = (tag_int >> 6) & ((1 << 2) -1);
             if(tag_size == 0) {
                 tag_size = 1;
@@ -290,7 +290,7 @@ object tls_ser_server = {}
 	
 
 	        std::cout << "value_size: " << value_size << std::endl;
-            std::cout << "tag v2: " << tag_final << std::endl;
+            	std::cout << "tag v2: " << tag_final << std::endl;
   
             for (int i = 0; i < tags.size(); i++) {
                 if (tag_final == tls_tags_map[tags[i]]) {
@@ -416,7 +416,13 @@ object tls_ser_server = {}
             if (tls_tag_bytes_map.find(name) != tls_tag_bytes_map.end())
                 bytes = tls_tag_bytes_map[name];
             long long tag = tls_tags_map[name];
-            if (tag !=-1) 
+            if (tag == 4278378010) {
+		std::cout <<  "ser-Tagv1 : " <<  tag << std::endl;
+		//hack todo
+		unsigned int tagv2 = 13835058059560541722;
+		std::cout <<  "ser-Tagv2 : " <<  tagv2 << std::endl;
+		setn(tagv2,bytes); 
+            } else if (tag !=-1 && tag != -2) 
                 setn(tag,bytes); // var int ?
             open_field(name);
         }
@@ -435,6 +441,7 @@ object tls_ser_server = {}
             int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
             int bytes = 1 << bytecode;
             val |= bytecode << ((bytes << 3) - 2);
+		
             setn(val,bytes);
         }
 

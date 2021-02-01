@@ -158,7 +158,7 @@ object enable_time_stamp = {
 
 object min_ack_delay  = {
     variant this of transport_parameter = struct {  # tag = 0xff02de1a
-        seconds_16 : microsecs
+        unknown : stream_pos
     }
     instantiate trans_params_ops(this)
 }

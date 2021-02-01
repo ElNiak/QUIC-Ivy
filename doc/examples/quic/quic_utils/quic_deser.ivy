@@ -514,9 +514,15 @@ object quic_deser = {}
                 return data_remaining-- > 0;
             if (state == quic_s_init)
                 return more(1);
+	    if (state == quic_ack_frequency_ignore_order)
+                return data_remaining-- > 0;
 	    if (state == quic_ack_frequency)
                 return data_remaining-- > 0;
-            std::cout << "quic_deser 1" << std::endl;  
+	    if (state == quic_ack_frequency_update_max_ack_delay)
+                return data_remaining-- > 0;
+	    if (state == quic_ack_frequency_packet_tolerence)
+                return data_remaining-- > 0;
+            std::cout << "quic_deser 1: " << state <<  std::endl;  
             throw deser_err();
         }
 
