@@ -293,8 +293,8 @@ object frame = {
 		# 1 byte frame to increase the size of a packet
          variant this of frame = struct {
 			seq_num              : cid_seq,     # the sequence number of the new cid
-            packet_tolerence     : stream_data,
-            update_max_ack_delay : stream_data,
+            packet_tolerence     : stream_pos,
+            update_max_ack_delay : microsecs,
             ignore_order         : bool
          }
     }    
@@ -1178,6 +1178,7 @@ object frame = { ...
             };
             #chris
             #Hamid
+            #JF
             if (f.seq_num > max_seq_num(scid)) {
                 max_seq_num(scid) := f.seq_num;
             };
@@ -1211,7 +1212,7 @@ object frame = { ...
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             # Will change with implementing TODO
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); 
-            # TODO remember the highest sequence number that was sent
+
             #Hamid
             require f.seq_num <= max_seq_num(dcid); #[1]
             #Hamid 
@@ -1318,6 +1319,8 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            require min_ack_delay_check(dcid);
+            require f.ignore_order < 2;
             ...
             call enqueue_frame(scid,f,e,false);
         }
@@ -1441,6 +1444,21 @@ action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
     }
     else ok := stream_seen(dcid, id) # TODO: locally initiated streams must have been seen!
 }
+
+#  An endpoint's min_ack_delay MUST NOT be greater than the its
+#  max_ack_delay. 
+#
+#
+#
+
+
+action min_ack_delay_check(dcid:cid) returns (ok:bool) = {
+    ok := false;
+    var tp := trans_params(dcid);
+    ok := min_ack_delay.value(tp).unknown < max_ack_delay.value(tp).exponent_8;
+}
+
+
 
 # The procedure computes the maximum number of additional bytes that a given
 # destination aid can receive, based on the `initial_max_data` transport parameter

@@ -344,6 +344,19 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     }
 }
 
+# Generate ack frames only for the client. HACK: to avoid generating
+# blizzards of ACK's, we set the bit `force_new_ack` which forces
+# ACK's to have at least on previously unacked sequenc number. There
+# should be a better way to do this.
+
+before frame.ack_frequency.handle(f:frame.ack_frequency,scid:cid,dcid:cid) {
+    if _generating {
+        require scid = the_cid;
+        force_new_ack := true;
+    }
+}
+
+
 # Generate rst_stream frames only for the environment process(es).
 
 before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
@@ -485,6 +498,7 @@ around client_send_event {
 # that include this one.
 
 export frame.ack.handle
+export frame.ack_frequency.handle
 export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle

@@ -296,6 +296,16 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     }
 }
 
+# Generate ack frames only for the client.
+
+before frame.ack_frequency.handle(f:frame.ack_frequency,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+        force_new_ack := true;
+    }
+}
+
 # Generate rst_stream frames only for the client.
 
 before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
@@ -411,6 +421,7 @@ around client_send_event {
 # a server packet event, which immediately dequeues them.
 
 export frame.ack.handle
+export frame.ack_frequency.handle
 export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
