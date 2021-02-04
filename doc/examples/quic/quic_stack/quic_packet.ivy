@@ -1,6 +1,7 @@
 #lang ivy1.7
 
 include quic_types
+include quic_transport_error_code
 include quic_frame
 include quic_transport_parameters
 include ip
@@ -162,6 +163,15 @@ action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
 #
 
 # - If aid D created a new connection ID with sequence number S, then seqnum_to_cid(D, S) yield the new connection id.
+
+# chris
+# - For each aid C, `trans_errors_set(C)`
+#   is true if C has send transport errors.
+#
+# - For each aid C, function `trans_errors(C)`
+#   gives the transport errors send by C.
+#chris
+
 relation conn_seen(C:cid)
 relation conn_closed(C:cid)
 relation conn_draining(C:cid)
@@ -187,6 +197,10 @@ relation conn_requested(S:ip.endpoint,D:ip.endpoint,C:cid)
 function hi_non_probing(C:cid) : pkt_num
 relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
+#chris
+relation trans_errors_set(C:cid)
+function trans_errors(C:cid) : error_code
+#chris
 
 
 # Initial state
@@ -216,6 +230,9 @@ after init {
     #Hamid
     max_seq_num(C) := 0;
     #Hamid
+    #chris
+    trans_errors_set(C:cid) := false;
+    #chris
 }
 
 # Packet event specification
@@ -240,6 +257,13 @@ after init {
 #   address that at one time in the past sent the as packet with
 #   the highest packet numer thus far received. See notes below on
 #   migration and path challenge. [10]
+
+#   - Token Length:  A variable-length integer specifying the length of the
+#      Token field, in bytes.  This value is zero if no token is present.
+#      Initial packets sent by the server MUST set the Token Length field
+#      to zero; clients that receive an Initial packet with a non-zero
+#      Token Length field MUST either discard the packet or generate a
+#      connection error of type PROTOCOL_VIOLATION. [11]
 
 # ### Effects
 #
@@ -386,6 +410,11 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # Record the packet number as latest seen
 
     last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
+
+    # [11]
+    if pkt.ptype = quic_packet_type.initial {
+        #require ~(pkt.token.end = 0) -> 
+    }
  
     # TODO: the following should not be here
 
@@ -522,7 +551,6 @@ action handle_tls_extensions
         if some (tps:quic_transport_parameters) ext *> tps {
             call handle_client_transport_parameters(src,dst,scid,tps,is_client_hello);
             trans_params_set(scid) := true;
-            
         };
         idx := idx.next
     };
@@ -564,6 +592,66 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
         require ~stateless_reset_token.is_set(trans_params(scid));  # [4]
     }
 }
+
+
+action handle_transport_error(scid:cid,
+                              ec:err_code) =
+{
+    var trans_err = get_transport_error(ec);
+    transport_error_codes.append(trans_err);
+}
+
+action get_transport_error(ec:err_code) returns(res:transport_error) = 
+{
+    if ec = 0x0 {
+        var sol : no_error;
+        res := sol;
+    } else if ec = 0x1 {
+        var sol : internal_error;
+        res := sol;
+    } else if ec = 0x2 {
+        var sol : server_busy;
+        res := sol;
+    } else if ec = 0x3 {
+        var sol : flow_control_error;
+        res := sol;
+    } else if ec = 0x4 {
+        var sol : stream_limit_error;
+        res := sol;
+    } else if ec = 0x5 {
+        var sol : stream_state_error;
+        res := sol;
+    } else if ec = 0x6 {
+        var sol : final_size_error;
+        res := sol;
+    } else if ec = 0x7 {
+        var sol : frame_encoding_error;
+        res := sol;
+    } else if ec = 0x8 {
+        var sol : transport_parameter_error;
+        res := sol;
+    } else if ec = 0x9 {
+        var sol : connection_id_limit_error;
+        res := sol;
+    } else if ec = 0xa {
+        var sol : protocol_violation;
+        res := sol;
+    } else if ec = 0xb {
+        var sol : invalid_token;
+        res := sol;
+    } else if ec = 0xc {
+        var sol : application_error;
+        res := sol;
+    } else if ec = 0xd {
+        var sol : crypto_buffer_exceeded;
+        res := sol;
+    } else {
+        # TODO check if tag = 0x1XX
+        var sol : crypto_error;
+        res := sol;
+    }
+}
+
 
 
 

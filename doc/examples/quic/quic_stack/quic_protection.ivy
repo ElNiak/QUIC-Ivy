@@ -5,6 +5,7 @@
 include tls_msg
 include byte_stream
 include quic_types
+include quic_transport_error_code
 include collections
 
 module quic_protection(tls_id,tls) = {

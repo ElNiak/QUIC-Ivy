@@ -1,6 +1,7 @@
 #lang ivy1.7
 
 include quic_types
+include quic_transport_error_code
 include quic_stream
 include tls_record
 

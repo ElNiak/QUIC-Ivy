@@ -31,6 +31,7 @@
 # ==========
 
 include quic_types
+include quic_transport_error_code
 include quic_application
 include quic_security
 include quic_frame
