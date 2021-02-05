@@ -197,11 +197,6 @@ relation conn_requested(S:ip.endpoint,D:ip.endpoint,C:cid)
 function hi_non_probing(C:cid) : pkt_num
 relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
-#chris
-relation trans_errors_set(C:cid)
-function trans_errors(C:cid) : error_code
-#chris
-
 
 # Initial state
 # -------------
@@ -230,9 +225,6 @@ after init {
     #Hamid
     max_seq_num(C) := 0;
     #Hamid
-    #chris
-    trans_errors_set(C:cid) := false;
-    #chris
 }
 
 # Packet event specification
@@ -410,11 +402,6 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # Record the packet number as latest seen
 
     last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
-
-    # [11]
-    if pkt.ptype = quic_packet_type.initial {
-        #require ~(pkt.token.end = 0) -> 
-    }
  
     # TODO: the following should not be here
 
@@ -476,6 +463,11 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     if conn_draining(scid) {
         draining_pkt_sent(scid) := true
+    };
+
+    # [11]
+    if pkt.ptype = quic_packet_type.initial {
+        require ~(pkt.token.end = 0) -> is_invalid_token;
     };
 
     # The queued frames are deleted
@@ -597,58 +589,37 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
 action handle_transport_error(scid:cid,
                               ec:err_code) =
 {
-    var trans_err = get_transport_error(ec);
-    transport_error_codes.append(trans_err);
-}
-
-action get_transport_error(ec:err_code) returns(res:transport_error) = 
-{
     if ec = 0x0 {
-        var sol : no_error;
-        res := sol;
+        is_no_error := true;
     } else if ec = 0x1 {
-        var sol : internal_error;
-        res := sol;
+        is_internal_error := true;
     } else if ec = 0x2 {
-        var sol : server_busy;
-        res := sol;
+        is_server_busy := true;
     } else if ec = 0x3 {
-        var sol : flow_control_error;
-        res := sol;
+        is_flow_control_error := true;
     } else if ec = 0x4 {
-        var sol : stream_limit_error;
-        res := sol;
+        is_stream_limit_error := true;
     } else if ec = 0x5 {
-        var sol : stream_state_error;
-        res := sol;
+        is_stream_state_error := true;
     } else if ec = 0x6 {
-        var sol : final_size_error;
-        res := sol;
+        is_final_size_error := true;
     } else if ec = 0x7 {
-        var sol : frame_encoding_error;
-        res := sol;
+        is_frame_encoding_error := true;
     } else if ec = 0x8 {
-        var sol : transport_parameter_error;
-        res := sol;
+        is_transport_parameter_error := true;
     } else if ec = 0x9 {
-        var sol : connection_id_limit_error;
-        res := sol;
+        is_connection_id_limit_error := true;
     } else if ec = 0xa {
-        var sol : protocol_violation;
-        res := sol;
+        is_protocol_violation := true;
     } else if ec = 0xb {
-        var sol : invalid_token;
-        res := sol;
+        is_invalid_token := true;
     } else if ec = 0xc {
-        var sol : application_error;
-        res := sol;
+        is_application_error := true;
     } else if ec = 0xd {
-        var sol : crypto_buffer_exceeded;
-        res := sol;
+        is_crypto_buffer_exceeded := true;
     } else {
         # TODO check if tag = 0x1XX
-        var sol : crypto_error;
-        res := sol;
+        is_crypto_error := true;
     }
 }
 

@@ -7,113 +7,54 @@ type error_code
 # Is it the most elegant way to reprensent error ?
 # https://tools.ietf.org/html/draft-ietf-quic-transport-29#section-20
 
-object transport_error = {
-    type this
-    #TODO maybe rename set to is_set 
-    action set(p:this,s:error_code) returns (s:error_code) = {}
+
+relation is_no_error  # tag = 0x0
+
+relation is_internal_error # tag = 0x1
+
+relation is_server_busy # tag = 0x2
+
+relation is_flow_control_error # tag = 0x3
+
+relation is_stream_limit_error # tag = 0x4
+
+relation is_stream_state_error # tag = 0x5
+
+relation is_final_size_error  # tag = 0x6
+
+relation is_frame_encoding_error # tag = 0x7
+
+relation is_transport_parameter_error # tag = 0x8
+
+relation is_connection_id_limit_error  # tag = 0x9
+
+relation is_protocol_violation  # tag = 0xa
+
+relation is_invalid_token # tag = 0xb
+
+relation is_application_error # tag = 0xc
+
+relation is_crypto_buffer_exceeded # tag = 0xd
+
+relation is_crypto_error  # tag = 0x1XX
+
+# Initial state
+# -------------
+
+after init {
+    is_no_error := false;
+    is_internal_error := false;
+    is_server_busy := false;
+    is_flow_control_error := false;
+    is_stream_limit_error := false;
+    is_stream_state_error := false;
+    is_final_size_error := false;
+    is_frame_encoding_error := false;
+    is_transport_parameter_error := false;
+    is_connection_id_limit_error := false;
+    is_protocol_violation := false;
+    is_invalid_token := false;
+    is_application_error := false;
+    is_crypto_buffer_exceeded := false;
+    is_crypto_error := false;
 }
-
-module trans_error_ops(ptype) = {
-    destructor is_set(S:error_code) : bool
-    action set(p:ptype,s:error_code) returns (s:error_code) = {
-        is_set(s) := true;
-    }
-}
-
-object no_error = {
-    variant this of transport_error = struct {  # tag = 0x0
-    }
-    instantiate trans_error_ops(this)
-}
-
-object internal_error = {
-    variant this of transport_error = struct {  # tag = 0x1
-    }
-    instantiate trans_error_ops(this)
-}
-
-object server_busy = {
-    variant this of transport_error = struct {  # tag = 0x2
-    }
-    instantiate trans_error_ops(this)
-}
-
-object flow_control_error = {
-    variant this of transport_error = struct {  # tag = 0x3
-    }
-    instantiate trans_error_ops(this)
-}
-
-object stream_limit_error = {
-    variant this of transport_error = struct {  # tag = 0x4
-    }
-    instantiate trans_error_ops(this)
-}
-
-object stream_state_error = {
-    variant this of transport_error = struct {  # tag = 0x5
-    }
-    instantiate trans_error_ops(this)
-}
-
-object final_size_error = {
-    variant this of transport_error = struct {  # tag = 0x6
-    }
-    instantiate trans_error_ops(this)
-}
-
-object frame_encoding_error = {
-    variant this of transport_error = struct {  # tag = 0x7
-    }
-    instantiate trans_error_ops(this)
-}
-
-object transport_parameter_error = {
-    variant this of transport_error = struct {  # tag = 0x8
-    }
-    instantiate trans_error_ops(this)
-}
-
-object connection_id_limit_error = {
-    variant this of transport_error = struct {  # tag = 0x9
-    }
-    instantiate trans_error_ops(this)
-}
-
-object protocol_violation = {
-    variant this of transport_error = struct {  # tag = 0xa
-    }
-    instantiate trans_error_ops(this)
-}
-
-object invalid_token = {
-    variant this of transport_error = struct {  # tag = 0xb
-    }
-    instantiate trans_error_ops(this)
-}
-
-object application_error = {
-    variant this of transport_error = struct {  # tag = 0xc
-    }
-    instantiate trans_error_ops(this)
-}
-
-object crypto_buffer_exceeded = {
-    variant this of transport_error = struct {  # tag = 0xd
-    }
-    instantiate trans_error_ops(this)
-}
-
-object crypto_error = {
-    variant this of transport_error = struct {  # tag = 0x1XX
-    }
-    instantiate trans_error_ops(this)
-}
-
-# We use a vector of all possible transport error code
-# that we init false, then when an error is trigger 
-# we set to true that error and then the corresponding
-# rules will check if that error is triggered or not as 
-# the specification indicates
-
-var transport_error_codes : vector[transport_error]
