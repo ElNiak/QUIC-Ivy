@@ -1,0 +1,279 @@
+#lang ivy1.7
+
+include order
+include quic_connection
+include quic_infer
+include file
+include quic_shim
+include quic_locale
+
+<<<
+
+
+/*const quic_version_vals[] = {
+    { 0x00000000, "Version Negotiation" },
+    { 0x51303434, "Google Q044" },
+    { 0x51303530, "Google Q050" },
+    { 0x54303530, "Google T050" },
+    { 0x54303531, "Google T051" },
+    { 0xfaceb001, "Facebook mvfst (draft-22)" },
+    { 0xfaceb002, "Facebook mvfst (draft-27)" },
+    { 0xfaceb00e, "Facebook mvfst (Experimental)" },
+    { 0xff000004, "draft-04" },
+    { 0xff000005, "draft-05" },
+    { 0xff000006, "draft-06" },
+    { 0xff000007, "draft-07" },
+    { 0xff000008, "draft-08" },
+    { 0xff000009, "draft-09" },
+    { 0xff00000a, "draft-10" },
+    { 0xff00000b, "draft-11" },
+    { 0xff00000c, "draft-12" },
+    { 0xff00000d, "draft-13" },
+    { 0xff00000e, "draft-14" },
+    { 0xff00000f, "draft-15" },
+    { 0xff000010, "draft-16" },
+    { 0xff000011, "draft-17" },
+    { 0xff000012, "draft-18", "0xef4fb0abb47470c41befcf8031334fae485e09a0" },
+    { 0xff000013, "draft-19" },
+    { 0xff000014, "draft-20" },
+    { 0xff000015, "draft-21" },
+    { 0xff000016, "draft-22" },
+    { 0xff000017, "draft-23", "0xc3eef712c72ebb5a11a7d2432bb46365bef9f502"},
+    { 0xff000018, "draft-24" },
+    { 0xff000019, "draft-25" },
+    { 0xff00001a, "draft-26" },
+    { 0xff00001b, "draft-27", "0xc3eef712c72ebb5a11a7d2432bb46365bef9f502" },
+    { 0xff00001c, "draft-28" },
+    { 0xff00001d, "draft-29" , "0xafbfec289993d24c9e9786f19c6111e04390a899"},
+    { 0xff00001e, "draft-30" },
+    { 0xff00001f, "draft-31" },
+    { 0xff000020, "draft-32", "0xafbfec289993d24c9e9786f19c6111e04390a899"},
+    { 0, NULL }
+};*/
+
+>>>
+
+parameter the_cid : cid = 0xd
+parameter client_addr : ip.addr = 0x7f000001
+parameter server_addr : ip.addr = 0x7f000001
+parameter server_port : ip.port = 4443
+parameter server_cid  : cid = 0xb
+parameter client_port : ip.port = 4987
+parameter client_port_alt : ip.port = 4988
+parameter max_stream_data : stream_pos = 0x2000
+
+# Network setup
+# -------------
+#
+# To test the server over the OS sockets layer, we need some setup. We must
+# establish which interface and which ports the tester will use. 
+#
+
+# We use this type as a host id. There are two client host ids so we
+# can model migration.
+
+object endpoint_id = {
+    type this = {client, client_alt, server}
+}
+
+action endpoint_id_addr(ep_id : endpoint_id) returns (ep:ip.endpoint) = {
+    ep.protocol := ip.udp;
+    ep.addr := server_addr if ep_id = endpoint_id.server else client_addr;   # the loop-back addr
+    ep.port := client_port if ep_id = endpoint_id.client
+               else (client_port_alt if ep_id = endpoint_id.client_alt
+               else server_port);
+}    
+
+module quic_endpoint(ep_id) = {
+    var ep : ip.endpoint
+    var tls_id : tls_api.id
+    var enc_level : quic_packet_type
+    after init {
+        ep := endpoint_id_addr(ep_id);
+        enc_level := quic_packet_type.initial;
+    }
+}
+    
+# create a client and server. the client has an instance of TLS
+
+instance client : quic_endpoint(endpoint_id.client)
+instance server : quic_endpoint(endpoint_id.server)
+
+# An ip endpoint for the client to migrate to.
+
+var client_alt : ip.endpoint
+
+after init {
+    client_alt := endpoint_id_addr(endpoint_id.client_alt)
+}
+
+# We create sockets and bind them to the addresses that the client can use.
+
+var sock : net.socket
+var sock_alt : net.socket
+
+instance tls_extensions : vector(tls.extension)
+
+# This creates the sockets and also a TLS instance to be used by `the_cid`.
+# TODO: the TLS isntance should be created dynamically when the application
+# layer creates a connection. 
+
+after init {
+    sock := net.open(endpoint_id.client,client.ep);
+    sock_alt := net.open(endpoint_id.client_alt,client_alt);
+    client.tls_id := 0;
+    server.tls_id := 1;
+    var extns := tls_extensions.empty;
+    extns := extns.append(make_transport_parameters);
+    call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
+}
+
+# Here we have a bunch of conversions that map between cid's, IP
+# endpoints, TLS instances and host ids. TODO: This is a mess and
+# should be done in a more systematic way.
+
+# Get the host id associated to an ip endpoint. 
+
+action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
+    if src = client.ep {
+        pid := endpoint_id.client;
+    } else if src = client_alt {
+        pid:= endpoint_id.client_alt;
+    } 
+}
+
+# Get the IP endpoint associated to a host id and socket number.
+
+action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
+    src := client.ep if host = endpoint_id.client else client_alt
+}
+    
+# Get the socket number associated to an IP endpoint.
+
+action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
+    if src = client.ep {
+        socket := sock;
+    } else if src = client_alt {
+        socket := sock_alt;
+    } 
+}
+
+# Get the source IP endpoint associated to a TLS instance
+# TODO: this shouldn't be needed.
+
+action tls_id_to_src(tls_id:tls_api.id) returns (src:ip.endpoint) = {
+    src := client.ep if tls_id = client.tls_id else server.ep;
+}
+
+# Get the destination IP endpoint associated to a TLS instance
+# TODO: this shouldn't be needed.
+
+action tls_id_to_dst(tls_id:tls_api.id) returns (dst:ip.endpoint) = {
+    dst := server.ep if tls_id = client.tls_id else client.ep;
+}
+
+# Get cid associated to a TLS instance
+
+action tls_id_to_cid(tls_id:tls_api.id) returns (scid:cid) = {
+    scid := the_cid;
+}
+
+# Returns true if an IP endpoint is controlled by the generator.
+# TODO: shouldn't be needed.
+
+action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
+    res := dst = client.ep | dst = client_alt
+}
+
+# Returns the TLS instance associated to a destination IP endppoint.
+# TODO: shouldn't be needed.
+
+action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
+    tls_id := client.tls_id;
+}
+
+#
+# Client HTTP request
+# ===================
+#
+# Since we are testing an HTTP server, we need to make a sensible HTTP
+# request, rather than just sendin random bytes, in order to get a response.
+# Here, we read the HTTP request from a file:
+#
+
+var http_request : stream_data
+instance http_request_file : binary_input_file(stream_data,cid)
+
+# This reads the file on initialization
+
+after init {
+    http_request := http_request_file.read;
+}
+
+# This selects the client's nonce CID
+
+after init {
+    nonce_cid(the_cid) := server_cid;
+}
+
+#
+# We fix the initial transport parameters here. TODO: In principle these
+# parameters should be selected randomly by some event.
+#
+
+action make_transport_parameters returns (tp:quic_transport_parameters) = {
+#    tp.initial_version := 0xff000017;
+    var imsdbl : initial_max_stream_data_bidi_local;
+    imsdbl.stream_pos_32 := max_stream_data;
+    var imd : initial_max_data;
+    imd.stream_pos_32 := 0x4000;
+    var it : max_idle_timeout;
+    it.seconds_16 := 60;
+    var imsdbr : initial_max_stream_data_bidi_remote;
+    imsdbr.stream_pos_32 := max_stream_data;
+    var imsdu : initial_max_stream_data_uni;
+    imsdu.stream_pos_32 := 0x2000;
+    tp.transport_parameters := tp.transport_parameters.append(imsdbl);
+    tp.transport_parameters := tp.transport_parameters.append(imd);
+    tp.transport_parameters := tp.transport_parameters.append(it);
+    tp.transport_parameters := tp.transport_parameters.append(imsdbr);
+    tp.transport_parameters := tp.transport_parameters.append(imsdu);
+}
+
+
+# This causes the log of events to be printed using hex numbers.
+
+attribute radix=16
+
+# This gives the interpretation of some of the basic data types.
+# Some of these interpretations are chosen to make solving more efficient.
+# Notably, the `intbv` type can be used to represent large numbers with
+# small bit vector enodings.
+
+interpret cid -> intbv[1][13][2]
+interpret version -> bv[32]
+interpret pkt_num -> bv[32]
+interpret error_code -> bv[16]
+interpret stream_id -> bv[16]
+attribute frame.idx.cardinality = 1
+attribute frame.ack.range.idx.cardinality = 1
+attribute pkt_num.cardinality = 1
+attribute stream_pos.cardinality = 4
+#attribute ip.addr.override = bv[1]
+#attribute ip.port.override = bv[1]
+
+# The following are some imported actions that can be used to put
+# "debugging" information in the logs. They have no other effect.
+
+import action show_tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid,
+                                  data:stream_data, pos:stream_pos, e:quic_packet_type)
+
+import action show_level_offset_length(e:quic_packet_type,offset:stream_pos,length:stream_pos)
+
+import action clear_packet(rnum:pkt_num,pkt:stream_data)
+
+import action cipher_packet(pkt:stream_data)
+
+import action show_stream(pkt:stream_data)
+
+import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)

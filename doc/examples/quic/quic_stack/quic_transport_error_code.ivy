@@ -2,11 +2,8 @@
 
 include quic_types
 
-type error_code
-
 # Is it the most elegant way to reprensent error ?
 # https://tools.ietf.org/html/draft-ietf-quic-transport-29#section-20
-
 
 relation is_no_error  # tag = 0x0
 

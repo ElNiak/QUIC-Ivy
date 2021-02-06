@@ -14,7 +14,7 @@ object quic_ser = {}
 
 //TODO check old version
 
-    typedef struct transport_error_struct {
+    /*typedef struct transport_error_struct {
         const char *name;
         int value;
     } *transport_error_struct_ptr;
@@ -46,7 +46,7 @@ object quic_ser = {}
             map[vals->name] = vals->value;
             vals++;
         }
-    }
+    }*/
 
     class `quic_ser` : public ivy_binary_ser {
         enum {quic_s_init,
@@ -500,6 +500,6 @@ object quic_ser = {}
 
 <<< init
     
-    transport_error_name_map(transport_error_codes,transport_error_codes_map);
+    //transport_error_name_map(transport_error_codes,transport_error_codes_map);
 
 >>>

@@ -465,9 +465,9 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         draining_pkt_sent(scid) := true
     };
 
-    # [11]
+    # [11] TODO
     if pkt.ptype = quic_packet_type.initial {
-        require ~(pkt.token.end = 0) -> is_invalid_token;
+        require ~_generating & ~(pkt.token.end = 0) -> is_invalid_token;
     };
 
     # The queued frames are deleted
@@ -587,7 +587,7 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
 
 
 action handle_transport_error(scid:cid,
-                              ec:err_code) =
+                              ec:error_code) =
 {
     if ec = 0x0 {
         is_no_error := true;

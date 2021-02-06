@@ -63,7 +63,7 @@ type microsecs
 
 # The type error code is a two-byte code for an error
 #chris: before => now in quic_transport_error_code
-#type error_code
+type error_code
 
 # A stream kind is either unidirectional (`unidir`) or bidirectional (`bidir`)
 
