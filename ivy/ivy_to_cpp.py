@@ -4168,7 +4168,18 @@ int ask_ret(long long bound) {
     }
     virtual void ivy_assume(bool truth,const char *msg){
         if (!truth) {
+            int i;
             __ivy_out << "assumption_failed(\\"" << msg << "\\")" << std::endl;
+            std::string::size_type pos = msg.find('.ivy');
+            char * path = "";
+            if (pos != std::string::npos)
+                path = msg.substr(0, pos);
+
+            char *lineNumber =0;
+            char * command = "sed \'"<< lineNumber << "!d\'"  <<  path;
+            
+            if (system(NULL)) i=system(command);
+            else exit (EXIT_FAILURE);
             std::cerr << msg << ": error: assumption failed\\n";
             CLOSE_TRACE
             __ivy_exit(1);
