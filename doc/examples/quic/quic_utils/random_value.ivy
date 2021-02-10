@@ -1,16 +1,28 @@
-#lang ivy 1.7
+#lang ivy1.7
 
 include quic_types
 
-module random_value = {
-    instantiate ptype
-    action random returns (res:this)
-    implementation {
-        implement random {
-            <<<
-            res = 0;
-            res = ::random()+5;
-            >>>
-        }
+action random_stream_pos(min:stream_pos,max:stream_pos) returns (res:stream_pos)
+
+implementation {
+    implement random_stream_pos(min:stream_pos,max:stream_pos) {
+       <<<
+       res = 0;
+       res = ::random()%max + min;
+       std::cerr << "random: " << res << "\n";
+       >>>
     }
 }
+
+action random_microsecs(min:microsecs,max:microsecs) returns (res:microsecs)
+
+implementation {
+    implement random_microsecs(min:microsecs,max:microsecs) {
+       <<<
+       res = 0;
+       res = ::random()%max + min;
+       std::cerr << "random: " << res << "\n";
+       >>>
+    }
+}
+
