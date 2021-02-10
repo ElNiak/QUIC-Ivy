@@ -25,7 +25,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        require pkt.token.end != 0; # [1]
+        require ~(pkt.token.end = 0); # [1]
     };
     require pkt.long -> pkt.pversion = 0xff00001b  #version 27
 }
@@ -242,6 +242,7 @@ export tls_recv_event
 
 export action _finalize = {
     # chris TODO 
+    require is_invalid_token;
 }
 
 

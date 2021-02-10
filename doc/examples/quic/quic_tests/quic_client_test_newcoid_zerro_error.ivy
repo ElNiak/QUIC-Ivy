@@ -149,7 +149,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
         require client.ep.addr ~= 0;         
         require scid = the_cid;
     } else {
-        require f.err_code = 0
+        require is_protocol_violation
     }
 }
 
@@ -259,6 +259,7 @@ export frame.streams_blockeds.handle
 
 export action _finalize = {
     # chris TODO 
+    require is_protocol_violation;
 }
 
 

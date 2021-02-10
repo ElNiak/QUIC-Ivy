@@ -29,7 +29,7 @@ before frame.streams_blocked.handle(f:frame.streams_blocked,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
-        require f.id = 0x100000000000000;
+        require f.id > 0x100000000000000;
     }
 }
 
@@ -137,7 +137,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
     if _generating {
         require scid = the_cid;
     } else {
-        require is_invalid_token
+        require is_frame_encoding_error | is_stream_limit_error
     }
 }
 
@@ -252,7 +252,8 @@ export frame.streams_blocked
 # action with additional checks.
 
 export action _finalize = {
-    # chris TODO 
+    # chris TODO
+    require is_frame_encoding_error | is_stream_limit_error;
 }
 
 

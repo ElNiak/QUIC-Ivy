@@ -187,8 +187,8 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
     #TODO
-    var pref_add = preferred_address;
-    pref_add.exponent_8 = 21;
+    var pref_add : preferred_address;
+    pref_add.exponent_8 := 21;
     tp.transport_parameters := tp.transport_parameters.append(pref_add);
 }
 
@@ -464,6 +464,7 @@ export tls_recv_event
 
 export action _finalize = {
     # chris TODO 
+    require is_transport_parameter_error;
 }
 
 

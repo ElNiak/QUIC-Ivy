@@ -1,0 +1,16 @@
+#lang ivy 1.7
+
+include quic_types
+
+module random_value = {
+    instantiate ptype
+    action random returns (res:this)
+    implementation {
+        implement random {
+            <<<
+            res = 0;
+            res = ::random()+5;
+            >>>
+        }
+    }
+}
