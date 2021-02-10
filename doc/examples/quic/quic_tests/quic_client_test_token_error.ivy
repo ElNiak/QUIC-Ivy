@@ -6,7 +6,7 @@ include quic_infer
 include file
 include quic_shim
 include quic_locale
-include quic_server
+include quic_client
 
 #
 # Restrict generation to packets from the designated client endpoints
@@ -22,8 +22,9 @@ include quic_server
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-        require src = client.ep | src = client_alt;
-        require dst = server.ep;
+        require client.ep.addr ~= 0;  # must have a client address to send to
+        require src = server.ep;
+        require dst = client.ep;
         require pkt.token.end != 0; # [1]
     };
     require pkt.long -> pkt.pversion = 0xff00001b  #version 27
@@ -52,125 +53,126 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
 before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
+        require client.ep.addr ~= 0;
         require scid = the_cid;
+        #before: require cid_dst_to_src_set(the_cid) & dcid = cid_dst_to_src(the_cid);
         require connected(the_cid) & dcid = connected_to(the_cid);
-        require f.len & f.off; 
+        # TEMPORARY: only send on client-initiated streams
+        require get_stream_role(f.id) = role.client & get_stream_kind(f.id) = bidir;
+        require f.len & f.off; # TODO: when can f.off be false? We make len true here, since len=false implies last fram of packet.
+#        require ~f.fin; # TEMPORARY
         require f.length > 0;
+        call show_level_offset_length(e,f.offset,stream_length(dcid,f.id));
         require f.offset = stream_length(dcid,f.id);
         require f.length = (stream_app_data_end(dcid,f.id)) - f.offset;
+        # require ~f.fin;  # TODO: should allow fin after handshake is complete, or never?
     }
 }
 
 # We have something similar for crypto frames
+#
+# TEMPORARY: we require the server to send crypto frames in order of encryption level from initial to
+# handshake to 1rtt. This is because we are prohibiting retransmissions, so an early-arriving handshake
+# frame would be dropped because keys are not available and then permanently lost [1]. (nb:chris: other before)
 
 before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
+        require client.ep.addr ~= 0;
         require scid = the_cid;
         require f.length > 0;
+#        call show_level_offset_length(e,crypto_length(scid,e),crypto_data_end(src,scid,e))
         require f.offset = crypto_length(scid,e);
         require f.length = (crypto_data_end(scid,e)) - f.offset;
+        require e = quic_packet_type.handshake -> crypto_length(scid,quic_packet_type.initial) = crypto_data_end(scid,quic_packet_type.initial);  # [1]
+        require e = quic_packet_type.one_rtt -> crypto_length(scid,quic_packet_type.initial) = crypto_data_end(scid,quic_packet_type.initial);  # [1]
+        require e = quic_packet_type.one_rtt -> crypto_length(scid,quic_packet_type.handshake) = crypto_data_end(scid,quic_packet_type.handshake);  # [1]
     }
 }
 
-# Generate ack frames only for the client. HACK: to avoid generating
-# blizzards of ACK's, we set the bit `force_new_ack` which forces
-# ACK's to have at least on previously unacked sequenc number. There
-# should be a better way to do this.
+# Generate ack frames only for the client.
 
 before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     if _generating {
+        require client.ep.addr ~= 0;
         require scid = the_cid;
         force_new_ack := true;
     }
 }
 
-# Generate rst_stream frames only for the environment process(es).
+# Generate rst_stream frames only for the client.
 
 before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
     if _generating {
+        require client.ep.addr ~= 0;
         require scid = the_cid;
         require f.id = 4;
     }
 }
 
-# Generate stop_sending frames only for the environment process(es).
+# Generate stop_sending frames only for the client.
 
 before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
     if _generating {
+        require client.ep.addr ~= 0;       
         require scid = the_cid;
         require f.id = 4;
     }
 }
 
-# Generate max_streams frames only for the environment process(es).
+# Generate max_streams frames only for the client.
 
 before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
+        require client.ep.addr ~= 0;
         require scid = the_cid;
     }
 }
 
-before frame.new_connection_id.handle(f:frame.new_connection_id,scid:cid,dcid:cid) {
-    if _generating {
-        require scid = the_cid;
-    }
-}
-
-
-before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,dcid:cid) {
-    if _generating {
-        require scid = the_cid;
-    }
-}
-
-
-# Generate connection_close frames only for the environment process(es).
-#
-# Note: requiring the `err_code` is zero on non-generated frames means that
-# we stop the test if the peer reports a protocol error. 
+# Generate connection_close frames only for the client.
 
 before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
+        require client.ep.addr ~= 0;         
         require scid = the_cid;
     } else {
-        require is_invalid_token
+        require is_protocol_violation
     }
 }
 
-# Generate application_close frames only for the environment process(es).
+# Generate connection_close frames only for the client.
 
 before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
     if _generating {
+        require client.ep.addr ~= 0;
         require scid = the_cid;
     }
 }
 
-# Generate max_stream_data frames only for the environment process(es), and only for
-# a restricted range of frames (so we don't throttle all of the data).
+# Generate max_stream_data frames only for the client.
 
 before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
     if _generating {
+        require client.ep.addr ~= 0;
         require scid = the_cid;
         require 4 <= f.id & f.id <= 16;
     }
 }
 
-# Generate stream_data_blocked frames only for the environment process(es).
-# We restrict the frame id.
+# Generate stream_data_blocked frames only for the client.
 
 before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dcid:cid) {
     if _generating {
+        require client.ep.addr ~= 0;
         require scid = the_cid;
         require f.id = 4;
     }
 }
 
-# Generate max_data frames only for the environment process(es). Here, for
-# non-generated frames, we check that the max_data value doesn't decrease.
-# This is not forbidden, but it seems like a good thing to check.
+# Generate max_data frames only for the client.
 
 before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid) {
     if _generating {
+        require client.ep.addr ~= 0;
         require scid = the_cid;
     }
     else {
@@ -199,24 +201,17 @@ after init {
 }
 
 around client_send_event {
-    require s = current_stream;
-    require (src = client.ep | src = client_alt);
-    require dst = server.ep;
+    require stream_seen(dcid,s); # TODO: wait until client request is finished?
+    require src = server.ep;
+    require dst = client.ep;
+    #require cid_dst_to_src_set(the_cid) & dcid = cid_dst_to_src(the_cid);
     require connected(the_cid) & dcid = connected_to(the_cid);
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);
-    require stream_length(dcid,s) < end & end <= http_request.end;
-    require current_stream < 60;
+    require stream_length(dcid,s) < http_response.end;
     ...
-    while end < http_request.end & http_request.value(end) ~= 10 {
-        end := end.next
-    };
-    if end < http_request.end {
-        end := end.next
-    };
-    var data := http_request.segment(stream_length(dcid,s),end);
+    var data := http_response.segment(stream_length(dcid,s),http_response.end);
 #    call app_send_event(src,dst,dcid,s,data,end = http_request.end);
     call app_send_event(src,dst,dcid,s,data,stream_length(dcid,s),true);
-    current_stream := current_stream + 4;
 }
 
 # The actions listed below will be generated by the mirror.

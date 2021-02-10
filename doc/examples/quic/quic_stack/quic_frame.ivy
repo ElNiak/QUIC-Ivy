@@ -3,6 +3,8 @@
 include collections
 include order
 include quic_stream
+include quic_fsm_sending
+include quic_fsm_receiving
 
 # The frame protocol
 # ==================
@@ -637,6 +639,11 @@ object frame = {
             };
             if f.fin {
                 stream_finished(dcid,f.id) := true;
+                if receiving_ready {
+                    receiving_sizeKnown := true;
+                }
+            } else {
+                receiving_ready := true;
             };
             call enqueue_frame(scid,f,e,false);
         }
@@ -735,6 +742,7 @@ object frame = { ...
             require stream_id_allowed(dcid,f.id);  # [4]
             call handle_transport_error(scid,f.err_code);
 	    ...
+            receiving_resetRecvd := true;
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -772,6 +780,7 @@ object frame = { ...
             call handle_transport_error(scid,f.err_code);
 	    ...
             stream_seen(scid,f.id) := true;
+            receiving_ready := true;
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -959,6 +968,7 @@ object frame = { ...
                 max_stream_data_val(scid,f.id) := f.pos;  # [2]
             }
 	    ...
+            receiving_ready := true;
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -989,6 +999,7 @@ object frame = { ...
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 	    ...
+            receiving_ready := true;
             call enqueue_frame(scid,f,e,false);
         }
     }

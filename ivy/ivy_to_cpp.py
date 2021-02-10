@@ -4166,22 +4166,47 @@ int ask_ret(long long bound) {
             __ivy_exit(1);
         }
     }
+
+    #include <string>
+
     virtual void ivy_assume(bool truth,const char *msg){
         if (!truth) {
             int i;
             __ivy_out << "assumption_failed(\\"" << msg << "\\")" << std::endl;
-            std::string::size_type pos = msg.find('.ivy');
-            char * path = "";
-            if (pos != std::string::npos)
-                path = msg.substr(0, pos);
-
-            char *lineNumber =0;
-            char * command = "sed \'"<< lineNumber << "!d\'"  <<  path;
             
-            if (system(NULL)) i=system(command);
+            std::string path ="";
+            std::string msgstr ="";
+            std::string lineNumber = "1";
+            int line;
+            std::string command = "";
+
+            std::string::size_type pos = msgstr.find(".ivy");
+            if (pos != std::string::npos)
+                path = std::string(msg+0,msg+pos);
+            
+
+            std::string::size_type pos_n = msgstr.find("line");
+            if (pos_n != std::string::npos)
+                lineNumber = std::string(msg+pos_n, msg+msgstr.length());
+            sscanf(lineNumber.c_str(),"%*[^0-9]%d",&num);
+            lineNumber = std::to_string(num);
+
+            if (path.find("test") != std::string::npos)
+                path = std::string("$HOME/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_tests/");
+            
+            command = std::string("sed \'") + lineNumber + std::string("!d\'") + path + std::string(".ivy > temps.txt");
+            
+            if (system(NULL)) i=system(command.c_str());
             else exit (EXIT_FAILURE);
+
+            std::ifstream ifs("temps.txt");
+            stdstringstream strStream;
+            strStream << ifs.rdbuf();
+            std::string res = strStream.str();
+            if(std::remove("temps.txt") != 0)
+                std::cerr << "error: remove(temps.txt) failed\\n"
             std::cerr << msg << ": error: assumption failed\\n";
-            CLOSE_TRACE
+            std::cerr << res;
             __ivy_exit(1);
         }
     }

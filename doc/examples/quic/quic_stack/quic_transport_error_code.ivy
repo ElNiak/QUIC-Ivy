@@ -1,7 +1,5 @@
 #lang ivy1.7
 
-include quic_types
-
 # Is it the most elegant way to reprensent error ?
 # https://tools.ietf.org/html/draft-ietf-quic-transport-29#section-20
 

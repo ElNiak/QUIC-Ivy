@@ -1,0 +1,27 @@
+#lang ivy1.7
+
+# https://tools.ietf.org/html/draft-ietf-quic-transport-31#page-15
+
+relation sending_ready
+
+relation sending_send
+
+relation sending_dataSent
+
+relation sending_dataRecvd
+
+relation sending_resetSent
+
+relation sending_resetRecvd
+
+# Initial state
+# -------------
+
+after init {
+    sending_ready := true;
+    sending_send := false;
+    sending_dataSent := false;
+    sending_dataRecvd := false;
+    sending_resetSent := false;
+    sending_resetRecvd := false;
+}

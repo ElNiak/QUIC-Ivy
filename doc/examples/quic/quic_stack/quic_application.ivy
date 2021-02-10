@@ -2,6 +2,8 @@
 
 include byte_stream
 include quic_stream
+include quic_fsm_sending
+include quic_fsm_receiving
 
 #
 # The application protocol
@@ -164,6 +166,9 @@ after app_send_event {
     stream_app_data_end(dcid,s) := end;  # [1]
     if close {
         stream_app_data_finished(dcid,s) := true;  # [3]
+        if receiving_sizeKnown {
+            receiving_dataRecvd1 := true;
+        }
     }
 }
 

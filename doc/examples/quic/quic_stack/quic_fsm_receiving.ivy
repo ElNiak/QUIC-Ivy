@@ -1,0 +1,29 @@
+#lang ivy1.7
+
+# https://tools.ietf.org/html/draft-ietf-quic-transport-31#page-15
+
+relation receiving_ready
+
+relation receiving_sizeKnown
+
+relation receiving_dataRecvd
+
+relation receiving_dataRead
+
+relation receiving_resetRecvd
+
+relation receiving_resetRead
+
+# TODO = stream id ?
+
+# Initial state
+# -------------
+
+after init {
+    receiving_ready := false;
+    receiving_sizeKnown := false;
+    receiving_dataRecvd := false;
+    receiving_dataRead := false;
+    receiving_resetRecvd := false;
+    receiving_resetRead := false;
+}

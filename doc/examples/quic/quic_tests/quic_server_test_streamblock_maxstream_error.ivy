@@ -8,25 +8,29 @@ include quic_shim
 include quic_locale
 include quic_server
 
-#
-# Restrict generation to packets from the designated client endpoints
-# to the server endpoint.
-#
-
-#   Token Length:  A variable-length integer specifying the length of the
-#      Token field, in bytes.  This value is zero if no token is present.
-#      Initial packets sent by the server MUST set the Token Length field
-#      to zero; clients that receive an Initial packet with a non-zero
-#      Token Length field MUST either discard the packet or generate a
-#      connection error of type PROTOCOL_VIOLATION. [1]
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         require src = client.ep | src = client_alt;
         require dst = server.ep;
-        require pkt.token.end != 0; # [1]
+        require pkt.token.end = 0; # [1]
     };
     require pkt.long -> pkt.pversion = 0xff00001b  #version 27
+}
+
+#    Maximum Streams:  A variable-length integer indicating the maximum
+#       number of streams allowed at the time the frame was sent.  This
+#       value cannot exceed 2^60, as it is not possible to encode stream
+#       IDs larger than 2^62-1.  Receipt of a frame that encodes a larger
+#       stream ID MUST be treated as a STREAM_LIMIT_ERROR or a
+#       FRAME_ENCODING_ERROR.
+
+before frame.streams_blocked.handle(f:frame.streams_blocked,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+        require f.id = 0x100000000000000;
+    }
 }
 
 # The protocol specification describes all the events occurring the
@@ -231,6 +235,8 @@ export frame.path_response.handle
 export packet_event
 export client_send_event
 export tls_recv_event
+
+export frame.streams_blocked
 #export frame.new_connection_id.handle
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
