@@ -6,7 +6,7 @@ include quic_infer
 include file
 include quic_shim
 include quic_locale
-include quic_client
+include quic_server
   
 #   A HANDSHAKE_DONE frame can only be sent by the server.  Servers MUST
 #   NOT send a HANDSHAKE_DONE frame before completing the handshake.  A

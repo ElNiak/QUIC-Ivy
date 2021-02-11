@@ -6,6 +6,7 @@ include quic_infer
 include file
 include quic_shim
 include quic_locale
+include random_value
 
 parameter the_cid : cid = 0xd
 parameter server_addr : ip.addr = 0x7f000001

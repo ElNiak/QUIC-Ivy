@@ -6,6 +6,7 @@ include quic_infer
 include file
 include quic_shim
 include quic_locale
+include random_value
 
 parameter the_cid : cid = 0xd
 parameter server_addr : ip.addr = 0x7f000001
@@ -202,7 +203,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     #  active_connection_id_limit value received from its peer.
 
     var acid : active_connection_id_limit;
-    require acid.stream_pos_32 < 2;
+    acid.stream_pos_32 := lower_stream_pos(2);;
     tp.transport_parameters := tp.transport_parameters.append(acid);
 }
 

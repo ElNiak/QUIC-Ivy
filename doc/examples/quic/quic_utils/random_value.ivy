@@ -4,17 +4,41 @@ include quic_types
 
 action random_stream_pos(min:stream_pos,max:stream_pos) returns (res:stream_pos)
 
+action greater_stream_pos(min:stream_pos) returns (res:stream_pos)
+
+action lower_stream_pos(max:stream_pos) returns (res:stream_pos)
+
 implementation {
     implement random_stream_pos(min:stream_pos,max:stream_pos) {
        <<<
        res = 0;
        res = ::random()%max + min;
-       std::cerr << "random: " << res << "\n";
+       std::cerr << "between random: " << res << "\n";
+       >>>
+    }
+
+    implement greater_stream_pos(min:stream_pos) {
+       <<<
+       res = 0;
+       res = ::random()%32767 + (min+1);
+       std::cerr << " greater random: " << res << "\n";
+       >>>
+    }
+
+    implement lower_stream_pos(max:stream_pos) {
+       <<<
+       res = 0;
+       res = ::random()%(max-1) + 0;
+       std::cerr << "lower random: " << res << "\n";
        >>>
     }
 }
 
 action random_microsecs(min:microsecs,max:microsecs) returns (res:microsecs)
+
+action greater_microsecs(min:microsecs) returns (res:microsecs)
+
+action lower_microsecs(max:microsecs) returns (res:microsecs)
 
 implementation {
     implement random_microsecs(min:microsecs,max:microsecs) {
@@ -22,6 +46,22 @@ implementation {
        res = 0;
        res = ::random()%max + min;
        std::cerr << "random: " << res << "\n";
+       >>>
+    }
+
+    implement greater_microsecs(min:microsecs) {
+       <<<
+       res = 0;
+       res = ::random()%32767 + (min+1);
+       std::cerr << " greater random: " << res << "\n";
+       >>>
+    }
+
+    implement lower_microsecs(max:microsecs) {
+       <<<
+       res = 0;
+       res = ::random()%(max-1) + 0;
+       std::cerr << "lower random: " << res << "\n";
        >>>
     }
 }

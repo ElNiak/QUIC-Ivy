@@ -6,6 +6,7 @@ include quic_infer
 include file
 include quic_shim
 include quic_locale
+include random_value
 
 <<<
 
@@ -268,7 +269,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     #  Values above 20 are invalid.
 
     var acl_del : ack_delay_exponent;
-    acl_del.exponent_8 := 21;
+    acl_del.exponent_8 := greater_microsecs(21);
     require acl_del.exponent_8 > 20; # useless generating now working here
     tp.transport_parameters := tp.transport_parameters.append(acl_del);
 }

@@ -6,6 +6,7 @@ include quic_infer
 include file
 include quic_shim
 include quic_locale
+include random_value
 
 parameter the_cid : cid = 0xd
 parameter server_addr : ip.addr = 0x7f000001
@@ -188,7 +189,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
 
     #TODO
     var pref_add : preferred_address;
-    pref_add.exponent_8 := 21;
+    pref_add.exponent_8 := greater_stream_pos(20);;
     tp.transport_parameters := tp.transport_parameters.append(pref_add);
 }
 
