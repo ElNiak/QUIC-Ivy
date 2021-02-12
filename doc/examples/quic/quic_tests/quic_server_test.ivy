@@ -7,6 +7,8 @@ include file
 include quic_shim
 include quic_locale
 include quic_server
+include quic_fsm_sending
+include quic_fsm_receiving
 
 # This is a simple tester for quic servers. The tester plays the role of a
 # single client, which may use multiple UDP ports.
@@ -106,7 +108,8 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
         force_new_ack := true;
-    }
+        #call handle_sending_ack(f.largest_acked);
+    } 
 }
 
 # Generate rst_stream frames only for the environment process(es).

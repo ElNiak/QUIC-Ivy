@@ -203,7 +203,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     #  active_connection_id_limit value received from its peer.
 
     var acid : active_connection_id_limit;
-    acid.stream_pos_32 := lower_stream_pos(2);;
+    acid.stream_pos_32 := lower_stream_pos(2);
     tp.transport_parameters := tp.transport_parameters.append(acid);
 }
 

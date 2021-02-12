@@ -166,13 +166,6 @@ action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
 
 # - If aid D created a new connection ID with sequence number S, then seqnum_to_cid(D, S) yield the new connection id.
 
-# chris
-# - For each aid C, `trans_errors_set(C)`
-#   is true if C has send transport errors.
-#
-# - For each aid C, function `trans_errors(C)`
-#   gives the transport errors send by C.
-#chris
 
 relation conn_seen(C:cid)
 relation conn_closed(C:cid)
@@ -199,6 +192,10 @@ relation conn_requested(S:ip.endpoint,D:ip.endpoint,C:cid)
 function hi_non_probing(C:cid) : pkt_num
 relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
+
+#chris
+relation is_retransmited(N:pkt_num)
+#chris
 
 # Initial state
 # -------------
@@ -227,6 +224,9 @@ after init {
     #Hamid
     max_seq_num(C) := 0;
     #Hamid
+    #chris
+    is_retransmited(N) := false;
+    #chris
 }
 
 # Packet event specification
@@ -335,6 +335,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     require pkt.ptype = queued_level(scid);
 
+
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
     require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
 
@@ -359,7 +360,6 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # packet has been received.
 
     require conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
-
 
     # TEMPORARY: do not apply ack-only rule to generated packets
     # This can be removed when we have a frame queue per encryption level
@@ -504,7 +504,12 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 # `is_client_hello`, is true for a `client_hello` message (see below).
 #
 
-action handle_tls_handshake(src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid,hs:tls.handshake) = {
+action handle_tls_handshake(
+    src:ip.endpoint,
+    dst:ip.endpoint,
+    scid:cid,
+    dcid:cid,
+    hs:tls.handshake) = {
 
     if some(ch:tls.client_hello) hs *> ch {
         is_client(scid) := true;

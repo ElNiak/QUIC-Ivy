@@ -1,27 +1,143 @@
 #lang ivy1.7
 
+include quic_types
+
 # https://tools.ietf.org/html/draft-ietf-quic-transport-31#page-15
 
-relation sending_ready
+# Since we want to represent the sending FSM of the tested implementation,
+# we will use these relations when WE receive frame infering the state
+# of the opponant.
 
-relation sending_send
+# - For each stream id S, `sending_ready(S)`
+#   indicates that a stream has been create by the sender. 
+# => not testable since we only receive its frame
 
-relation sending_dataSent
+relation sending_ready(S:stream_id)
 
-relation sending_dataRecvd
+# - For stream id S, `sending_send(S)` indicates that for
+#   the stream id S, we received either a STREAM frame, either
+#   a STREAM_DATA_BLOCKED or that a bidirectional stream is 
+#   open
+# => meaning =  we received STREAM or STREAM_DATA_BLOCKED frame
 
-relation sending_resetSent
+relation sending_send(S:stream_id)
 
-relation sending_resetRecvd
+# - For stream id S, `sending_dataSent(S)` indicates that
+#   the stream on stream id S is finished by sender (that is, a
+#   FIN frame has been sent). (stream_finished)
+# => meaning =  we received STREAM+FIN bit
+#,P:pkt_num
+
+relation sending_dataSent(S:stream_id)
+
+# - For stream id S, `sending_dataRecvd(S)` indicates that
+#   the stream id S is finished and that all the ack has been received
+# => meaning = [no retransmission of the STREAM or STREAM_DATA_BLOCKED frames
+#              we represent retransmission by receiving twice packet with same 
+#              pkt_num => we should know the pkt_num of the frames],
+#              we send ack for the packet number
+
+relation sending_dataRecvd(S:stream_id)
+
+# - For each  stream id S, `sending_resetSent(S)` indicates that
+#   the stream transmitted by sender on stream id S is reset (that is, a
+#   RESET_STREAM frame has been sent). (stream_reset)
+# => meaning = we received RESET_STREAM
+#,P:pkt_num
+
+relation sending_resetSent(S:stream_id)
+
+# - For stream id S, `sending_resetRecvd(S)` indicates that
+#   the stream id S is reset and that the RST ack has been received
+# => meaning = [no retransmission of RST frame or] we send ack for 
+#              corresponding packet/frame
+
+relation sending_resetRecvd(S:stream_id)
+
+function lastest_stream_id(P:pkt_num) : stream_id
+function lastest_pkt_num : pkt_num
 
 # Initial state
 # -------------
 
 after init {
-    sending_ready := true;
-    sending_send := false;
-    sending_dataSent := false;
-    sending_dataRecvd := false;
-    sending_resetSent := false;
-    sending_resetRecvd := false;
+    sending_ready(S)      := true;
+    sending_send(S)       := false;
+    sending_dataSent(S)   := false;
+    sending_dataRecvd(S)  := false;
+    sending_resetSent(S)  := false;
+    sending_resetRecvd(S) := false;
+    lastest_stream_id(P)  := 0;
+    lastest_pkt_num       := 0;
+}
+
+action handle_sending_send(id:stream_id) = {
+    # possible source state/transition
+    require sending_ready(id);
+    # set of non allowed state (useless ?) ~sending_send(id) &
+    require  ~sending_dataSent(id) & ~sending_dataRecvd(id) & ~sending_resetSent(id)  & ~sending_resetRecvd(id);
+    sending_ready(id) := false;
+    sending_send(id) := true;
+}
+
+action handle_sending_dataSent(id:stream_id,seq:pkt_num) = {
+    # possible source state/transition
+    require sending_send(id);
+    # set of non allowed state  ~sending_dataSent(id) &
+    require  ~sending_dataRecvd(id) & ~sending_resetSent(id)  & ~sending_resetRecvd(id);
+    sending_send(id) := false;
+    sending_dataSent(id) := true;
+    lastest_stream_id(seq) := id;
+    lastest_pkt_num := seq;
+}
+
+action handle_sending_dataRecvd(id:stream_id) = {
+    # possible source state/transition
+    require sending_dataSent(id);
+    # set of non allowed state  ~sending_dataRecvd(id) &
+    require  ~sending_send(id) & ~sending_resetSent(id)  & ~sending_resetRecvd(id);
+    sending_dataSent(id) := false;
+    sending_dataRecvd(id) := true;
+}
+
+action handle_sending_resetSent(id:stream_id,seq:pkt_num) = {
+    # possible source state/transition
+    require sending_dataSent(id) | sending_send(id) | sending_ready(id);
+    # set of non allowed state & ~sending_resetSent(id)
+    require  ~sending_dataRecvd(id) & ~sending_resetRecvd(id);
+    sending_ready(id) := false;
+    sending_dataSent(id) := false;
+    sending_send(id) := false;
+    sending_resetSent(id) :=  true;
+    lastest_stream_id(seq) := id;
+    lastest_pkt_num := seq;
+}
+
+action handle_sending_resetRecvd(id:stream_id) = {
+    # possible source state/transition
+    require sending_resetSent(id);
+    # set of non allowed state & ~sending_resetRecvd(id)
+     require  ~sending_send(id) & ~sending_dataSent(id);
+    sending_resetSent(id) := false;
+    sending_resetRecvd(id) := true;
+}
+
+# ====================================================================
+# Auxilary functions
+#=====================================================================
+
+action handle_sending_ack(largest_acked:pkt_num) = {
+    var id := get_streamid_from_ack(largest_acked);
+    if sending_resetSent(id) { 
+        call handle_sending_resetRecvd(id);
+    } else {
+        call handle_sending_dataRecvd(id);
+    };
+}
+
+# Here we assume that the last packet num define the largest_ack
+action get_streamid_from_ack(largest_acked:pkt_num)  
+returns (id:stream_id) = {
+    require lastest_pkt_num <= largest_acked;
+    id := lastest_stream_id(lastest_pkt_num);
 }

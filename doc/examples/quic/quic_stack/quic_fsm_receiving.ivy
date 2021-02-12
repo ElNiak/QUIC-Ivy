@@ -1,29 +1,151 @@
 #lang ivy1.7
 
+include quic_types
+
 # https://tools.ietf.org/html/draft-ietf-quic-transport-31#page-15
 
-relation receiving_ready
+# Since we want to represent the receiving FSM of the tested implementation,
+# we will use these relations when WE sent frame infering the state
+# of the opponant. We assume perfect reliability of the medium.
+# However a more correct way would be to represent state when,
+# we receive ACK for the corresponding frame but this would introduce
+# some delay between the real current state of receiver and the represented one. 
 
-relation receiving_sizeKnown
 
-relation receiving_dataRecvd
+# - For each stream id S, `receiving_recv(S)`
+#   indicates that a STREAM frame, either
+#   a STREAM_DATA_BLOCKED or that a bidirectional stream is 
+#   send by the sender to the receiver.
+# => We can check when we send these frame
 
-relation receiving_dataRead
+relation receiving_recv(S:stream_id)
 
-relation receiving_resetRecvd
+# - For stream id S, `receiving_sizeKnown(S)` indicates that
+#   the stream transmitted to receiver on stream id S is finished (that is, a
+#   FIN frame has been sent). (+-stream_finished)
+# => We can check that when we send STREAM+FIN
+# ,P:pkt_num
 
-relation receiving_resetRead
+relation receiving_sizeKnown(S:stream_id)
 
-# TODO = stream id ?
+# - For stream id S, `receiving_dataRecvd(S)` indicates that
+#   the stream id S is finished and that all the data has been received
+# => We can test by checking all ACK received meaning that receiver receive data
+
+relation receiving_dataRecvd(S:stream_id)
+
+# - For each stream id S, `receiving_dataRead(S)` indicates that
+#   the stream transmitted to receiver on stream id S is read (that is, a
+#   RESET_STREAM frame has been sent). 
+#  => We cannot test if the application has read all the data
+
+relation receiving_dataRead(S:stream_id)
+
+# - For each stream id S, `receiving_resetRecvd(S)` indicates that
+#   the stream transmitted to receiver on stream id S is reset (that is, a
+#   RESET_STREAM frame has been sent). (+-stream_reset)
+# => We assume that when we sent the RESET_STREAM
+
+relation receiving_resetRecvd(S:stream_id)
+
+# - For each stream id S, `receiving_resetRead(S)` indicates that
+#   the reset stream transmitted to receiver on stream id S is read (that is, a
+#   RESET_STREAM frame has been sent). (+-stream_reset)
+#  => We cannot check (maybe check if stream is reset)
+
+relation receiving_resetRead(S:stream_id)
+
+function lastest_stream_id(P:pkt_num) : stream_id
+function lastest_pkt_num : pkt_num
 
 # Initial state
 # -------------
 
 after init {
-    receiving_ready := false;
-    receiving_sizeKnown := false;
-    receiving_dataRecvd := false;
-    receiving_dataRead := false;
-    receiving_resetRecvd := false;
-    receiving_resetRead := false;
+    receiving_recv(S)      := false;
+    receiving_sizeKnown(S) := false;
+    receiving_dataRecvd(S) := false;
+    receiving_dataRead(S)  := false;
+    receiving_resetRecvd(S):= false;
+    receiving_resetRead(S) := false;
+    lastest_stream_id(P)   := 0;
+    lastest_pkt_num        := 0;
+}
+action handle_receiving_recv(id:stream_id) = {
+    # possible source state/transition: none
+    # set of non allowed state (useless ?) ~sending_send(id) &
+    require  ~receiving_sizeKnown(id) & ~receiving_dataRecvd(id) & ~receiving_dataRead(id)  & ~receiving_resetRecvd(id) & ~receiving_resetRead(id);
+    receiving_recv(id) := true;
+}
+
+action handle_receiving_sizeKnown(id:stream_id,seq:pkt_num) = {
+    # possible source state/transition
+    require receiving_recv(id);
+    # set of non allowed state (useless ?) ~receiving_sizeKnown(id) &
+    require  ~receiving_dataRecvd(id) & ~receiving_dataRead(id) & ~receiving_resetRecvd(id)  & ~receiving_resetRead(id);
+    receiving_recv(id) := false;
+    receiving_sizeKnown(id) := true;
+    lastest_stream_id(seq) := id;
+    lastest_pkt_num := seq;
+}
+
+action handle_receiving_dataRecvd(id:stream_id) = {
+    # possible source state/transition
+    require receiving_sizeKnown(id) | receiving_resetRecvd(id);
+    # set of non allowed state  ~sending_dataSent(id) &
+    require  ~receiving_dataRead(id) & ~receiving_resetRead(id);
+    receiving_sizeKnown(id) := false;
+    receiving_resetRecvd(id) := false;
+    receiving_dataRecvd(id) := true;
+}
+
+action handle_receiving_dataRead(id:stream_id) = {
+    # possible source state/transition
+    require receiving_dataRecvd(id);
+    # set of non allowed state  ~sending_dataRecvd(id) &
+    require  ~receiving_dataRead(id) & ~receiving_resetRead(id)  & ~receiving_resetRead(id);
+    receiving_dataRecvd(id) := false;
+    receiving_dataRead(id) := true;
+}
+
+action handle_receiving_resetRecvd(id:stream_id,seq:pkt_num) = {
+    # possible source state/transition
+    require receiving_recv(id) | receiving_sizeKnown(id) | receiving_dataRecvd(id);
+    # set of non allowed state & ~receiving_resetRecvd(id)
+    require  ~receiving_resetRead(id) & ~receiving_dataRead(id);
+    receiving_recv(id) := false;
+    receiving_sizeKnown(id) := false;
+    receiving_dataRecvd(id) := false;
+    receiving_resetRecvd(id):=  true;
+    lastest_stream_id(seq) := id;
+    lastest_pkt_num := seq;
+}
+
+action handle_receiving_resetRead(id:stream_id) = {
+    # possible source state/transition
+    require receiving_resetRecvd(id);
+    # set of non allowed state & ~sending_resetRecvd(id)
+     require  ~receiving_sizeKnown(id) & ~receiving_dataRecvd(id) & ~receiving_dataRead(id);
+    receiving_resetRecvd(id) := false;
+    receiving_resetRead(id) := true;
+}
+
+# ====================================================================
+# Auxilary functions
+#=====================================================================
+
+action handle_sending_ack(largest_acked:pkt_num) = {
+    var id := get_streamid_from_ack(largest_acked);
+    if receiving_resetRecvd(id) { 
+        call handle_receiving_resetRead(id);
+    } else {
+        call handle_receiving_dataRead(id);
+    };
+}
+
+# Here we assume that the last packet num define the largest_ack
+action get_streamid_from_ack(largest_acked:pkt_num)  
+returns (id:stream_id) = {
+    require lastest_pkt_num <= largest_acked;
+    id := lastest_stream_id(lastest_pkt_num);
 }
