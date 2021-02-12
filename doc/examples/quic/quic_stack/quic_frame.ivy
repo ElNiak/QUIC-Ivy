@@ -547,6 +547,7 @@ object frame = {
             }
 	    ...
             force_new_ack := false;
+            call handle_receiving_ack(seq_num);
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -644,13 +645,7 @@ object frame = {
             };
             if f.fin {
                 stream_finished(dcid,f.id) := true;
-                #sending_dataSent(f.id) := true;
-                call handle_sending_dataRecvd(f.id);
-                #if receiving_ready {
-                #    receiving_sizeKnown := true;
-                #}
-            } else {
-                #receiving_ready := true;
+                call handle_sending_dataSent(f.id,seq_num);
             };
             call enqueue_frame(scid,f,e,false);
         }
@@ -750,7 +745,8 @@ object frame = { ...
             call handle_transport_error(scid,f.err_code);
 	    ...
             #receiving_resetRecvd := true;
-            sending_resetSent(f.id) := true;
+            #sending_resetSent(f.id) := true;
+            call handle_sending_resetSent(f.id,seq_num);
             call enqueue_frame(scid,f,e,false);
         }
     }

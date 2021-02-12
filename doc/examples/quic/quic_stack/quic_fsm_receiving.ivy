@@ -134,12 +134,12 @@ action handle_receiving_resetRead(id:stream_id) = {
 # Auxilary functions
 #=====================================================================
 
-action handle_sending_ack(largest_acked:pkt_num) = {
+action handle_receiving_ack(largest_acked:pkt_num) = {
     var id := get_streamid_from_ack(largest_acked);
     if receiving_resetRecvd(id) { 
         call handle_receiving_resetRead(id);
     } else {
-        call handle_receiving_dataRead(id);
+        call receiving_dataRecvd(id);
     };
 }
 
