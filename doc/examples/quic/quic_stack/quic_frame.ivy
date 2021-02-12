@@ -312,11 +312,12 @@ object frame = {
 # - `scid`: the source aid
 # - `dcid`: the destination aid
 # - `e`: the encryption level
+# - `seq_num`: the packet number where the frame is
 
 
 object frame = {
     ...
-    action handle(f:this,scid:cid,dcid:cid,e:quic_packet_type) = {
+    action handle(f:this,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num) = {
        require false; # this generic action should never be called
     }
 }
@@ -502,7 +503,7 @@ object frame = {
     ...
     object ack = {
         ...
-        action handle(f:frame.ack,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.ack,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
@@ -600,7 +601,7 @@ object frame = {
     ...
     object stream = {
         ...
-        action handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
@@ -676,7 +677,7 @@ object frame = {
     ...
     object crypto = {
         ...
-        action handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
         require num_queued_frames(scid) > 0 -> e = queued_level(scid);
@@ -732,7 +733,7 @@ object frame = {
 
 object frame = { ...
     object rst_stream = { ...
-        action handle(f:frame.rst_stream,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.rst_stream,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
@@ -775,7 +776,7 @@ object frame = { ...
 
 object frame = { ...
     object stop_sending = { ...
-        action handle(f:frame.stop_sending,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.stop_sending,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
@@ -824,7 +825,7 @@ object frame = { ...
 
 object frame = { ...
     object max_streams = { ...
-        action handle(f:frame.max_streams,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.max_streams,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
@@ -879,7 +880,7 @@ object frame = { ...
 
 object frame = { ...
     object connection_close = { ...
-        action handle(f:frame.connection_close,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.connection_close,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle{
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
@@ -926,7 +927,7 @@ object frame = { ...
 
 object frame = { ...
     object application_close = { ...
-        action handle(f:frame.application_close,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.application_close,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle{
             require connected(dcid) & connected_to(dcid) = scid;
             require e ~= quic_packet_type.initial;
@@ -964,7 +965,7 @@ object frame = { ...
 
 object frame = { ...
     object max_stream_data = { ...
-        action handle(f:frame.max_stream_data,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.max_stream_data,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1000,7 +1001,7 @@ object frame = { ...
 
 object frame = { ...
     object stream_data_blocked = { ...
-        action handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1030,7 +1031,7 @@ object frame = { ...
 
 object frame = { ...
     object data_blocked = { ...
-        action handle(f:frame.data_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.data_blocked,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1063,7 +1064,7 @@ object frame = { ...
 
 object frame = { ...
     object streams_blocked = { ...
-        action handle(f:frame.streams_blocked,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.streams_blocked,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1092,7 +1093,7 @@ object frame = { ...
 
 object frame = { ...
     object max_data = { ...
-        action handle(f:frame.max_data,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.max_data,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1117,7 +1118,7 @@ object frame = { ...
 
 object frame = { ...
     object ping = { ...
-        action handle(f:frame.ping,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.ping,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
@@ -1137,7 +1138,7 @@ object frame = { ...
 
 object frame = { ...
     object handshake_done = { ...
-        action handle(f:frame.handshake_done,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.handshake_done,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
@@ -1177,7 +1178,7 @@ object frame = { ...
 
 object frame = { ...
     object new_connection_id = { ...
-        action handle(f:frame.new_connection_id,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.new_connection_id,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1224,7 +1225,7 @@ object frame = { ...
 #    connection error of type PROTOCOL_VIOLATION. [3] TODO
 object frame = { ...
     object retire_connection_id = { ...
-        action handle(f:frame.retire_connection_id,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.retire_connection_id,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1265,7 +1266,7 @@ object frame = { ...
 
 object frame = { ...
     object path_challenge = { ...
-        action handle(f:frame.path_challenge,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.path_challenge,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1287,7 +1288,7 @@ object frame = { ...
 
 object frame = { ...
     object path_response = { ...
-        action handle(f:frame.path_response,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.path_response,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
@@ -1309,7 +1310,7 @@ object frame = { ...
 
 object frame = { ...
     object new_token = { ...
-        action handle(f:frame.new_token,scid:cid,dcid:cid,e:quic_packet_type)
+        action handle(f:frame.new_token,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);

@@ -23,6 +23,7 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
 
     var scid := pkt.src_cid;
     var dcid := pkt.dst_cid;
+    var sq   := pkt.seq_num;
 
     # On short headers, the scid is not given, so we use the recorded value
 
@@ -61,8 +62,8 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
             call app_send_event(src,dst,dcid,sf.id,sf.data,sf.offset,sf.fin)
         };
         call infer_frame(scid,dcid,f);
-        call f.handle(scid,dcid,e);
-            idx := idx.next
+        call f.handle(scid,dcid,e,sq);
+        idx := idx.next
     }
 }
 
