@@ -414,6 +414,31 @@ object frame = {
 # - the function `queued_level_type(C:cid,T:quic_packet_type) : frame.arr` is used to  queue frames a separate frame queue for each packet type.  TODO
 # - the relation `send_retire_cid(C:cid,S:stream_id)` is used to say that the next frame should be a retire_CID frame
 # - the function `max_rtp_num(C:cid) : cid_seq``is used to get the maximum retire_prior_to field in new_cid frame
+# - STREAM frame retransmission: 13.3.  Retransmission of Information
+#    *  Application data sent in STREAM frames is retransmitted in new
+#       STREAM frames unless the endpoint has sent a RESET_STREAM for that
+#       stream.  Once an endpoint sends a RESET_STREAM frame, no further
+#       STREAM frames are needed.
+# We can consider that a STREAM frame is retransmitted if we receive a Frame twice with the same
+# information. For that we use more or less the same approach than Copy-On-Write for memory
+# We use a reference count (count_stream_frame) for each STREAM frame that we get. 0 meaning no reference, 1 = received once, ect
+# If count_stream_frame > 1 => this frame has been retransmitted and stream_frame_restransmitted is true
+# - RESET_STREAM frame retransmission =  same approach
+#   *  Cancellation of stream transmission, as carried in a RESET_STREAM
+#      frame, is sent until acknowledged or until all stream data is
+#      acknowledged by the peer (that is, either the "Reset Recvd" or
+#      "Data Recvd" state is reached on the sending part of the stream).
+#      The content of a RESET_STREAM frame MUST NOT change when it is
+#      sent again.
+# - STREAM_DATA_BLOCKED frame retransmission =  same approach
+#   *  Blocked signals are carried in DATA_BLOCKED, STREAM_DATA_BLOCKED,
+#      and STREAMS_BLOCKED frames.  DATA_BLOCKED frames have connection
+#      scope, STREAM_DATA_BLOCKED frames have stream scope, and
+#      STREAMS_BLOCKED frames are scoped to a specific stream type.  New
+#      frames are sent if packets containing the most recent frame for a
+#      scope is lost, but only while the endpoint is blocked on the
+#      corresponding limit.  These frames always include the limit that
+#      is causing blocking at the time that they are transmitted.
 #chris
 
 relation stream_seen(C:cid,S:stream_id)
@@ -442,6 +467,16 @@ relation queued_ack_eliciting(C:cid)
 function queued_level_type(C:cid,T:quic_packet_type) : frame.arr
 relation send_retire_cid(C:cid) # ?? S:stream_id
 function max_rtp_num(C:cid) : cid_seq
+
+function count_stream_frame(off:bool,len:bool,fin:bool,id:stream_id,offset:stream_pos,
+                            length:stream_pos,data:stream_data) : num
+relation stream_frame_restransmitted(s:stream_id)
+
+function count_reset_frame(id:stream_id,err_code:error_code,final_offset:stream_pos) : num
+relation reset_frame_restransmitted(s:stream_id)
+
+function count_sdb_frame(id:stream_id,pos:stream_pos) : num
+relation sdb_frame_restransmitted(s:stream_id)
 #chris
 
 after init {
@@ -461,6 +496,12 @@ after init {
 #chris
     max_rtp_num(C) := 0;
     send_retire_cid(C) := false;
+    count_stream_frame(off,len,fin,id,offset,lenght,data) := 0;
+    stream_frame_restransmitted(S) := false;
+    count_reset_frame(id,err_code,final_offset) := 0;
+    reset_frame_restransmitted(S) := false;
+    count_sdb_frame(id,pos) := 0;
+    sdb_frame_restransmitted(S) := false;
 #chris
 }
 
@@ -634,15 +675,16 @@ object frame = {
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
             require stream_id_allowed(dcid,f.id);  # [6]
 	        ...
+            count_stream_frame(f.off,f.len,f.fin,f.id,f.offset,f.lenght,f.data) := count_stream_frame(f.off,f.len,f.fin,f.id,f.offset,f.lenght,f.data) + 1;
+            if count_stream_frame(f.off,f.len,f.fin,f.id,f.offset,f.lenght,f.data) > 1 {
+                stream_frame_restransmitted(f.id) := true;
+            };
             stream_seen(scid,f.id) := true;
-            #sending_send(f.id) := true;
-
             if ~_generating {
                 call handle_sending_send(f.id);
             } else {
                 call handle_receiving_recv(f.id);
             };
-
             var offset := f.offset if f.off else 0;
             var length := offset + f.length;
 
@@ -757,8 +799,10 @@ object frame = { ...
             require stream_id_allowed(dcid,f.id);  # [4]
             call handle_transport_error(scid,f.err_code);
 	    ...
-            #receiving_resetRecvd := true;
-            #sending_resetSent(f.id) := true;
+            count_reset_frame(f.id,f.err_code,f.final_offset) := count_reset_frame(f.id,f.err_code,f.final_offset) + 1;
+            if count_reset_frame(f.id,f.err_code,f.final_offset) > 1 {
+                reset_frame_restransmitted(f.id) := true;
+            };
             if ~_generating {
                 call handle_sending_resetSent(f.id,seq_num);
             } else {
@@ -1020,8 +1064,10 @@ object frame = { ...
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 	    ...
-            #receiving_ready := true;
-            #sending_send(f.id) := true;
+            count_sdb_frame(f.id,f.pos) := count_sdb_frame(f.id,f.pos) + 1;
+            if count_sdb_frame(f.id,f.pos) > 1 {
+                sdb_frame_restransmitted(f.id) := true;
+            };
             if ~_generating {
                 call handle_sending_send(f.id);
             } else {
