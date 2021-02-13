@@ -11,7 +11,6 @@ include quic_types
 # we receive ACK for the corresponding frame but this would introduce
 # some delay between the real current state of receiver and the represented one. 
 
-
 # - For each stream id S, `receiving_recv(S)`
 #   indicates that a STREAM frame, either
 #   a STREAM_DATA_BLOCKED or that a bidirectional stream is 
@@ -24,7 +23,6 @@ relation receiving_recv(S:stream_id)
 #   the stream transmitted to receiver on stream id S is finished (that is, a
 #   FIN frame has been sent). (+-stream_finished)
 # => We can check that when we send STREAM+FIN
-# ,P:pkt_num
 
 relation receiving_sizeKnown(S:stream_id)
 
@@ -73,53 +71,53 @@ after init {
 }
 action handle_receiving_recv(id:stream_id) = {
     # possible source state/transition: none
-    # set of non allowed state (useless ?) ~sending_send(id) &
+    # set of non allowed state (useless ?) 
     require  ~receiving_sizeKnown(id) & ~receiving_dataRecvd(id) & ~receiving_dataRead(id)  & ~receiving_resetRecvd(id) & ~receiving_resetRead(id);
     receiving_recv(id) := true;
     call show_fsm_receiving_recv_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
-    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id),receiving_sizeKnown(id),receiving_dataRecvd(id),receiving_dataRead(id),receiving_resetRecvd(id),receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_sizeKnown(id:stream_id,seq:pkt_num) = {
     # possible source state/transition
     require receiving_recv(id);
-    # set of non allowed state (useless ?) ~receiving_sizeKnown(id) &
+    # set of non allowed state (useless ?) 
     require  ~receiving_dataRecvd(id) & ~receiving_dataRead(id) & ~receiving_resetRecvd(id)  & ~receiving_resetRead(id);
     receiving_recv(id) := false;
     receiving_sizeKnown(id) := true;
     lastest_stream_id_receiving(seq) := id;
     lastest_pkt_num_receiving := seq;
     call show_fsm_receiving_sizeKnown_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
-    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id),receiving_sizeKnown(id),receiving_dataRecvd(id),receiving_dataRead(id),receiving_resetRecvd(id),receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_dataRecvd(id:stream_id) = {
     # possible source state/transition
     require receiving_sizeKnown(id) | receiving_resetRecvd(id);
-    # set of non allowed state  ~sending_dataSent(id) &
+    # set of non allowed state  
     require  ~receiving_dataRead(id) & ~receiving_resetRead(id);
     receiving_sizeKnown(id) := false;
-    receiving_resetRecvd(id) := false;
+    receiving_resetRecvd(id):= false;
     receiving_dataRecvd(id) := true;
     call show_fsm_receiving_dataRecvd_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
-    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id),receiving_sizeKnown(id),receiving_dataRecvd(id),receiving_dataRead(id),receiving_resetRecvd(id),receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_dataRead(id:stream_id) = {
     # possible source state/transition
     require receiving_dataRecvd(id);
-    # set of non allowed state  ~sending_dataRecvd(id) &
+    # set of non allowed state  
     require  ~receiving_dataRead(id) & ~receiving_resetRead(id) & ~receiving_resetRead(id);
     receiving_dataRecvd(id) := false;
-    receiving_dataRead(id) := true;
+    receiving_dataRead(id)  := true;
     call show_fsm_receiving_dataRead_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
-    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id),receiving_sizeKnown(id),receiving_dataRecvd(id),receiving_dataRead(id),receiving_resetRecvd(id),receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_resetRecvd(id:stream_id,seq:pkt_num) = {
     # possible source state/transition
     require receiving_recv(id) | receiving_sizeKnown(id) | receiving_dataRecvd(id);
-    # set of non allowed state & ~receiving_resetRecvd(id)
+    # set of non allowed state 
     require  ~receiving_resetRead(id) & ~receiving_dataRead(id);
     receiving_recv(id) := false;
     receiving_sizeKnown(id) := false;
@@ -128,18 +126,18 @@ action handle_receiving_resetRecvd(id:stream_id,seq:pkt_num) = {
     lastest_stream_id_receiving(seq) := id;
     lastest_pkt_num_receiving := seq;
     call show_fsm_receiving_resetRecvd_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
-    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id),receiving_sizeKnown(id),receiving_dataRecvd(id),receiving_dataRead(id),receiving_resetRecvd(id),receiving_resetRead(id),lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_resetRead(id:stream_id) = {
     # possible source state/transition
     require receiving_resetRecvd(id);
-    # set of non allowed state & ~sending_resetRecvd(id)
+    # set of non allowed state
      require  ~receiving_sizeKnown(id) & ~receiving_dataRecvd(id) & ~receiving_dataRead(id);
     receiving_resetRecvd(id) := false;
-    receiving_resetRead(id) := true;
+    receiving_resetRead(id)  := true;
     call show_fsm_receiving_recv_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
-    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id),receiving_sizeKnown(id),receiving_dataRecvd(id),receiving_dataRead(id),receiving_resetRecvd(id),receiving_resetRead(id),lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 # ====================================================================
@@ -158,13 +156,16 @@ action handle_receiving_ack(largest_acked:pkt_num) = {
 # Here we assume that the last packet num define the largest_ack
 action get_streamid_from_ack_receiving(largest_acked:pkt_num)  
 returns (id:stream_id) = {
-    require lastest_pkt_num_receiving <= largest_acked;
-    id := lastest_stream_id_receiving(lastest_pkt_num_receiving);
+    if lastest_pkt_num_receiving <= largest_acked {
+        id := lastest_stream_id_receiving(lastest_pkt_num_receiving);
+    } else {
+        id := lastest_stream_id_receiving(largest_acked);
+    };
 }
 
 import action show_receiving_fsm_event(receiving_recv:bool,receiving_sizeKnown:bool,
-                                       receiving_dataRecvd:bool, receiving_dataRead:bool,
-                                       receiving_resetRecvd:bool, receiving_resetRead:bool,
+                                       receiving_dataRecvd:bool,receiving_dataRead:bool,
+                                       receiving_resetRecvd:bool,receiving_resetRead:bool,
                                        lastest_stream_id_receiving:stream_id,lastest_pkt_num_receiving:pkt_num)
 
 import action show_fsm_receiving_recv_event(lastest_stream_id_receiving:stream_id,lastest_pkt_num_receiving:pkt_num)

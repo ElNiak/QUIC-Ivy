@@ -50,7 +50,7 @@ relation sending_resetSent(S:stream_id)
 # - For stream id S, `sending_resetRecvd(S)` indicates that
 #   the stream id S is reset and that the RST ack has been received
 # => meaning = [no retransmission of RST frame or] we send ack for 
-#              corresponding packet/frame
+#              corresponding packet/frame = liveness
 
 relation sending_resetRecvd(S:stream_id)
 
@@ -77,7 +77,7 @@ action handle_sending_send(id:stream_id) = {
     # set of non allowed state (useless ?) ~sending_send(id) &
     require  ~sending_dataSent(id) & ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
     sending_ready(id) := false;
-    sending_send(id) := true;
+    sending_send(id)  := true;
     call show_fsm_sending_send_event(lastest_stream_id_sender(lastest_pkt_num_sender),lastest_pkt_num_sender);
     call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id), lastest_stream_id_sender(lastest_pkt_num_sender),lastest_pkt_num_sender);
 }
@@ -100,7 +100,7 @@ action handle_sending_dataRecvd(id:stream_id) = {
     require sending_dataSent(id);
     # set of non allowed state  ~sending_dataRecvd(id) &
     require  ~sending_send(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
-    sending_dataSent(id) := false;
+    sending_dataSent(id)  := false;
     sending_dataRecvd(id) := true;
     call show_fsm_sending_dataRecvd_event(lastest_stream_id_sender(lastest_pkt_num_sender),lastest_pkt_num_sender);
     call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id), lastest_stream_id_sender(lastest_pkt_num_sender),lastest_pkt_num_sender);
@@ -151,14 +151,16 @@ action handle_sending_ack(largest_acked:pkt_num) = {
 # Here we assume that the last packet num define the largest_ack
 action get_streamid_from_ack_sender(largest_acked:pkt_num)  
 returns (id:stream_id) = {
-    require lastest_pkt_num_sender <= largest_acked;
-    id := lastest_stream_id_sender(lastest_pkt_num_sender);
+    if lastest_pkt_num_sender <= largest_acked {
+        id := lastest_stream_id_sender(lastest_pkt_num_sender);
+    } else {
+        id := lastest_stream_id_sender(largest_acked);
+    };
 }
 
-
 import action show_sending_fsm_event(sending_ready:bool,sending_send:bool,
-                                     sending_dataSent:bool, sending_dataRecvd:bool,
-                                     sending_resetSent:bool, sending_resetRecvd:bool,
+                                     sending_dataSent:bool,sending_dataRecvd:bool,
+                                     sending_resetSent:bool,sending_resetRecvd:bool,
                                      lastest_stream_id_sender:stream_id,lastest_pkt_num_sender:pkt_num)
 
 import action show_fsm_sending_ready_event(lastest_stream_id_sender:stream_id,lastest_pkt_num_sender:pkt_num)

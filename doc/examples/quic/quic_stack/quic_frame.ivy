@@ -183,9 +183,7 @@ object frame = {
 
     # (0x14) DATA_BLOCKED FRAME 
     object data_blocked = {
-        
         # data_blocked frames are a variant of frame.
-
         variant this of frame = struct {
             pos               : stream_pos  # max number of bytes
         }
@@ -193,9 +191,7 @@ object frame = {
 
     # (0x15) STREAM_DATA_BLOCKED 
     object stream_data_blocked = {
-        
         # Stream blocked frames are a variant of frame.
-
         variant this of frame = struct {
             id                : stream_id,  # the stream id
             pos               : stream_pos  # max number of bytes
@@ -204,9 +200,7 @@ object frame = {
 
     # (0x16 or 0x17)
     object streams_blocked = { # TODO: handle bidi and uni cases
-        
         # Stream id blocked frames are a variant of frame.
-
         variant this of frame = struct {
             id                : stream_id  # the stream id
         }
