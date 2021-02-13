@@ -163,7 +163,6 @@ action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
 #
 # - If cid_mapped(C) is true, then the function cid_to_aid(C) gives the aid for which C is a new connection ID
 #
-
 # - If aid D created a new connection ID with sequence number S, then seqnum_to_cid(D, S) yield the new connection id.
 
 
@@ -193,9 +192,6 @@ function hi_non_probing(C:cid) : pkt_num
 relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
 
-#chris
-relation is_retransmited(N:pkt_num)
-#chris
 
 # Initial state
 # -------------
@@ -224,9 +220,6 @@ after init {
     #Hamid
     max_seq_num(C) := 0;
     #Hamid
-    #chris
-    is_retransmited(N) := false;
-    #chris
 }
 
 # Packet event specification

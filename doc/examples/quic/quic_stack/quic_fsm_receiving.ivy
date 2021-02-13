@@ -151,7 +151,7 @@ action handle_receiving_ack(largest_acked:pkt_num) = {
     if receiving_resetRecvd(id) { 
         call handle_receiving_resetRead(id);
     } else if receiving_resetRecvd(id) {
-        call receiving_dataRecvd(id);
+        call handle_receiving_dataRecvd(id);
     };
 }
 

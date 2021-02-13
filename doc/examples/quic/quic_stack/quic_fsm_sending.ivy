@@ -127,10 +127,13 @@ action handle_sending_resetRecvd(id:stream_id) = {
     # set of non allowed state & ~sending_resetRecvd(id)
      require  ~sending_send(id) & ~sending_dataSent(id);
     sending_resetSent(id) := false;
+    sending_ready(id) := true;
     sending_resetRecvd(id) := true;
     call show_fsm_sending_resetRecvd_event(lastest_stream_id_sender(lastest_pkt_num_sender),lastest_pkt_num_sender);
     call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id), lastest_stream_id_sender(lastest_pkt_num_sender),lastest_pkt_num_sender);
 }
+
+# check if same stream_id twice, add not _generating when calling these
 
 # ====================================================================
 # Auxilary functions
