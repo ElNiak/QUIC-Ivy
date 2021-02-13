@@ -55,8 +55,8 @@ relation receiving_resetRecvd(S:stream_id)
 
 relation receiving_resetRead(S:stream_id)
 
-function lastest_stream_id(P:pkt_num) : stream_id
-function lastest_pkt_num : pkt_num
+function lastest_stream_id_receiving(P:pkt_num) : stream_id
+function lastest_pkt_num_receiving : pkt_num
 
 # Initial state
 # -------------
@@ -68,14 +68,16 @@ after init {
     receiving_dataRead(S)  := false;
     receiving_resetRecvd(S):= false;
     receiving_resetRead(S) := false;
-    lastest_stream_id(P)   := 0;
-    lastest_pkt_num        := 0;
+    lastest_stream_id_receiving(P) := 0;
+    lastest_pkt_num_receiving      := 0;
 }
 action handle_receiving_recv(id:stream_id) = {
     # possible source state/transition: none
     # set of non allowed state (useless ?) ~sending_send(id) &
     require  ~receiving_sizeKnown(id) & ~receiving_dataRecvd(id) & ~receiving_dataRead(id)  & ~receiving_resetRecvd(id) & ~receiving_resetRead(id);
     receiving_recv(id) := true;
+    call show_fsm_receiving_recv_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_sizeKnown(id:stream_id,seq:pkt_num) = {
@@ -85,8 +87,10 @@ action handle_receiving_sizeKnown(id:stream_id,seq:pkt_num) = {
     require  ~receiving_dataRecvd(id) & ~receiving_dataRead(id) & ~receiving_resetRecvd(id)  & ~receiving_resetRead(id);
     receiving_recv(id) := false;
     receiving_sizeKnown(id) := true;
-    lastest_stream_id(seq) := id;
-    lastest_pkt_num := seq;
+    lastest_stream_id_receiving(seq) := id;
+    lastest_pkt_num_receiving := seq;
+    call show_fsm_receiving_sizeKnown_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_dataRecvd(id:stream_id) = {
@@ -97,15 +101,19 @@ action handle_receiving_dataRecvd(id:stream_id) = {
     receiving_sizeKnown(id) := false;
     receiving_resetRecvd(id) := false;
     receiving_dataRecvd(id) := true;
+    call show_fsm_receiving_dataRecvd_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_dataRead(id:stream_id) = {
     # possible source state/transition
     require receiving_dataRecvd(id);
     # set of non allowed state  ~sending_dataRecvd(id) &
-    require  ~receiving_dataRead(id) & ~receiving_resetRead(id)  & ~receiving_resetRead(id);
+    require  ~receiving_dataRead(id) & ~receiving_resetRead(id) & ~receiving_resetRead(id);
     receiving_dataRecvd(id) := false;
     receiving_dataRead(id) := true;
+    call show_fsm_receiving_dataRead_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_resetRecvd(id:stream_id,seq:pkt_num) = {
@@ -117,8 +125,10 @@ action handle_receiving_resetRecvd(id:stream_id,seq:pkt_num) = {
     receiving_sizeKnown(id) := false;
     receiving_dataRecvd(id) := false;
     receiving_resetRecvd(id):=  true;
-    lastest_stream_id(seq) := id;
-    lastest_pkt_num := seq;
+    lastest_stream_id_receiving(seq) := id;
+    lastest_pkt_num_receiving := seq;
+    call show_fsm_receiving_resetRecvd_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 action handle_receiving_resetRead(id:stream_id) = {
@@ -128,6 +138,8 @@ action handle_receiving_resetRead(id:stream_id) = {
      require  ~receiving_sizeKnown(id) & ~receiving_dataRecvd(id) & ~receiving_dataRead(id);
     receiving_resetRecvd(id) := false;
     receiving_resetRead(id) := true;
+    call show_fsm_receiving_recv_event(lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
+    call show_receiving_fsm_event(receiving_recv(id), receiving_sizeKnown(id), receiving_dataRecvd(id), receiving_dataRead(id), receiving_resetRecvd(id), receiving_resetRead(id), lastest_stream_id_receiving(lastest_pkt_num_receiving),lastest_pkt_num_receiving);
 }
 
 # ====================================================================
@@ -135,17 +147,34 @@ action handle_receiving_resetRead(id:stream_id) = {
 #=====================================================================
 
 action handle_receiving_ack(largest_acked:pkt_num) = {
-    var id := get_streamid_from_ack(largest_acked);
+    var id := get_streamid_from_ack_receiving(largest_acked);
     if receiving_resetRecvd(id) { 
         call handle_receiving_resetRead(id);
-    } else {
+    } else if receiving_resetRecvd(id) {
         call receiving_dataRecvd(id);
     };
 }
 
 # Here we assume that the last packet num define the largest_ack
-action get_streamid_from_ack(largest_acked:pkt_num)  
+action get_streamid_from_ack_receiving(largest_acked:pkt_num)  
 returns (id:stream_id) = {
-    require lastest_pkt_num <= largest_acked;
-    id := lastest_stream_id(lastest_pkt_num);
+    require lastest_pkt_num_receiving <= largest_acked;
+    id := lastest_stream_id_receiving(lastest_pkt_num_receiving);
 }
+
+import action show_receiving_fsm_event(receiving_recv:bool,receiving_sizeKnown:bool,
+                                       receiving_dataRecvd:bool, receiving_dataRead:bool,
+                                       receiving_resetRecvd:bool, receiving_resetRead:bool,
+                                       lastest_stream_id_receiving:stream_id,lastest_pkt_num_receiving:pkt_num)
+
+import action show_fsm_receiving_recv_event(lastest_stream_id_receiving:stream_id,lastest_pkt_num_receiving:pkt_num)
+
+import action show_fsm_receiving_sizeKnown_event(lastest_stream_id_receiving:stream_id,lastest_pkt_num_receiving:pkt_num)
+
+import action show_fsm_receiving_dataRecvd_event(lastest_stream_id_receiving:stream_id,lastest_pkt_num_receiving:pkt_num)
+
+import action show_fsm_receiving_dataRead_event(lastest_stream_id_receiving:stream_id,lastest_pkt_num_receiving:pkt_num)
+
+import action show_fsm_receiving_resetRecvd_event(lastest_stream_id_receiving:stream_id,lastest_pkt_num_receiving:pkt_num)
+
+import action show_fsm_receiving_resetRead_event(lastest_stream_id_receiving:stream_id,lastest_pkt_num_receiving:pkt_num)

@@ -156,7 +156,7 @@ implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.l
 
 after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data : stream_data,
                      pos:stream_pos, e:quic_packet_type) {
-#    call show_tls_send_event(src,dst,scid,dcid,data,pos,e);
+    call show_tls_send_event(src,dst,scid,dcid,data,pos,e);
 }
 
 # TLS keys established event shim
@@ -326,7 +326,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
 action packet_encryption_level(h:prot.header_info) returns (e:quic_packet_type) = {
     e := quic_packet_type.zero_rtt if ~h.hdr_long
-            else (quic_packet_type.initial if h.hdr_type = 0x7f #0x7f
+            else (quic_packet_type.initial if h.hdr_type = 0x7f 
                   else quic_packet_type.handshake);
 }
 

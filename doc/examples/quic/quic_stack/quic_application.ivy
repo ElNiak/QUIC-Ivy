@@ -166,9 +166,9 @@ after app_send_event {
     stream_app_data_end(dcid,s) := end;  # [1]
     if close {
         stream_app_data_finished(dcid,s) := true;  # [3]
-        if receiving_sizeKnown {
-            receiving_dataRecvd := true;
-        }
+        #if receiving_sizeKnown {
+        #i    receiving_dataRecvd := true;
+        #i}
     }
 }
 

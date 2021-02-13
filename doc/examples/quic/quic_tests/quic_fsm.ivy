@@ -11,19 +11,19 @@ include quic_fsm_sending
 include quic_fsm_receiving
 
 
-before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
+after frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     if _generating {
         call handle_sending_ack(f.largest_acked);
     } 
 }
 
-before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid,seq_num:pkt_num) {
+after frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid,seq_num:pkt_num) {
     if _generating {
         call handle_receiving_resetRecvd(f.id,seq_num);
     } 
 }
 
-before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,seq_num:pkt_num) {
+after frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,seq_num:pkt_num) {
     if _generating {
         if f.fin {
             call handle_receiving_sizeKnown(f.id,seq_num);

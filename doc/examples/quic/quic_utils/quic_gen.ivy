@@ -47,9 +47,9 @@ module quic_endpoint(addr,the_role) = {
     var ep : ip.endpoint
     var tls_id : botan.id
     after init {
-	ep.protocol := ip.udp;
-	ep.addr := addr;
-	ep.port := 0;
+        ep.protocol := ip.udp;
+        ep.addr := addr;
+        ep.port := 0;
     }
 }
     
