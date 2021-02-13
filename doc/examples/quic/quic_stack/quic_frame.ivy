@@ -547,7 +547,11 @@ object frame = {
             }
 	    ...
             force_new_ack := false;
-            call handle_receiving_ack(seq_num);
+            if _generating {
+                call handle_sending_ack(f.largest_acked);
+            } else {
+                call handle_receiving_ack(seq_num);
+            };
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -632,8 +636,11 @@ object frame = {
 	        ...
             stream_seen(scid,f.id) := true;
             #sending_send(f.id) := true;
+
             if ~_generating {
                 call handle_sending_send(f.id);
+            } else {
+                call handle_receiving_recv(f.id);
             };
 
             var offset := f.offset if f.off else 0;
@@ -649,6 +656,8 @@ object frame = {
                 stream_finished(dcid,f.id) := true;
                 if ~_generating {
                     call handle_sending_dataSent(f.id,seq_num);
+                } else {
+                    call handle_receiving_sizeKnown(f.id,seq_num);
                 };
             };
             call enqueue_frame(scid,f,e,false);
@@ -752,6 +761,8 @@ object frame = { ...
             #sending_resetSent(f.id) := true;
             if ~_generating {
                 call handle_sending_resetSent(f.id,seq_num);
+            } else {
+                call handle_receiving_resetRecvd(f.id,seq_num);
             };
             call enqueue_frame(scid,f,e,false);
         }
@@ -1012,7 +1023,9 @@ object frame = { ...
             #receiving_ready := true;
             #sending_send(f.id) := true;
             if ~_generating {
-                call handle_sending_send(f.id,seq_num);
+                call handle_sending_send(f.id);
+            } else {
+                call handle_receiving_recv(f.id);
             };
             call enqueue_frame(scid,f,e,false);
         }
