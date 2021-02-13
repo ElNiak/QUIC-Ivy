@@ -634,7 +634,7 @@ object frame = {
             #sending_send(f.id) := true;
             if ~_generating {
                 call handle_sending_send(f.id);
-            }
+            };
 
             var offset := f.offset if f.off else 0;
             var length := offset + f.length;
@@ -649,7 +649,7 @@ object frame = {
                 stream_finished(dcid,f.id) := true;
                 if ~_generating {
                     call handle_sending_dataSent(f.id,seq_num);
-                }
+                };
             };
             call enqueue_frame(scid,f,e,false);
         }
@@ -752,7 +752,7 @@ object frame = { ...
             #sending_resetSent(f.id) := true;
             if ~_generating {
                 call handle_sending_resetSent(f.id,seq_num);
-            }
+            };
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -1013,7 +1013,7 @@ object frame = { ...
             #sending_send(f.id) := true;
             if ~_generating {
                 call handle_sending_send(f.id,seq_num);
-            }
+            };
             call enqueue_frame(scid,f,e,false);
         }
     }
