@@ -462,15 +462,15 @@ function queued_level_type(C:cid,T:quic_packet_type) : frame.arr
 relation send_retire_cid(C:cid) # ?? S:stream_id
 function max_rtp_num(C:cid) : cid_seq
 
-function count_stream_frame(off:bool,len:bool,fin:bool,id:stream_id,offset:stream_pos,
-                            length:stream_pos,data:stream_data) : num
-relation stream_frame_restransmitted(s:stream_id)
+function count_stream_frame(I:stream_id,O:stream_pos, #B:bool,J:bool,F:bool, not working with bol => SegFault
+                            L:stream_pos,D:stream_data) : stream_pos
+relation stream_frame_restransmitted(S:stream_id)
 
-function count_reset_frame(id:stream_id,err_code:error_code,final_offset:stream_pos) : num
-relation reset_frame_restransmitted(s:stream_id)
+function count_reset_frame(I:stream_id,E:error_code,O:stream_pos) : stream_pos
+relation reset_frame_restransmitted(S:stream_id)
 
-function count_sdb_frame(id:stream_id,pos:stream_pos) : num
-relation sdb_frame_restransmitted(s:stream_id)
+function count_sdb_frame(I:stream_id,O:stream_pos) : stream_pos
+relation sdb_frame_restransmitted(S:stream_id)
 #chris
 
 after init {
@@ -490,11 +490,11 @@ after init {
 #chris
     max_rtp_num(C) := 0;
     send_retire_cid(C) := false;
-    count_stream_frame(off,len,fin,id,offset,lenght,data) := 0;
+    count_stream_frame(I,O,L,D) := 0; #B,J,F,
     stream_frame_restransmitted(S) := false;
-    count_reset_frame(id,err_code,final_offset) := 0;
+    count_reset_frame(I,E,O) := 0;
     reset_frame_restransmitted(S) := false;
-    count_sdb_frame(id,pos) := 0;
+    count_sdb_frame(I,O) := 0;
     sdb_frame_restransmitted(S) := false;
 #chris
 }
@@ -669,13 +669,15 @@ object frame = {
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
             require stream_id_allowed(dcid,f.id);  # [6]
 	        ...
-            count_stream_frame(f.off,f.len,f.fin,f.id,f.offset,f.lenght,f.data) := count_stream_frame(f.off,f.len,f.fin,f.id,f.offset,f.lenght,f.data) + 1;
-            if count_stream_frame(f.off,f.len,f.fin,f.id,f.offset,f.lenght,f.data) > 1 {
+            count_stream_frame(f.off,f.len,f.fin,f.id,f.offset,f.length,f.data) := count_stream_frame(f.off,f.len,f.fin,f.id,f.offset,f.length,f.data) + 1;
+            if count_stream_frame(f.off,f.len,f.fin,f.id,f.offset,f.length,f.data) > 1 {
                 stream_frame_restransmitted(f.id) := true;
             };
             stream_seen(scid,f.id) := true;
             if ~_generating {
-                call handle_sending_send(f.id);
+                if ~stream_frame_restransmitted(f.id) {
+                    call handle_sending_send(f.id);
+                };
             } else {
                 call handle_receiving_recv(f.id);
             };
