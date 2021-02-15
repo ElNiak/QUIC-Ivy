@@ -677,7 +677,7 @@ object frame = {
             if ~_generating {
                 call handle_sending_send(f.id,seq_num);
             } else {
-                call handle_receiving_recv(f.id);
+                call handle_receiving_recv(f.id,seq_num);
             };
             var offset := f.offset if f.off else 0;
             var length := offset + f.length;
