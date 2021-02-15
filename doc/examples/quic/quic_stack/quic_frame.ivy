@@ -672,6 +672,8 @@ object frame = {
             count_stream_frame(f.id,f.offset,f.length,f.data) := count_stream_frame(f.id,f.offset,f.length,f.data) + 1;
             if count_stream_frame(f.id,f.offset,f.length,f.data) > 1 {
                 stream_frame_restransmitted(f.id) := true;
+            } else {
+                stream_frame_restransmitted(f.id) := false;
             };
             stream_seen(scid,f.id) := true;
             if ~_generating {
@@ -1065,7 +1067,7 @@ object frame = { ...
             if ~_generating {
                 call handle_sending_send(f.id,seq_num);
             } else {
-                call handle_receiving_recv(f.id);
+                call handle_receiving_recv(f.id,seq_num);
             };
             call enqueue_frame(scid,f,e,false);
         }

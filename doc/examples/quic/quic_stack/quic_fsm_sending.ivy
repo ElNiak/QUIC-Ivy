@@ -96,7 +96,7 @@ action handle_sending_send(id:stream_id,seq:pkt_num) = {
 }
 
 action handle_sending_dataSent(id:stream_id,seq:pkt_num) = {
-    if ~stream_frame_restransmitted(id) & ~sdb_frame_restransmitted(id) {
+    if ~stream_frame_restransmitted(id) {
         # possible source state/transition
         require sending_send(id) | sending_dataSent(id);
         # set of non allowed state  ~sending_dataSent(id) &
