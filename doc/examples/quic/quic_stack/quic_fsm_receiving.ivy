@@ -55,15 +55,15 @@ relation receiving_resetRead(S:stream_id)
 
 # lastest_stream_id_receiving(P) contains a list of stream_id that appear 
 # in a given packet_number P, allow us to track which packet are acked
-instance idx : unbounded_sequence
-instance arr_streamid : array(idx,stream_id)
-function lastest_stream_id_receiving(P:pkt_num) : this.arr_streamid
+instance idx_r : unbounded_sequence
+instance arr_streamid_r : array(idx_r,stream_id)
+function lastest_stream_id_receiving(P:pkt_num) : this.arr_streamid_r
 
 # lastest_pkt_num_receiving contains a list of pkt_num that appear 
 # in a given execution, allow us to track which packet are sent(received)
-instance jdx : unbounded_sequence
-instance arr_pkt_num : array(jdx,pkt_num)
-function lastest_pkt_num_receiving : this.arr_pkt_num
+instance jdx_r : unbounded_sequence
+instance arr_pkt_num_r : array(jdx_r,pkt_num)
+function lastest_pkt_num_receiving : this.arr_pkt_num_r
 
 # Initial state
 # -------------
@@ -155,20 +155,20 @@ action handle_receiving_resetRead(id:stream_id) = {
 
 #largest ack 
 action handle_receiving_ack(largest_acked:pkt_num) = {
-    var jdx : jdx := 0;
-    while jdx < lastest_pkt_num_receiving.end {
-        var seq := lastest_pkt_num_receiving.value(jdx);
-        var idx : idx := 0;
-        while idx < lastest_stream_id_receiving(largest_acked).end {
-            var sid := lastest_stream_id_receiving(largest_acked).value(idx);
+    var jdx_r : jdx_r := 0;
+    while jdx_r < lastest_pkt_num_receiving.end {
+        var seq := lastest_pkt_num_receiving.value(jdx_r);
+        var idx_r : idx_r := 0;
+        while idx_r < lastest_stream_id_receiving(largest_acked).end {
+            var sid := lastest_stream_id_receiving(largest_acked).value(idx_r);
             if receiving_resetRecvd(sid) { 
                 call handle_receiving_resetRead(sid);
             } else if receiving_resetRecvd(sid) {
                 call handle_receiving_dataRecvd(sid);
             };
-            idx := idx.next;
+            idx_r := idx_r.next;
         };
-        jdx := jdx.next;
+        jdx_r := jdx_r.next;
     };
 }
 
