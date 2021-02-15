@@ -156,14 +156,15 @@ action handle_receiving_resetRead(id:stream_id) = {
 #largest ack 
 action handle_receiving_ack(largest_acked:pkt_num) = {
     var jdx_r : jdx_r := 0;
+    call show_fsm_receiving_ack_event;
     while jdx_r < lastest_pkt_num_receiving.end {
         var seq := lastest_pkt_num_receiving.value(jdx_r);
         var idx_r : idx_r := 0;
-        while idx_r < lastest_stream_id_receiving(largest_acked).end {
-            var sid := lastest_stream_id_receiving(largest_acked).value(idx_r);
+        while seq <= largest_acked & idx_r < lastest_stream_id_receiving(seq).end {
+            var sid := lastest_stream_id_receiving(seq).value(idx_r);
             if receiving_resetRecvd(sid) { 
                 call handle_receiving_resetRead(sid);
-            } else if receiving_resetRecvd(sid) {
+            } else if receiving_sizeKnown(sid) {
                 call handle_receiving_dataRecvd(sid);
             };
             idx_r := idx_r.next;
@@ -188,3 +189,6 @@ import action show_fsm_receiving_dataRead_event
 import action show_fsm_receiving_resetRecvd_event
 
 import action show_fsm_receiving_resetRead_event
+
+import action show_fsm_receiving_ack_event
+

@@ -80,7 +80,7 @@ after init {
 }
 
 action handle_sending_send(id:stream_id,seq:pkt_num) = {
-    if ~stream_frame_restransmitted(id) |  ~sdb_frame_restransmitted(id) {
+    if ~stream_frame_restransmitted(id) & ~sdb_frame_restransmitted(id) {
         # possible source state/transition
         require sending_ready(id) | sending_send(id);
         # set of non allowed state (useless ?) ~sending_send(id) & => problem with restransmion
@@ -96,7 +96,7 @@ action handle_sending_send(id:stream_id,seq:pkt_num) = {
 }
 
 action handle_sending_dataSent(id:stream_id,seq:pkt_num) = {
-    if ~stream_frame_restransmitted(id) |  ~sdb_frame_restransmitted(id) {
+    if ~stream_frame_restransmitted(id) & ~sdb_frame_restransmitted(id) {
         # possible source state/transition
         require sending_send(id) | sending_dataSent(id);
         # set of non allowed state  ~sending_dataSent(id) &
@@ -163,8 +163,8 @@ action handle_sending_ack(largest_acked:pkt_num) = {
     while jdx_s < lastest_pkt_num_sender.end {
         var seq := lastest_pkt_num_sender.value(jdx_s);
         var idx_s : idx_s := 0;
-        while idx_s < lastest_stream_id_sender(largest_acked).end {
-            var sid := lastest_stream_id_sender(largest_acked).value(idx_s);
+        while seq <= largest_acked & idx_s < lastest_stream_id_sender(seq).end {
+            var sid := lastest_stream_id_sender(seq).value(idx_s);
             if sending_resetSent(sid) { 
                 call handle_sending_resetRecvd(sid);
             } else if sending_dataSent(sid) {
