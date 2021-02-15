@@ -125,7 +125,7 @@ action handle_sending_dataRecvd(id:stream_id) = {
 action handle_sending_resetSent(id:stream_id,seq:pkt_num) = {
     if ~reset_frame_restransmitted(id) {
         # possible source state/transition
-        require sending_dataSent(id) | sending_send(id) | sending_ready(id) | sending_resetSent(id);
+        # require sending_dataSent(id) | sending_send(id) | sending_ready(id) | sending_resetSent(id);
         # set of non allowed state & ~sending_resetSent(id)
         require  ~sending_dataRecvd(id) & ~sending_resetRecvd(id);
         sending_ready(id) := false;

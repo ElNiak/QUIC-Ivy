@@ -1,6 +1,7 @@
 #lang ivy1.7
 
 include quic_types
+include quic_frame
 
 # https://tools.ietf.org/html/draft-ietf-quic-transport-31#page-15
 
@@ -90,7 +91,7 @@ action handle_receiving_recv(id:stream_id,seq:pkt_num) = {
 }
 
 action handle_receiving_sizeKnown(id:stream_id,seq:pkt_num) = {
-    if ~stream_frame_restransmitted(id)
+    if ~stream_frame_restransmitted(id) {
         # possible source state/transition
         require receiving_recv(id);
         # set of non allowed state (useless ?) 

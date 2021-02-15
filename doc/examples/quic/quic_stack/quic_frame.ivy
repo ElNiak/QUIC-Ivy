@@ -672,8 +672,6 @@ object frame = {
             count_stream_frame(f.id,f.offset,f.length,f.data) := count_stream_frame(f.id,f.offset,f.length,f.data) + 1;
             if count_stream_frame(f.id,f.offset,f.length,f.data) > 1 {
                 stream_frame_restransmitted(f.id) := true;
-            } else {
-                stream_frame_restransmitted(f.id) := false;
             };
             stream_seen(scid,f.id) := true;
             if ~_generating {
