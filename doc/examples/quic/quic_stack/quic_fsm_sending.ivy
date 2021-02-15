@@ -59,7 +59,8 @@ relation sending_resetRecvd(S:stream_id)
 instance idx : unbounded_sequence
 instance arr_streamid : array(idx,stream_id)
 function lastest_stream_id_sender(P:pkt_num) : this.arr_streamid
-instance arr_pkt_num : array(idx,pkt_num)
+instance jdx : unbounded_sequence
+instance arr_pkt_num : array(jdx,pkt_num)
 function lastest_pkt_num_sender : this.arr_pkt_num
 
 # Initial state
@@ -81,21 +82,21 @@ action handle_sending_send(id:stream_id) = {
     require  ~sending_dataSent(id) & ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
     sending_ready(id) := false;
     sending_send(id)  := true;
-    call show_fsm_sending_send_event(lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
-    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id), lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
+    call show_fsm_sending_send_event;
+    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
 }
 
 action handle_sending_dataSent(id:stream_id,seq:pkt_num) = {
-    if ~stream_frame_restransmitted(f.id) {
+    if ~stream_frame_restransmitted(id) {
         # possible source state/transition
         require sending_send(id) | sending_dataSent(id);
         # set of non allowed state  ~sending_dataSent(id) &
         require  ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
         sending_send(id) := false;
         sending_dataSent(id) := true;
-        call show_fsm_sending_dataSent_event(lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
-        call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id), lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
-    }
+        call show_fsm_sending_dataSent_event;
+        call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
+    };
     # We need to record last seq num
     lastest_stream_id_sender(seq) := lastest_stream_id_sender(seq).append(id);
     lastest_pkt_num_sender := lastest_pkt_num_sender.append(seq);
@@ -108,8 +109,8 @@ action handle_sending_dataRecvd(id:stream_id) = {
     require  ~sending_send(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
     sending_dataSent(id)  := false;
     sending_dataRecvd(id) := true;
-    call show_fsm_sending_dataRecvd_event(lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
-    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id), lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
+    call show_fsm_sending_dataRecvd_event;
+    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
 }
 
 action handle_sending_resetSent(id:stream_id,seq:pkt_num) = {
@@ -122,9 +123,9 @@ action handle_sending_resetSent(id:stream_id,seq:pkt_num) = {
     sending_send(id) := false;
     sending_resetSent(id) :=  true;
     lastest_stream_id_sender(seq) := lastest_stream_id_sender(seq).append(id);
-    lastest_pkt_num_sender := seq;
-    call show_fsm_sending_resetSent_event(lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
-    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id), lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
+    lastest_pkt_num_sender := lastest_pkt_num_sender.append(seq);
+    call show_fsm_sending_resetSent_event;
+    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
 }
 
 action handle_sending_resetRecvd(id:stream_id) = {
@@ -135,8 +136,8 @@ action handle_sending_resetRecvd(id:stream_id) = {
     sending_resetSent(id) := false;
     sending_ready(id) := true;
     sending_resetRecvd(id) := true;
-    call show_fsm_sending_resetRecvd_event(lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
-    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id), lastest_stream_id_sender(lastest_stream_id_sender),lastest_pkt_num_sender);
+    call show_fsm_sending_resetRecvd_event;
+    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
 }
 
 # check if same stream_id twice, add not _generating when calling these
@@ -146,37 +147,36 @@ action handle_sending_resetRecvd(id:stream_id) = {
 #=====================================================================
 
 action handle_sending_ack(largest_acked:pkt_num) = {
-    var idx : lastest_pkt_num_sender.idx := 0;
-    while idx < largest_acked {
-        var seq := lastest_pkt_num_sender.value(idx);
-        var jdx : lastest_stream_id_sender(seq).idx := 0;
-        while jdx < lastest_stream_id_sender(seq).end {
-            var sid = lastest_stream_id_sender(seq).value(jdx);
+    var jdx : jdx := 0;
+    while jdx < lastest_pkt_num_sender.end {
+        var seq := lastest_pkt_num_sender.value(jdx);
+        var idx : idx := 0;
+        while idx < lastest_stream_id_sender(largest_acked).end {
+            var sid := lastest_stream_id_sender(largest_acked).value(idx);
             if sending_resetSent(sid) { 
                 call handle_sending_resetRecvd(sid);
             } else if sending_dataSent(sid) {
                 call handle_sending_dataRecvd(sid);
             };
-            jdx := jdx.next;
-        }
-        idx := idx.next;
-    }
+            idx := idx.next;
+        };
+        jdx := jdx.next;
+    };
 }
 
 
 import action show_sending_fsm_event(sending_ready:bool,sending_send:bool,
                                      sending_dataSent:bool,sending_dataRecvd:bool,
-                                     sending_resetSent:bool,sending_resetRecvd:bool,
-                                     lastest_stream_id_sender:stream_id,lastest_pkt_num_sender:pkt_num)
+                                     sending_resetSent:bool,sending_resetRecvd:bool)
 
-import action show_fsm_sending_ready_event(lastest_stream_id_sender:stream_id,lastest_pkt_num_sender:pkt_num)
+import action show_fsm_sending_ready_event
 
-import action show_fsm_sending_send_event(lastest_stream_id_sender:stream_id,lastest_pkt_num_sender:pkt_num)
+import action show_fsm_sending_send_event
 
-import action show_fsm_sending_dataSent_event(lastest_stream_id_sender:stream_id,lastest_pkt_num_sender:pkt_num)
+import action show_fsm_sending_dataSent_event
 
-import action show_fsm_sending_dataRecvd_event(lastest_stream_id_sender:stream_id,lastest_pkt_num_sender:pkt_num)
+import action show_fsm_sending_dataRecvd_event
 
-import action show_fsm_sending_resetSent_event(lastest_stream_id_sender:stream_id,lastest_pkt_num_sender:pkt_num)
+import action show_fsm_sending_resetSent_event
 
-import action show_fsm_sending_resetRecvd_event(lastest_stream_id_sender:stream_id,lastest_pkt_num_sender:pkt_num)
+import action show_fsm_sending_resetRecvd_event
