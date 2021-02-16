@@ -175,6 +175,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsdbr.stream_pos_32 := max_stream_data;
     var imsdu : initial_max_stream_data_uni;
     imsdu.stream_pos_32 := 0x2000;
+
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
     tp.transport_parameters := tp.transport_parameters.append(it);
@@ -187,15 +188,13 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
-    #TODO
-    var pref_add : preferred_address;
-    pref_add.exponent_8 := greater_stream_pos(20);;
-    tp.transport_parameters := tp.transport_parameters.append(pref_add);
-}
+    # An endpoint MUST NOT send a parameter more than once in a given
+    # transport parameters extension.  An endpoint SHOULD treat receipt of
+    # duplicate transport parameters as a connection error of type
+    # TRANSPORT_PARAMETER_ERROR.
 
-#########################
-# TODO
-#########################
+    tp.transport_parameters := tp.transport_parameters.append(imsib);
+}
 
 attribute radix=16       # print in hex
 
@@ -234,15 +233,13 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 #
 # Restrict generation to packets from the designated client endpoints
 # to the server endpoint.
-#
-
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        require pkt.token.end = 0; # [1]
+        require pkt.token.end = 0; 
     };
     require pkt.long -> pkt.pversion = 0xff00001b  #version 27
 }

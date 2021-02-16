@@ -8,10 +8,6 @@ include quic_shim
 include quic_locale
 include quic_server
 
-#########################
-# TODO
-#########################
-
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {

@@ -175,6 +175,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsdbr.stream_pos_32 := max_stream_data;
     var imsdu : initial_max_stream_data_uni;
     imsdu.stream_pos_32 := 0x2000;
+
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
     tp.transport_parameters := tp.transport_parameters.append(it);
@@ -187,15 +188,18 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
-    #TODO
-    var pref_add : preferred_address;
-    pref_add.exponent_8 := greater_stream_pos(20);;
-    tp.transport_parameters := tp.transport_parameters.append(pref_add);
-}
+    #   A NEW_CONNECTION_ID frame might cause an endpoint to add some active
+    #    connection IDs and retire others based on the value of the Retire
+    #    Prior To field.  After processing a NEW_CONNECTION_ID frame and
+    #    adding and retiring active connection IDs, if the number of active
+    #    connection IDs exceeds the value advertised in its
+    #    active_connection_id_limit transport parameter, an endpoint MUST
+    #    close the connection with an error of type CONNECTION_ID_LIMIT_ERROR.
 
-#########################
-# TODO
-#########################
+    var acid : active_connection_id_limit;
+    acid.stream_pos_32 := 2;
+    tp.transport_parameters := tp.transport_parameters.append(acid);
+}
 
 attribute radix=16       # print in hex
 
@@ -236,6 +240,12 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 # to the server endpoint.
 #
 
+#   Token Length:  A variable-length integer specifying the length of the
+#      Token field, in bytes.  This value is zero if no token is present.
+#      Initial packets sent by the server MUST set the Token Length field
+#      to zero; clients that receive an Initial packet with a non-zero
+#      Token Length field MUST either discard the packet or generate a
+#      connection error of type PROTOCOL_VIOLATION. [1]
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
@@ -352,7 +362,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
         require client.ep.addr ~= 0;         
         require scid = the_cid;
     } else {
-        require is_transport_parameter_error
+        require is_connection_id_limit_error
     }
 }
 
@@ -443,7 +453,10 @@ export frame.path_response.handle
 export packet_event
 export client_send_event
 export tls_recv_event
-#export frame.new_connection_id.handle
+
+export frame.new_connection_id.handle
+attribute frame.new_connection_id.handle.weight = "5"
+
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
 #export frame.max_stream_id.handle
@@ -459,7 +472,7 @@ export tls_recv_event
 
 export action _finalize = {
     # chris TODO 
-    require is_transport_parameter_error;
+    require is_connection_id_limit_error;
 }
 
 

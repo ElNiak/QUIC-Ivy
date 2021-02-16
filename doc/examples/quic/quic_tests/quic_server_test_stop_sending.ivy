@@ -1,0 +1,12 @@
+#lang ivy1.7
+
+include quic_server_test
+
+
+#   A STOP_SENDING frame requests that the receiving endpoint send a
+#   RESET_STREAM frame.  An endpoint that receives a STOP_SENDING frame
+#   MUST send a RESET_STREAM frame if the stream is in the Ready or Send
+#   state. 
+
+export frame.stop_sending.handle.weight = "90";
+

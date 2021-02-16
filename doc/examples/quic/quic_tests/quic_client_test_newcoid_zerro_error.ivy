@@ -8,10 +8,6 @@ include quic_shim
 include quic_locale
 include quic_client
 
-#########################
-# TODO
-#########################
-
 
 #
 # Restrict generation to packets from the designated client endpoints

@@ -66,6 +66,11 @@ instance jdx_r : unbounded_sequence
 instance arr_pkt_num_r : array(jdx_r,pkt_num)
 function lastest_pkt_num_receiving : this.arr_pkt_num_r
 
+# Before a stream is created, all streams of the same type with lower-
+# numbered stream IDs MUST be created.  This ensures that the creation
+# order for streams is consistent on both endpoints.
+#TODO
+
 # Initial state
 # -------------
 
