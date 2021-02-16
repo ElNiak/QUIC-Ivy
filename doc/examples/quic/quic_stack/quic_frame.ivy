@@ -5,6 +5,7 @@ include order
 include quic_stream
 include quic_fsm_sending
 include quic_fsm_receiving
+include quic_transport_error_code
 
 # The frame protocol
 # ==================
@@ -673,6 +674,7 @@ object frame = {
             if count_stream_frame(f.id,f.offset,f.length,f.data) > 1 {
                 stream_frame_restransmitted(f.id) := true;
             };
+            call show_stream_retransmisstion(f.id,f.offset,f.length,f.data,count_stream_frame(f.id,f.offset,f.length,f.data))
             stream_seen(scid,f.id) := true;
             if ~_generating {
                 call handle_sending_send(f.id,seq_num);
@@ -791,7 +793,7 @@ object frame = { ...
             stream_reset(dcid,f.id) := true;  # [2]
             stream_length(dcid,f.id) := f.final_offset;  #[3]
             require stream_id_allowed(dcid,f.id);  # [4]
-            call handle_transport_error(scid,f.err_code);
+            call handle_transport_error(f.err_code);
 	    ...
             count_reset_frame(f.id,f.err_code,f.final_offset) := count_reset_frame(f.id,f.err_code,f.final_offset) + 1;
             if count_reset_frame(f.id,f.err_code,f.final_offset) > 1 {
@@ -836,7 +838,7 @@ object frame = { ...
             require ~conn_closed(scid);  # [5]
             require connected(scid) & connected_to(scid) = dcid;
             require stream_id_allowed(dcid,f.id);  # [4]
-            call handle_transport_error(scid,f.err_code);
+            call handle_transport_error(f.err_code);
 	    ...
             stream_seen(scid,f.id) := true;
             #receiving_ready := true;
@@ -940,7 +942,7 @@ object frame = { ...
             require connected(scid) & connected_to(scid) = dcid;
             require f.reason_phrase_length = f.reason_phrase.end;
             conn_closed(scid) := true;
-            call handle_transport_error(scid,f.err_code);
+            call handle_transport_error(f.err_code);
 	    ...
             call enqueue_frame(scid,f,e,false);
         }
@@ -1515,3 +1517,6 @@ action max_additional_data(dcid:cid) returns (max:stream_pos) = {
     };
     max := max - conn_total_data(dcid);  # note the substraction is saturating
 }
+
+import action show_stream_retransmisstion(I:stream_id,O:stream_pos,
+                                          L:stream_pos,D:stream_data,C:stream_pos)

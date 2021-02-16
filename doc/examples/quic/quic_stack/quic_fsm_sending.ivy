@@ -80,6 +80,7 @@ after init {
 }
 
 action handle_sending_send(id:stream_id,seq:pkt_num) = {
+    # put implication (->) instead of if ?
     if ~stream_frame_restransmitted(id) & ~sdb_frame_restransmitted(id) {
         # possible source state/transition
         require sending_ready(id) | sending_send(id);
@@ -117,6 +118,7 @@ action handle_sending_dataRecvd(id:stream_id) = {
     # set of non allowed state  ~sending_dataRecvd(id) &
     require  ~sending_send(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
     sending_dataSent(id)  := false;
+    sending_ready(id) := true; # needed ?
     sending_dataRecvd(id) := true;
     call show_fsm_sending_dataRecvd_event;
     call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));

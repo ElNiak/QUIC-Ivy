@@ -586,45 +586,6 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
 }
 
 
-action handle_transport_error(scid:cid,
-                              ec:error_code) =
-{
-    if ec = 0x0 {
-        is_no_error := true;
-    } else if ec = 0x1 {
-        is_internal_error := true;
-    } else if ec = 0x2 {
-        is_server_busy := true;
-    } else if ec = 0x3 {
-        is_flow_control_error := true;
-    } else if ec = 0x4 {
-        is_stream_limit_error := true;
-    } else if ec = 0x5 {
-        is_stream_state_error := true;
-    } else if ec = 0x6 {
-        is_final_size_error := true;
-    } else if ec = 0x7 {
-        is_frame_encoding_error := true;
-    } else if ec = 0x8 {
-        is_transport_parameter_error := true;
-    } else if ec = 0x9 {
-        is_connection_id_limit_error := true;
-    } else if ec = 0xa {
-        is_protocol_violation := true;
-    } else if ec = 0xb {
-        is_invalid_token := true;
-    } else if ec = 0xc {
-        is_application_error := true;
-    } else if ec = 0xd {
-        is_crypto_buffer_exceeded := true;
-    } else {
-        # TODO check if tag = 0x1XX
-        is_crypto_error := true;
-    }
-}
-
-
-
 
 
 
