@@ -8,5 +8,5 @@ include quic_server_test
 #   MUST send a RESET_STREAM frame if the stream is in the Ready or Send
 #   state. 
 
-export frame.stop_sending.handle.weight = "90";
+export frame.stop_sending.handle.weight = "90"
 
