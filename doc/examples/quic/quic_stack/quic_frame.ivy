@@ -809,7 +809,7 @@ object frame = { ...
                 #   RESET_STREAM frame.  An endpoint that receives a STOP_SENDING frame
                 #   MUST send a RESET_STREAM frame if the stream is in the Ready or Send
                 #   state. 
-                require sending_ready(f.id)
+                # require sending_ready(f.id)
             } else {
                 call handle_receiving_resetRecvd(f.id,seq_num);
             };
@@ -856,8 +856,8 @@ object frame = { ...
                 #   state. 
                 if sending_ready(f.id) | sending_send(f.id) {
                     stop_sending_in_bad_state := true;
-                }
-            }
+                };
+            };
             stream_seen(scid,f.id) := true;
             #receiving_ready := true;
             call enqueue_frame(scid,f,e,false);
