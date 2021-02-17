@@ -30,3 +30,10 @@ before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid,e:quic_packet_ty
         require f.pos > 0;
     }
 }
+
+export action _finalize = {
+    # chris TODO 
+    require ~is_no_error;
+}
+
+
