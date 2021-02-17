@@ -412,7 +412,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
     if _generating {
         require scid = the_cid;
     } else {
-        require is_invalid_token
+        require is_transport_parameter_error
     }
 }
 
