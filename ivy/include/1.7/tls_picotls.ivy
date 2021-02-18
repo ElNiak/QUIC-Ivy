@@ -402,11 +402,11 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             unsigned char *data = new unsigned char[ser.res.size()-4];
             std::copy(ser.res.begin()+4,ser.res.end(),data);
             ptls_exts[i].type = etype;
-            std::cerr << "etype =" << etype << std::endl;  
+            /std::cerr << "etype =" << etype << std::endl;  
             ptls_exts[i].data.base = data;
-            std::cerr << "data =" << data << std::endl;  
+            //std::cerr << "data =" << data << std::endl;  
             ptls_exts[i].data.len = len;
-            std::cerr << "len =" << len << std::endl;  
+            //std::cerr << "len =" << len << std::endl;  
             // int eres = gnutls_session_ext_register (session, "ext_name", etype,
             //   GNUTLS_EXT_APPLICATION, gnutls_ext_supp_recv_params,
             //   gnutls_ext_supp_send_params, 0,0,0,0);
@@ -419,11 +419,11 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ptls_exts[e.size()].data.base = NULL;
         ptls_exts[e.size()].data.len = 0;
         std::cerr << "ptls_exts =" << ptls_exts << std::endl;  
-        for (unsigned i = 0; i < e.size(); i++) {
+        /*for (unsigned i = 0; i < e.size(); i++) {
             std::cerr << "ptls_exts[i].type = " << ptls_exts[i].type << std::endl;  
             std::cerr << "ptls_exts[i].base = " << ptls_exts[i].data.base << std::endl;
             std::cerr << "ptls_exts[i].len = " << ptls_exts[i].data.len << std::endl;
-        }
+        }/
         handshake_properties->additional_extensions = ptls_exts;
 
         // Read the certificate, if we are a server
@@ -493,7 +493,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             sz = 0;
         }
         else sz = pn_enc->algo->iv_size;
-        std::cerr << "sz == " << sz << "\n";
+        //std::cerr << "sz == " << sz << "\n";
         >>>
     }
 
@@ -552,7 +552,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         bytes.resize(ad.size());
         std::copy(ad.begin(),ad.end(),bytes.begin());
 
-        std::cerr << "aead == " << aead << "\n";
+        //std::cerr << "aead == " << aead << "\n";
 
         std::vector<uint8_t> input, output;
         input.resize(cipher.size());
