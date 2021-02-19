@@ -85,7 +85,7 @@ action handle_sending_send(id:stream_id,seq:pkt_num) = {
         # possible source state/transition
         require sending_ready(id) | sending_send(id);
         # set of non allowed state (useless ?) ~sending_send(id) & => problem with restransmion
-        require  ~sending_dataSent(id) & ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
+        # require  ~sending_dataSent(id) & ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
         sending_ready(id) := false;
         sending_send(id)  := true;
         call show_fsm_sending_send_event;
@@ -101,7 +101,7 @@ action handle_sending_dataSent(id:stream_id,seq:pkt_num) = {
         # possible source state/transition
         require sending_send(id) | sending_dataSent(id);
         # set of non allowed state  ~sending_dataSent(id) &
-        require  ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
+        #require  ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
         sending_send(id) := false;
         sending_dataSent(id) := true;
         call show_fsm_sending_dataSent_event;
@@ -116,7 +116,7 @@ action handle_sending_dataRecvd(id:stream_id) = {
     # possible source state/transition
     require sending_dataSent(id) | sending_dataRecvd(id);
     # set of non allowed state  ~sending_dataRecvd(id) &
-    require  ~sending_send(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
+    # require  ~sending_send(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
     sending_dataSent(id)  := false;
     sending_ready(id) := true; # needed ?
     sending_dataRecvd(id) := true;
@@ -129,7 +129,7 @@ action handle_sending_resetSent(id:stream_id,seq:pkt_num) = {
         # possible source state/transition
         # require sending_dataSent(id) | sending_send(id) | sending_ready(id) | sending_resetSent(id);
         # set of non allowed state & ~sending_resetSent(id)
-        require  ~sending_dataRecvd(id) & ~sending_resetRecvd(id);
+        # require  ~sending_dataRecvd(id) & ~sending_resetRecvd(id);
         sending_ready(id) := false;
         sending_dataSent(id) := false;
         sending_send(id) := false;
@@ -145,7 +145,7 @@ action handle_sending_resetRecvd(id:stream_id) = {
     # possible source state/transition
     require sending_resetSent(id) | sending_resetRecvd(id);
     # set of non allowed state & ~sending_resetRecvd(id)
-    require  ~sending_send(id) & ~sending_dataSent(id);
+    # require  ~sending_send(id) & ~sending_dataSent(id);
     sending_resetSent(id) := false;
     sending_ready(id) := true;
     sending_resetRecvd(id) := true;
