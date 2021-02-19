@@ -62,6 +62,7 @@ object tls_ser_server = {}
         {"quic_transport_parameters",2},
         //{"transport_parameters",2}, // Parameter length field removal
         {"initial_max_stream_data_bidi_local",1},
+        {"original_destination_connection_id",1},
         {"initial_max_data",1},
         {"initial_max_stream_id_bidi",1},
         {"max_idle_timeout",1},
@@ -105,6 +106,7 @@ object tls_ser_server = {}
         {"stream_pos_16",-1},
         {"exponent_8",-1},
         {"data_8",1},
+        {"scid",8},
         {0,0}
     };
     tls_name_map tls_field_bytes_map;
@@ -122,6 +124,7 @@ object tls_ser_server = {}
         {"initial_max_stream_data_bidi_local",0x05},
         {"initial_max_data",0x04},
         {"initial_max_stream_id_bidi",0x08},
+        {"original_destination_connection_id",0x00},
         {"max_idle_timeout",0x01},
         {"preferred_address",0x0d},
         {"max_packet_size",0x03},
@@ -154,6 +157,7 @@ object tls_ser_server = {}
         {"stateless_reset_token",1},
         {"ack_delay_exponent",1},
         {"initial_max_stream_id_uni",1},
+        {"original_destination_connection_id",1},
         {"disable_migration",1},
         {"active_connection_id_limit",1},
         {"initial_max_stream_data_bidi_remote",1},

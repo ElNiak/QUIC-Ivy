@@ -26,6 +26,14 @@ module trans_params_ops(ptype) = {
     }
 }
 
+object original_destination_connection_id   = { # hcid picoquic ?
+    variant this of transport_parameter = struct {  # tag = 15
+        #name is important for parsing
+        scid : cid
+    }
+    instantiate trans_params_ops(this)
+}
+
 object initial_max_stream_data_bidi_local = {
     variant this of transport_parameter = struct {  # tag = 0
         stream_pos_32 : stream_pos
@@ -126,7 +134,7 @@ object active_connection_id_limit = {
 object initial_source_connection_id  = { # hcid picoquic ?
     variant this of transport_parameter = struct {  # tag = 15
         #name is important for parsing
-        data_8 : stream_data
+        scid : cid
     }
     instantiate trans_params_ops(this)
 }

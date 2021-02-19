@@ -257,7 +257,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsdu : initial_max_stream_data_uni;
     imsdu.stream_pos_32 := 0x2000;
     var icid : initial_source_connection_id;
-    icid.data_8 := 0x0;
+    icid.data_8 := 0;
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
     tp.transport_parameters := tp.transport_parameters.append(it);
