@@ -20,7 +20,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require dst = client.ep;
         require pkt.token.end = 0; 
     };
-    require pkt.long -> pkt.pversion = 0xff00001b  #version 27
+    require pkt.long -> pkt.pversion = 0xff00001d  #version 29
 }
 
 

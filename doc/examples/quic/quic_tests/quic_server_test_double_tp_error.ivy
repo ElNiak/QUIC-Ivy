@@ -305,7 +305,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require dst = server.ep;
         require pkt.token.end = 0; # [1]
     };
-    require pkt.long -> pkt.pversion = 0xff00001b  #version 27
+    require pkt.long -> pkt.pversion = 0xff00001d  #version 29
 }
 
 # The protocol specification describes all the events occurring the
