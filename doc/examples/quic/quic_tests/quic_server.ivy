@@ -256,11 +256,14 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsdbr.stream_pos_32 := max_stream_data;
     var imsdu : initial_max_stream_data_uni;
     imsdu.stream_pos_32 := 0x2000;
+    var icid : initial_source_connection_id;
+    icid.data_8 := 0x0;
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
     tp.transport_parameters := tp.transport_parameters.append(it);
     tp.transport_parameters := tp.transport_parameters.append(imsdbr);
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
+    tp.transport_parameters := tp.transport_parameters.append(icid);
 }
 
 
