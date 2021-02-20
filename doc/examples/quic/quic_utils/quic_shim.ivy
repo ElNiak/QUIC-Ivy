@@ -67,7 +67,7 @@ include quic_locale
 
 
 after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
-    if _generating { # src = server.ep ?? for client
+    if _generating { 
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
         var tls_id := dst_tls_id(dst);
@@ -305,9 +305,22 @@ after init {
     initial_keys_set := false;
 }
 
-after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
+after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data, tls_id:tls_id) {
     client.ep := src; # TODO: migration?
     if ~initial_keys_set {
+
+        var rnum := reference_pkt_num(spkt);
+        var res := prot.decrypt(tls_id,rnum,spkt);
+        if res.ok {
+            var pkt := pkt_serdes.from_bytes(res.data);
+            client_initial_dcid := pkt.dst_cid;
+            client_initial_scid := pkt.src_cid;
+            var extns := tls_extensions.empty;
+            extns := extns.append(make_transport_parameters);
+            call tls_api.upper.create(0,true,extns);  
+            # 'true' means this instance of tls is a server
+        };
+
         #TODO check value
         var lens := spkt.value(5);
         var dcil : stream_pos := bfe[0][7](spkt.value(5));

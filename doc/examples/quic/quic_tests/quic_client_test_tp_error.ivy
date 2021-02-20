@@ -168,13 +168,13 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsdbl : initial_max_stream_data_bidi_local;
     imsdbl.stream_pos_32 := max_stream_data;
     var imd : initial_max_data;
-    imd.stream_pos_32 := random_stream_pos(1,0x3FFFFFFFFFFFFFFF);
+    imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var it : max_idle_timeout;
-    it.seconds_16 := random_microsecs(0,0xFFFFFFFF);
+    it.seconds_16 := random_microsecs(0,0xFFFFFFF);
     var imsdbr : initial_max_stream_data_bidi_remote;
     imsdbr.stream_pos_32 := max_stream_data;
     var imsdu : initial_max_stream_data_uni;
-    imsdu.stream_pos_32 := random_stream_pos(1,0x3FFFFFFFFFFFFFFF);
+    imsdu.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
 
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);

@@ -73,6 +73,9 @@ instance tls_extensions : vector(tls.extension)
 after init {
     sock := net.open(endpoint_id.server,server.ep);
     server.tls_id := 0;
+    var extns := tls_extensions.empty;
+    extns := extns.append(make_transport_parameters);
+    # call tls_api.upper.create(0,true,extns);  # 'true' means this instance of tls is a server
 }
 
 # Here we have a bunch of conversions that map between cid's, IP
@@ -158,20 +161,21 @@ after init {
 
 # HACK: we fix the initial client transport parameters here
 
-action make_transport_parameters(scid:cid, dcid:cid) returns (tp:quic_transport_parameters) = {
-    #tp.initial_version := 0xff000017;
-    #tp.versions := tp.versions.append(0xff000017);
-    #tp.versions := tp.versions.append(0x49565931);  # IVY1
+function client_initial_scid : cid
+
+function client_initial_dcid : cid
+
+action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsdbl : initial_max_stream_data_bidi_local;
     imsdbl.stream_pos_32 := max_stream_data;
     var imd : initial_max_data;
-    imd.stream_pos_32 := random_stream_pos(1,0x3FFFFFFFFFFFFFFF);
+    imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var it : max_idle_timeout;
-    it.seconds_16 := random_microsecs(0,0xFFFFFFFF);
+    it.seconds_16 := random_microsecs(0,0xFFFFFFF);
     var imsdbr : initial_max_stream_data_bidi_remote;
     imsdbr.stream_pos_32 := max_stream_data;
     var imsdu : initial_max_stream_data_uni;
-    imsdu.stream_pos_32 := random_stream_pos(1,0x3FFFFFFFFFFFFFFF);
+    imsdu.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
     tp.transport_parameters := tp.transport_parameters.append(it);
@@ -184,11 +188,11 @@ action make_transport_parameters(scid:cid, dcid:cid) returns (tp:quic_transport_
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
-    var icid : initial_source_connection_id; #TODO update v29
-    icid.scid := scid;
+    var icid : initial_source_connection_id; #update v29
+    icid.scid := client_initial_scid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
-    var odci : original_destination_connection_id; #TODO update v29
-    odci.scid := dcid;
+    var odci : original_destination_connection_id; #update v29
+    odci.scid := client_initial_dcid;
     tp.transport_parameters := tp.transport_parameters.append(odci);
 }
 
