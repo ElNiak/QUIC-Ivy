@@ -242,6 +242,10 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(imsdbr);
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
 
+    var icid : initial_source_connection_id; #TODO update v29
+    icid.scid := 0;
+    tp.transport_parameters := tp.transport_parameters.append(icid);
+    
    # An endpoint MUST NOT send a parameter more than once in a given
    # transport parameters extension.  An endpoint SHOULD treat receipt of
    # duplicate transport parameters as a connection error of type

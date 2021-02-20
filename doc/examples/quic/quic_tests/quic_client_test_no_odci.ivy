@@ -175,7 +175,6 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsdbr.stream_pos_32 := max_stream_data;
     var imsdu : initial_max_stream_data_uni;
     imsdu.stream_pos_32 := 0x2000;
-
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
     tp.transport_parameters := tp.transport_parameters.append(it);
@@ -188,23 +187,15 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
-    var icid : initial_source_connection_id; #TODO update v29
-    icid.scid := 0;
-    tp.transport_parameters := tp.transport_parameters.append(icid);
-    var odci : original_destination_connection_id; #TODO update v29
-    odci.scid := 0;
-    tp.transport_parameters := tp.transport_parameters.append(odci);
-    
-    # ack_delay_exponent (0x0a):  The acknowledgement delay exponent is an
-    #  integer value indicating an exponent used to decode the ACK Delay
-    #  field in the ACK frame (Section 19.3).  If this value is absent, a
-    #  default value of 3 is assumed (indicating a multiplier of 8).
-    #  Values above 20 are invalid.
-
-    var acl_del : ack_delay_exponent;
-    acl_del.exponent_8 := greater_microsecs(20);
-    tp.transport_parameters := tp.transport_parameters.append(acl_del);
+   # An endpoint MUST treat absence of the initial_source_connection_id
+   # transport parameter from either endpoint or absence of the
+   # original_destination_connection_id transport parameter from the
+   # server as a connection error of type TRANSPORT_PARAMETER_ERROR.
 }
+
+#########################
+# TODO
+#########################
 
 attribute radix=16       # print in hex
 
@@ -243,13 +234,15 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 #
 # Restrict generation to packets from the designated client endpoints
 # to the server endpoint.
+#
+
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        require pkt.token.end = 0; 
+        require pkt.token.end = 0; # [1]
     };
     require pkt.long -> pkt.pversion = 0xff00001d  #version 29
 }

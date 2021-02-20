@@ -187,6 +187,13 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
+    var icid : initial_source_connection_id; #TODO update v29
+    icid.scid := 0;
+    tp.transport_parameters := tp.transport_parameters.append(icid);
+    var odci : original_destination_connection_id; #TODO update v29
+    odci.scid := 0;
+    tp.transport_parameters := tp.transport_parameters.append(odci);
+    
     #TODO
     var pref_add : preferred_address;
     pref_add.exponent_8 := greater_stream_pos(20);;

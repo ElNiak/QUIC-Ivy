@@ -125,7 +125,7 @@ action handle_receiving_dataRecvd(id:stream_id) = {
 
 action handle_receiving_dataRead(id:stream_id) = {
     # possible source state/transition
-    require receiving_dataRecvd(id);
+    # require receiving_dataRecvd(id);
     # set of non allowed state  
     # require  ~receiving_dataRead(id) & ~receiving_resetRead(id) & ~receiving_resetRead(id);
     receiving_dataRecvd(id) := false;
@@ -137,7 +137,7 @@ action handle_receiving_dataRead(id:stream_id) = {
 action handle_receiving_resetRecvd(id:stream_id,seq:pkt_num) = {
     if ~reset_frame_restransmitted(id) {
         # possible source state/transition
-        require receiving_recv(id) | receiving_sizeKnown(id) | receiving_dataRecvd(id);
+        # require receiving_recv(id) | receiving_sizeKnown(id) | receiving_dataRecvd(id);
         # set of non allowed state 
         #require  ~receiving_resetRead(id) & ~receiving_dataRead(id);
         receiving_recv(id) := false;
