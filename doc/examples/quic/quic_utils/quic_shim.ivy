@@ -300,15 +300,17 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
 # TLS here in the shim.
 
 var initial_keys_set : bool
+var tp_client_set : bool
+
 
 after init {
     initial_keys_set := false;
+    tp_client_set := false;
 }
 
 after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
     client.ep := src; # TODO: migration?
-    if ~initial_keys_set {
-        #TODO check value
+    if ~tp_client_set {
         var lens := spkt.value(5);
         var dcil : stream_pos := bfe[0][7](spkt.value(5));
         var ikm := spkt.segment(6,6+dcil); # dcid
@@ -323,6 +325,13 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         extns := extns.append(make_transport_parameters);
         call tls_api.upper.create(0,true,extns);  
         # 'true' means this instance of tls is a server
+        tp_client_set := true;
+    };
+    if ~initial_keys_set {
+        #TODO check value
+        var lens := spkt.value(5);
+        var dcil : stream_pos := bfe[0][7](spkt.value(5));
+        var ikm := spkt.segment(6,6+dcil); # dcid
 
         var salt : stream_data := stream_data.empty;
         

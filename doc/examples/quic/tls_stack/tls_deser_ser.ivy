@@ -417,10 +417,7 @@ object tls_ser_server = {}
             if (tls_tag_bytes_map.find(name) != tls_tag_bytes_map.end())
                 bytes = tls_tag_bytes_map[name];
             long long tag = tls_tags_map[name];
-            if (tag == 0x0f || tag == 0x00) {
-                set_var_int(tag);
-            }
-            else if (tag !=-1) 
+            if (tag !=-1) 
                 setn(tag,bytes); // var int ?
             open_field(name);
         }
