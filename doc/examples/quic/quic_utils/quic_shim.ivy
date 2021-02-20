@@ -109,7 +109,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call recv_packet(src,dst,pkt);
             call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
             call packet_event(src,dst,pkt);       # also an inferred event
-            if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0  { # & ~cid_dst_to_src_set(the_cid)
+            if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
                 # for client test
                 call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
             }

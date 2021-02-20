@@ -168,13 +168,13 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsdbl : initial_max_stream_data_bidi_local;
     imsdbl.stream_pos_32 := max_stream_data;
     var imd : initial_max_data;
-    imd.stream_pos_32 := 0x4000;
+    imd.stream_pos_32 := random_stream_pos(1,0x3FFFFFFFFFFFFFFF);
     var it : max_idle_timeout;
-    it.seconds_16 := 60;
+    it.seconds_16 := random_microsecs(0,0xFFFFFFFF);
     var imsdbr : initial_max_stream_data_bidi_remote;
     imsdbr.stream_pos_32 := max_stream_data;
     var imsdu : initial_max_stream_data_uni;
-    imsdu.stream_pos_32 := 0x2000;
+    imsdu.stream_pos_32 := random_stream_pos(1,0x3FFFFFFFFFFFFFFF);
 
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
@@ -194,7 +194,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var odci : original_destination_connection_id; #TODO update v29
     odci.scid := 0;
     tp.transport_parameters := tp.transport_parameters.append(odci);
-    
+
     # ack_delay_exponent (0x0a):  The acknowledgement delay exponent is an
     #  integer value indicating an exponent used to decode the ACK Delay
     #  field in the ACK frame (Section 19.3).  If this value is absent, a

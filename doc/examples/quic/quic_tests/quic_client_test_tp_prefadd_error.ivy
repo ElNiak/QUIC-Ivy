@@ -158,23 +158,19 @@ after init {
 #     nonce_cid(the_cid) := the_cid;
 # }
 
-
 # HACK: we fix the initial client transport parameters here
 
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
-    #tp.initial_version := 0xff000017;
-    #tp.versions := tp.versions.append(0xff000017);
-    #tp.versions := tp.versions.append(0x49565931);  # IVY1
     var imsdbl : initial_max_stream_data_bidi_local;
     imsdbl.stream_pos_32 := max_stream_data;
     var imd : initial_max_data;
-    imd.stream_pos_32 := 0x4000;
+    imd.stream_pos_32 := random_stream_pos(1,0x3FFFFFFFFFFFFFFF);
     var it : max_idle_timeout;
-    it.seconds_16 := 60;
+    it.seconds_16 := random_microsecs(0,0xFFFFFFFF);
     var imsdbr : initial_max_stream_data_bidi_remote;
     imsdbr.stream_pos_32 := max_stream_data;
     var imsdu : initial_max_stream_data_uni;
-    imsdu.stream_pos_32 := 0x2000;
+    imsdu.stream_pos_32 := random_stream_pos(1,0x3FFFFFFFFFFFFFFF);
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
     tp.transport_parameters := tp.transport_parameters.append(it);
@@ -196,7 +192,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
 
     #TODO
     var pref_add : preferred_address;
-    pref_add.exponent_8 := greater_stream_pos(20);
+    #pref_add.exponent_8 := greater_stream_pos(20);
     tp.transport_parameters := tp.transport_parameters.append(pref_add);
 }
 
