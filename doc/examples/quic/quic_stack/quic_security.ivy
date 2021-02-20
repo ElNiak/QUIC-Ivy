@@ -105,7 +105,7 @@ action tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid)
 # Note: the nonce cid is used by TLS as the initial key material to
 # generate the encryption keys for initial packets.
 
-action tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,ppkt:stream_data,tls_id:tls_api.id)
+action tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,ppkt:stream_data)
 
 # Security protocol state
 # -----------------------

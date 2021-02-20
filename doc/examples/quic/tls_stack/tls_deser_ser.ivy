@@ -106,7 +106,7 @@ object tls_ser_server = {}
         {"stream_pos_16",-1},
         {"exponent_8",-1},
         {"data_8",1},
-        {"scid",8},
+        {"cid",-1},
         {0,0}
     };
     tls_name_map tls_field_bytes_map;
@@ -281,13 +281,14 @@ object tls_ser_server = {}
                 unsigned long long tag_intt = (unsigned long long) tag_new; 
                 tag_final = (tag_intt & mask);
                 
-                getn(value_size,1);                value_size = value_size & 0xff;
+                getn(value_size,1);                
+                value_size = value_size & 0xff;
                 pos -= 1;
 
                 tls_field_bytes_map["unknown"] = value_size;
-            } else 
+            } else {
                 tag_final = tag;
-	
+            }
 
 	        std::cout << "value_size: " << value_size << std::endl;
             std::cout << "tag v2: " << tag_final << std::endl;

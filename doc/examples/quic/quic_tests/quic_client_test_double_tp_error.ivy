@@ -160,6 +160,8 @@ after init {
 
 
 # HACK: we fix the initial client transport parameters here
+function client_initial_scid : stream_data
+function client_initial_dcid : stream_data
 
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
     #tp.initial_version := 0xff000017;
@@ -188,11 +190,11 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
-    var icid : initial_source_connection_id; #TODO update v29
-    icid.scid := 0;
+    var icid : initial_source_connection_id; #update v29
+    icid.cid := client_initial_scid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
-    var odci : original_destination_connection_id; #TODO update v29
-    odci.scid := 0;
+    var odci : original_destination_connection_id; #update v29
+    odci.cid := client_initial_dcid;
     tp.transport_parameters := tp.transport_parameters.append(odci);
 
     # An endpoint MUST NOT send a parameter more than once in a given

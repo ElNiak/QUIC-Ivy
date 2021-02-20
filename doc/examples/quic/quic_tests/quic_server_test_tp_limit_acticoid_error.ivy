@@ -197,7 +197,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
 
     var icid : initial_source_connection_id; #TODO update v29
-    icid.scid := 0;
+    icid.cid := 0;
     tp.transport_parameters := tp.transport_parameters.append(icid);
 
     #   A NEW_CONNECTION_ID frame might cause an endpoint to add some active
