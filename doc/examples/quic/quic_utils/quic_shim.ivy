@@ -314,7 +314,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         var ikm := spkt.segment(6,6+dcil); # dcid
         
         var lenss := spkt.value(6+dcil);
-        var scil : stream_pos := bfe[0][7](spkt.value(6+dcils));
+        var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
         var skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
         
         client_initial_dcid := ikm;
