@@ -99,7 +99,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var tls_id := dst_tls_id(dst);
         if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 {
             # for client test
-            call tls_client_initial_response(src,dst,ppkt,tls_api)
+            call tls_client_initial_response(src,dst,ppkt)
         };
         var rnum := reference_pkt_num(ppkt);
         var res := prot.decrypt(tls_id,rnum,ppkt);
@@ -305,7 +305,7 @@ after init {
     initial_keys_set := false;
 }
 
-after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data, tls_id:tls_api.id) {
+after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
     client.ep := src; # TODO: migration?
     if ~initial_keys_set {
         #TODO check value
@@ -313,8 +313,8 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         var dcil : stream_pos := bfe[0][7](spkt.value(5));
         var ikm := spkt.segment(6,6+dcil); # dcid
         
-        var lenss := spkt.value(6+dcil+1);
-        var scil : stream_pos := bfe[0][7](spkt.value(6+dcil+1));
+        var lenss := spkt.value(6+dcil);
+        var scil : stream_pos := bfe[0][7](spkt.value(6+dcils));
         var skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
         
         client_initial_dcid := ikm;
