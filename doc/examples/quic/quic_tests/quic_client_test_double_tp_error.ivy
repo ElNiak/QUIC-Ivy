@@ -160,8 +160,8 @@ after init {
 
 
 # HACK: we fix the initial client transport parameters here
-function client_initial_scid : stream_data
-function client_initial_dcid : stream_data
+function client_initial_scid : cid
+function client_initial_dcid : cid
 
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
     #tp.initial_version := 0xff000017;

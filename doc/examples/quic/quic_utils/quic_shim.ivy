@@ -319,8 +319,8 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
         var skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
         
-        client_initial_dcid := ikm;
-        client_initial_scid := skm;
+        client_initial_dcid := bytes_to_cid(ikm);
+        client_initial_scid := bytes_to_cid(skm);
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
         call tls_api.upper.create(0,true,extns);  
@@ -450,4 +450,12 @@ action hi_byte_pos(x:stream_pos) returns (res:byte) = {
 
 action lo_byte_pos(x:stream_pos) returns (res:byte) = {
     <<< res = x  & 0xff; >>>
+}
+
+action bytes_to_cid(bytes:stream_data) returns (val:cid) = {
+    <<<
+    val.val = 0;
+    for (unsigned i = 0; i < bytes.size(); i++)
+        val.val = (val.val << 8) + bytes[i];
+    >>>
 }
