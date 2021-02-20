@@ -233,7 +233,7 @@ export packet_event
 export client_send_event
 export tls_recv_event
 
-export frame.streams_blockeds.handle
+export frame.streams_blocked.handle
 #export frame.new_connection_id.handle
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
