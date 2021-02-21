@@ -323,6 +323,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         scid := connected_to(dcid);
     };
 
+    call show_pstats(scid,pkt.ptype,pkt.seq_num);
+
     # The packet type must match the encryption level of the queued
     # frames at the source. 
 
@@ -332,7 +334,6 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
     require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
 
-#    call show_pstats(scid,e,pkt.seq_num);
 
     require ~sent_pkt(scid,pkt.ptype,pkt.seq_num);  # [4]
     sent_pkt(scid,pkt.ptype,pkt.seq_num) := true;  # [1]
@@ -606,6 +607,6 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
 
 # import action show_offset_length(offset:stream_pos,length:stream_pos)
 
-# import action show_pstats(scid:cid,e:quic_packet_type,pnum:pkt_num)
+import action show_pstats(scid:cid,e:quic_packet_type,pnum:pkt_num)
 
 # import action show_tls_keys_established_event(scid:cid, e:quic_packet_type)

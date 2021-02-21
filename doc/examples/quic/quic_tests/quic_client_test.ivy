@@ -44,11 +44,6 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         #require pkt.long -> pkt.dcid = 5 & pkt.scid = 5;
         #require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
         #require cid_dst_to_src_set(pkt.hdr_cid);
-        #if pkt.ptype = quic_packet_type.initial {
-        #    var extns := tls_extensions.empty;
-        #    extns := extns.append(make_transport_parameters(pkt.src_cid,pkt.dst_cid));
-        #    call tls_api.upper.create(0,true,extns);  # 'true' means this instance of tls is a server
-        #};
     };
     require pkt.long -> pkt.pversion = 0xff00001d  #version 29
 }

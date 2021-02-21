@@ -106,7 +106,8 @@ object tls_ser_server = {}
         {"stream_pos_16",-1},
         {"exponent_8",-1},
         {"data_8",1},
-        {"cid",8},
+        {"dcid",8},
+        {"scid",8},
         {0,0}
     };
     tls_name_map tls_field_bytes_map;
