@@ -321,13 +321,14 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         var skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
         
         client_initial_dcid := bytes_to_cid(ikm);
-        client_initial_scid := bytes_to_cid(ikm); # skm
+        client_initial_scid := bytes_to_cid(skm); # skm
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
         call tls_api.upper.create(0,true,extns);  
         # 'true' means this instance of tls is a server
         tp_client_set := true;
     };
+
     if ~initial_keys_set {
         #TODO check value
         var lens := spkt.value(5);
