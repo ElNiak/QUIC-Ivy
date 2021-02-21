@@ -485,6 +485,7 @@ object quic_deser = {}
                     return 19;
                 }
                 if (frame_type == 0x00) {
+                    state = quic_padding;
                     return 20;
                 }
                 std::cerr << "saw tag " << ft << std::endl;  
