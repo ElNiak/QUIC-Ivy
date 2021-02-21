@@ -301,7 +301,8 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
 
 var initial_keys_set : bool
 var tp_client_set : bool
-
+function client_initial_scid : cid
+function client_initial_dcid : cid
 
 after init {
     initial_keys_set := false;
