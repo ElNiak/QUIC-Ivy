@@ -11,7 +11,7 @@ action lower_stream_pos(max:stream_pos) returns (res:stream_pos)
 implementation {
     implement random_stream_pos(min:stream_pos,max:stream_pos) {
        <<<
-       srand((time(NULL))); //fixed or random seed ?
+       srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
        res = ::random()%max + min;
        std::cerr << "between random: " << res << "\n";
@@ -20,7 +20,7 @@ implementation {
 
     implement greater_stream_pos(min:stream_pos) {
        <<<
-       srand((time(NULL))); //fixed or random seed ?
+       srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
        res = ::random()%32767 + (min+1);
        std::cerr << " greater random: " << res << "\n";
@@ -30,7 +30,7 @@ implementation {
     implement lower_stream_pos(max:stream_pos) {
        <<<
        res = 0;
-       srand((time(NULL))); //fixed or random seed ?
+       srand((unsigned) time(0)); //fixed or random seed ?
        res = ::random()%(max-1) + 0;
        std::cerr << "lower random: " << res << "\n";
        >>>
@@ -46,7 +46,7 @@ action lower_microsecs(max:microsecs) returns (res:microsecs)
 implementation {
     implement random_microsecs(min:microsecs,max:microsecs) {
        <<<
-       srand((time(NULL))); //fixed or random seed ?
+       srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
        res = ::random()%max + min;
        std::cerr << "between random: " << res << "\n";
@@ -55,7 +55,7 @@ implementation {
 
     implement greater_microsecs(min:microsecs) {
        <<<
-       srand((time(NULL))); //fixed or random seed ?
+       srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
        res = ::random()%32767 + (min+1);
        std::cerr << " greater random: " << res << "\n";
@@ -64,7 +64,7 @@ implementation {
 
     implement lower_microsecs(max:microsecs) {
        <<<
-       srand((time(NULL))); //fixed or random seed ?
+       srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
        res = ::random()%(max-1) + 0;
        std::cerr << "lower random: " << res << "\n";
