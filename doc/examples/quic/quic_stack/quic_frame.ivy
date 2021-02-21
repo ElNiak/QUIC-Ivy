@@ -282,13 +282,13 @@ object frame = {
     }
 
 	# (0x00) implicit in parsing
-    # object padding = {
+    object padding = {
         # PADDING frame frames are a variant of frame and contains nothing
 		# 1 byte frame to increase the size of a packet
-    #     variant this of frame = struct {
+        variant this of frame = struct {
 			
-    #     }
-    # }    
+        }
+    }    
 
     #TODO EXTENSION Frames
 
