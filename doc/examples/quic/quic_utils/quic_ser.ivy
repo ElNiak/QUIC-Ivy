@@ -95,6 +95,7 @@ object quic_ser = {}
               quic_retire_connection_id_seq_num,
               quic_handshake_done,
               quic_padding,
+              quic_ping,
               quic_s_done} state;
         bool long_format;
         char hdr_type;
@@ -209,6 +210,7 @@ object quic_ser = {}
             case quic_connection_close_reason:
             case quic_path_challenge_data:
             case quic_padding:
+            case quic_ping:
             case quic_handshake_done: // TODO
             case quic_s_retry_token:
             {
@@ -394,6 +396,7 @@ object quic_ser = {}
                 }
                 else if (tag == 0) {
                     frame_type = 0x01;
+                    state = quic_ping;
                 }
                 else if (tag == 18) {
                     frame_type = 0x1d;
