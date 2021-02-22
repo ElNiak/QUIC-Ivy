@@ -23,10 +23,10 @@ object tls_ser_server = {}
     
     typedef struct tls_name_struct {
         const char *name;
-        int value;
+        long long value;
     } *tls_name_struct_ptr;
 
-    struct tls_name_map : hash_space::hash_map<std::string,int> {};
+    struct tls_name_map : hash_space::hash_map<std::string,long long> {};
 
     std::string quic_params[17] = { 
         "quic_transport_parameters",
@@ -48,7 +48,7 @@ object tls_ser_server = {}
         "loss_bits"
     };
 
-    struct tls_name_struct tls_field_length_bytes[31] = {
+    struct tls_name_struct tls_field_length_bytes[32] = {
         {"fragment",2},
         {"content",2},
         {"tls.client_hello",3},
@@ -80,6 +80,7 @@ object tls_ser_server = {}
         {"loss_bits",2}, //for picoquic TODO test
         {"grease_quic_bit",1}, //for picoquic
         //{"enable_time_stamp",1}, //for picoquic TODO test
+        {"min_ack_delay",1},
 	    {"unknown_transport_parameter",1},
         {0,0}
     };
@@ -112,7 +113,7 @@ object tls_ser_server = {}
     };
     tls_name_map tls_field_bytes_map;
     //TODO check old version
-    struct tls_name_struct tls_tags[29] = {
+    struct tls_name_struct tls_tags[30] = {
         {"tls.handshake_record",22},
         {"tls.application_data_record",23},
         {"tls.change_cipher_spec",20},
@@ -141,6 +142,7 @@ object tls_ser_server = {}
         {"loss_bits",0x1057}, //for picoquic
         {"grease_quic_bit",0x2ab2}, //for picoquic
         //{"enable_time_stamp",0x7158}, //for picoquic
+        {"min_ack_delay",4278378010},
         {"unknown_transport_parameter",-2},
        {0,0}
     };
@@ -167,7 +169,8 @@ object tls_ser_server = {}
         {"initial_source_connection_id",1},
         {"loss_bits",2}, //for picoquic 
         {"grease_quic_bit",2}, //for picoquic
-        {"enable_time_stamp",2}, //for picoquic 
+        {"min_ack_delay",8},
+        //{"enable_time_stamp",2}, //for picoquic 
         //{"unknown_transport_parameter",2},
         {0,0}
     };

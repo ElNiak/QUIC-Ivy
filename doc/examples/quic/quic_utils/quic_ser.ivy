@@ -96,6 +96,10 @@ object quic_ser = {}
               quic_handshake_done,
               quic_padding,
               quic_ping,
+              quic_ack_frequency, //seq_num
+              quic_ack_frequency_packet_tolerence,
+              quic_ack_frequency_update_max_ack_delay,
+              quic_ack_frequency_ignore_order,
               quic_s_done} state;
         bool long_format;
         char hdr_type;
@@ -212,6 +216,33 @@ object quic_ser = {}
             case quic_padding:
             case quic_ping:
             case quic_handshake_done: // TODO
+            case quic_ack_frequency: //TODO
+            {
+                set_var_int(res);
+		        std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
+                state = quic_ack_frequency_packet_tolerence;
+            }
+            break;
+            case quic_ack_frequency_packet_tolerence:
+            {
+                set_var_int(res);
+		        std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
+                state = quic_ack_frequency_update_max_ack_delay;
+            }
+            break;
+            case quic_ack_frequency_update_max_ack_delay: 
+            {
+                set_var_int(res);
+		        std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
+                state = quic_ack_frequency_ignore_order;
+            }
+            break;
+            case quic_ack_frequency_ignore_order: 
+            {
+		        std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
+                setn(res,1);
+            }
+            break;
             case quic_s_retry_token:
             {
                 setn(res,1);
@@ -445,6 +476,11 @@ object quic_ser = {}
                 else if (tag == 20) {
                     state = quic_padding;
                     frame_type = 0x00;
+                }
+                 else if (tag == 21) {
+                    state = quic_ack_frequency;
+                    frame_type = 0xaf;
+		            std::cout << "saw frame tag " << frame_type << std::endl; 
                 }
 	            else {
                     std::cout << "saw frame tag " << tag << std::endl;  

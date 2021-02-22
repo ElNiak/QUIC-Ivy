@@ -292,6 +292,19 @@ object frame = {
 
     #TODO EXTENSION Frames
 
+    # (0xaf) 
+    # https://tools.ietf.org/html/draft-iyengar-quic-delayed-ack-02
+    object ack_frequency = {
+        # ACK_FREQUENCY  frame frames are a variant of frame and contains nothing
+		# 1 byte frame to increase the size of a packet
+         variant this of frame = struct {
+			seq_num              : cid_seq,     # the sequence number of the new cid
+            packet_tolerence     : stream_pos,
+            update_max_ack_delay : microsecs,
+            ignore_order         : bool
+         }
+    } 
+
     instance idx : unbounded_sequence
     instance arr : array(idx,this)
 }        
@@ -1419,6 +1432,29 @@ object frame = { ...
     }
 }
 
+# #### ack_frequency event
+# TODO
+# ack_frequency frames    Delaying acknowledgements as much as possible reduces both work done
+#   by the endpoints and network load.  An endpoint's loss detection and
+#   congestion control mechanisms however need to be tolerant of this
+#   delay at the peer.  An endpoint signals its tolerance to its peer
+#   using an ACK_FREQUENCY frame, shown below:
+
+object frame = { ...
+    object ack_frequency = { ...
+        action handle(f:frame.ack_frequency,scid:cid,dcid:cid,e:quic_packet_type)
+	around handle {
+            require connected(dcid) & connected_to(dcid) = scid;
+            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            #require min_ack_delay_check(dcid);
+            require f.ignore_order < 2;
+            ...
+            call enqueue_frame(scid,f,e,false);
+        }
+    }
+}
+
 
 # Procedures
 # ----------
@@ -1555,6 +1591,17 @@ action max_additional_data(dcid:cid) returns (max:stream_pos) = {
     };
     max := max - conn_total_data(dcid);  # note the substraction is saturating
 }
+
+#  An endpoint's min_ack_delay MUST NOT be greater than the its
+#  max_ack_delay. 
+#
+
+action min_ack_delay_check(dcid:cid) returns (ok:bool) = {
+    ok := false;
+    var tp := trans_params(dcid);
+    ok := min_ack_delay.value(tp).unknown < max_ack_delay.value(tp).exponent_8;
+}
+
 
 import action show_stream_retransmisstion(i:stream_id,o:stream_pos,
                                           l:stream_pos,d:stream_data,c:stream_pos)
