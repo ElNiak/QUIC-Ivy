@@ -245,11 +245,9 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
 # - The crypto position is is updated to the end of the received data.  [3]
 
 around tls_recv_event {
-
     require connected(dcid) & connected_to(dcid) = scid;  # [1]
     require lo < hi & lo = crypto_pos(dcid,e) & hi <= crypto_length(scid,e);  # [2]
-    ...
-    
+    ... 
     crypto_pos(dcid,e) := hi;  # [3]
 }
 

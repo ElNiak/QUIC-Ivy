@@ -1217,9 +1217,9 @@ object frame = { ...
     object padding = { ...
         action handle(f:frame.padding,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
+            #require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
-            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            #require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             ...
             call enqueue_frame(scid,f,e,false);
         }
