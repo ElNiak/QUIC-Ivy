@@ -590,7 +590,7 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
     if is_client_hello {
         require ~stateless_reset_token.is_set(trans_params(scid));  # [4]
     } else {
-        if if _generating { 
+        if _generating { 
             require original_destination_connection_id.is_set(trans_params(scid));  # [6]
         };
     }
