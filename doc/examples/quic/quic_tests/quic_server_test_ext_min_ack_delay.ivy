@@ -200,7 +200,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(icid);
 
     var min_d : min_ack_delay;
-    min_d.seconds_16 := 20; # TODO random
+    min_d.unknown := 20; # TODO random
     tp.transport_parameters := tp.transport_parameters.append(min_d);
 }
 

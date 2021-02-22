@@ -1448,7 +1448,7 @@ object frame = { ...
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             #require min_ack_delay_check(dcid);
-            require f.ignore_order < 2;
+            #require f.ignore_order < 2;
             ...
             call enqueue_frame(scid,f,e,false);
         }
