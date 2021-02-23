@@ -522,10 +522,17 @@ object quic_deser = {}
                     state = quic_padding;
                     return 20;
                 }
-                if (frame_type == 0x80AF) { //0xaf
-                    std::cout << "state   0xaf       = " << state << std::endl; 
-                    state = quic_ack_frequency;
-                    return 21;
+                if (frame_type == 0x40) {
+                    ft;
+                    ivy_binary_deser::getn(ft,1); // could be bigger
+                    frame_type = ft;
+                    if (frame_type == 0xAF) { //0x40af
+                        std::cout << "state   0xaf       = " << state << std::endl; 
+                        state = quic_ack_frequency;
+                        return 21;
+                    }
+                }
+
                 }
                 std::cerr << "saw tag " << ft << std::endl;  
             }

@@ -480,7 +480,7 @@ object quic_ser = {}
                 }
                  else if (tag == 21) {
                     state = quic_ack_frequency;
-                    frame_type = 0x80AF; // 0100 0000 AF
+                    frame_type = 0x40AF; // 0100 0000 AF
                     sz = 2;
 		            std::cout << "saw frame tag " << frame_type << std::endl; 
                 }
