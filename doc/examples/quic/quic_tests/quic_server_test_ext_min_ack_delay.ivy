@@ -310,6 +310,14 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     }
 }
 
+
+before frame.ack_frequency.handle(f:frame.ack_frequency,scid:cid,dcid:cid) {
+    if _generating {
+        require scid = the_cid;
+        force_new_ack := true;
+    }
+}
+
 # Generate rst_stream frames only for the environment process(es).
 
 before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
@@ -335,21 +343,6 @@ before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
         require scid = the_cid;
     }
 }
-
-    #   A NEW_CONNECTION_ID frame might cause an endpoint to add some active
-    #    connection IDs and retire others based on the value of the Retire
-    #    Prior To field.  After processing a NEW_CONNECTION_ID frame and
-    #    adding and retiring active connection IDs, if the number of active
-    #    connection IDs exceeds the value advertised in its
-    #    active_connection_id_limit transport parameter, an endpoint MUST
-    #    close the connection with an error of type CONNECTION_ID_LIMIT_ERROR.
-
-before frame.new_connection_id.handle(f:frame.new_connection_id,scid:cid,dcid:cid) {
-    if _generating {
-        require scid = the_cid;
-    }
-}
-
 
 before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,dcid:cid) {
     if _generating {
@@ -459,6 +452,7 @@ around client_send_event {
 # that include this one.
 
 export frame.ack.handle
+export frame.ack_frequency.handle
 export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle

@@ -1,34 +1,24 @@
 #lang ivy1.7
-
 # Deserializer for TLS records
-
 include tls_record
-
 object tls_deser = {}
 object tls_ser = {}
 object tls_ser_server = {}
-
 <<< member
-
     class `tls_deser`;
     class `tls_ser`;
     class `tls_ser_server`;
-
 >>>
-
 <<< impl
-
     //https://tools.ietf.org/html/draft-thomson-quic-bit-grease-00
     //https://tools.ietf.org/id/draft-huitema-quic-ts-03.html
     
     typedef struct tls_name_struct {
         const char *name;
-        long long value;
+        long long int value;
     } *tls_name_struct_ptr;
-
-    struct tls_name_map : hash_space::hash_map<std::string,long long> {};
-
-    std::string quic_params[17] = { 
+    struct tls_name_map : hash_space::hash_map<std::string,long long int> {};
+    std::string quic_params[17] = {
         "quic_transport_parameters",
         "initial_max_stream_data_bidi_local",
         "initial_max_data",
@@ -47,7 +37,6 @@ object tls_ser_server = {}
         "initial_source_connection_id",
         "loss_bits"
     };
-
     struct tls_name_struct tls_field_length_bytes[32] = {
         {"fragment",2},
         {"content",2},
@@ -81,11 +70,10 @@ object tls_ser_server = {}
         {"grease_quic_bit",1}, //for picoquic
         //{"enable_time_stamp",1}, //for picoquic TODO test
         {"min_ack_delay",1},
-	    {"unknown_transport_parameter",1},
+    {"unknown_transport_parameter",1},
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
-
     struct tls_name_struct tls_field_bytes[23] = {
         {"version",2},
         {"client_version",2}, //0x0303 = 2 bytes
@@ -101,7 +89,7 @@ object tls_ser_server = {}
         {"content",1},
         {"initial_version",4},
         {"stream_pos_32",-1},
-	    {"unknown",0},
+    {"unknown",0},
         {"stream_id_16",-1},
         {"seconds_16",-1},
         {"stream_pos_16",-1},
@@ -137,17 +125,16 @@ object tls_ser_server = {}
         {"active_connection_id_limit",0x0e},
         {"initial_max_stream_data_bidi_remote",0x06},
         {"initial_max_stream_data_uni",0x07},
-        {"max_ack_delay",0x0b}, 
+        {"max_ack_delay",0x0b},
         {"initial_source_connection_id",0x0f},
         {"loss_bits",0x1057}, //for picoquic
         {"grease_quic_bit",0x2ab2}, //for picoquic
         //{"enable_time_stamp",0x7158}, //for picoquic
-        {"min_ack_delay",4278378010},
+        {"min_ack_delay", (long long int) 13835058059560541722}, //0xFF02DE1A ||  0xc0000000FF02DE1A
         {"unknown_transport_parameter",-2},
        {0,0}
     };
     tls_name_map tls_tags_map;
-
     struct tls_name_struct tls_tag_bytes[22] = {
         {"tls.unknown_extension",2},
         {"quic_transport_parameters",2},
@@ -167,10 +154,10 @@ object tls_ser_server = {}
         {"initial_max_stream_data_uni",1},
         {"max_ack_delay",1},
         {"initial_source_connection_id",1},
-        {"loss_bits",2}, //for picoquic 
+        {"loss_bits",2}, //for picoquic
         {"grease_quic_bit",2}, //for picoquic
         {"min_ack_delay",8},
-        //{"enable_time_stamp",2}, //for picoquic 
+        //{"enable_time_stamp",2}, //for picoquic
         //{"unknown_transport_parameter",2},
         {0,0}
     };

@@ -234,12 +234,6 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 # to the server endpoint.
 #
 
-#   Token Length:  A variable-length integer specifying the length of the
-#      Token field, in bytes.  This value is zero if no token is present.
-#      Initial packets sent by the server MUST set the Token Length field
-#      to zero; clients that receive an Initial packet with a non-zero
-#      Token Length field MUST either discard the packet or generate a
-#      connection error of type PROTOCOL_VIOLATION. [1]
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
@@ -313,6 +307,14 @@ before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) 
 # Generate ack frames only for the client.
 
 before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+        force_new_ack := true;
+    }
+}
+
+before frame.ack_frequency.handle(f:frame.ack_frequency,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
@@ -441,6 +443,7 @@ around client_send_event {
 # that include this one.
 
 export frame.ack.handle
+export frame.ack_frequency.handle
 export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle

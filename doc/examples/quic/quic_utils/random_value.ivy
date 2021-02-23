@@ -23,7 +23,7 @@ implementation {
        srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
        res = ::random()%32767 + (min+1);
-       std::cerr << " greater random: " << res << "\n";
+       std::cerr << "greater random: " << res << "\n";
        >>>
     }
 
@@ -58,7 +58,7 @@ implementation {
        srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
        res = ::random()%32767 + (min+1);
-       std::cerr << " greater random: " << res << "\n";
+       std::cerr << "greater random: " << res << "\n";
        >>>
     }
 

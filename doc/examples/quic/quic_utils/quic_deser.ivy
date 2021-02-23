@@ -247,7 +247,7 @@ object quic_deser = {}
             case quic_padding:
             case quic_ping:
             case quic_handshake_done: // TODO ?
-            case quic_ack_frequency: //TODO
+            /*case quic_ack_frequency: //TODO
             {
                 get_var_int(res);
 		        std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
@@ -273,7 +273,7 @@ object quic_deser = {}
 		        std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
                 getn(res,1);
             }
-            break;
+            break;*/
             case quic_s_retry_token:
             {
                 ivy_binary_deser::getn(res,1);
@@ -523,8 +523,8 @@ object quic_deser = {}
                     return 20;
                 }
                 if (frame_type == 0xaf) {
+                    std::cout << "state   0xaf       = " << state << std::endl; 
                     state = quic_ack_frequency;
-		            std::cout << "state   0xaf       = " << state << std::endl; 
                     return 21;
                 }
                 std::cerr << "saw tag " << ft << std::endl;  
@@ -571,7 +571,7 @@ object quic_deser = {}
             if (state == quic_ack_frequency_packet_tolerence)
                     return data_remaining-- > 0;
 
-                    
+
             std::cout << "quic_deser 1" << std::endl;  
             throw deser_err();
         }
