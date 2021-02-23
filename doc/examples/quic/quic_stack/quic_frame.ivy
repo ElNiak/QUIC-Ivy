@@ -1599,7 +1599,7 @@ action max_additional_data(dcid:cid) returns (max:stream_pos) = {
 action min_ack_delay_check(dcid:cid) returns (ok:bool) = {
     ok := false;
     var tp := trans_params(dcid);
-    ok := min_ack_delay.value(tp).unknown < max_ack_delay.value(tp).exponent_8;
+    ok := min_ack_delay.value(tp).exponent_8 < max_ack_delay.value(tp).exponent_8;
 }
 
 

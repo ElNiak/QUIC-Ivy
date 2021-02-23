@@ -451,9 +451,6 @@ export packet_event
 export client_send_event
 export tls_recv_event
 
-export frame.new_connection_id.handle
-attribute frame.new_connection_id.handle.weight = "5"
-
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
 #export frame.max_stream_id.handle
