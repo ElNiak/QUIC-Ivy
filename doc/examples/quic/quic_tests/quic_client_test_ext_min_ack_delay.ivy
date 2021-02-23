@@ -314,11 +314,23 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     }
 }
 
+# An endpoint MUST use a
+# sequence number of 0 for the first ACK_FREQUENCY frame it constructs
+# and sends, and a strictly increasing value thereafter.
+
+var first_ack_freq := 0;
+
 before frame.ack_frequency.handle(f:frame.ack_frequency,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
-        force_new_ack := true;
+        if first_ack_freq = 0 {
+            require f.seq_num = 0;
+            first_ack_freq := 1;
+        };
+        require f.packet_tolerence > 0;
+        require f.update_max_ack_delay > 20; #hardcoded
+        require f.ignore_order = 1 | f.ignore_order = 0;
     }
 }
 

@@ -562,6 +562,15 @@ action handle_tls_extensions
 # - A client must not issue an `stateless_reset_token` value [4].
 # - The endpoint must issue an `initial_source_connection_id` value [5]. [chris]
 # - A server must issue an `original_destination_connection_id ` value [6].
+
+# An endpoint's min_ack_delay MUST NOT be greater than the its
+#   max_ack_delay.  Endpoints that support this extension MUST treat
+#   receipt of a min_ack_delay that is greater than the received
+#   max_ack_delay as a connection error of type
+#   TRANSPORT_PARAMETER_ERROR. [7] 
+#Note that while the endpoint's
+#   max_ack_delay transport parameter is in milliseconds (Section 18.2 of
+#   [QUIC-TRANSPORT]), min_ack_delay is specified in microseconds.
 #
 # Note:
 #
@@ -594,6 +603,9 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
             require original_destination_connection_id.is_set(trans_params(scid));  # [6]
         };
     }
+
+    # [7]
+    require min_ack_delay.is_set(trans_params(scid)) & max_ack_delay.is_set(trans_params(scid)) -> (min_ack_delay.value(trans_params(scid)).exponent_8) * 1000)< max_ack_delay.value(trans_params(scid)).exponent_8);  # [1]
 }
 
 

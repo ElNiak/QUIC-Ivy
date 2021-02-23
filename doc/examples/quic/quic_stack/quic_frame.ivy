@@ -298,8 +298,8 @@ object frame = {
         # ACK_FREQUENCY  frame frames are a variant of frame and contains nothing
 		# 1 byte frame to increase the size of a packet
          variant this of frame = struct {
-			seq_num              : cid_seq,     # the sequence number of the new cid
-            packet_tolerence     : stream_pos,
+			seq_num              : pkt_num,     # the sequence number 
+            packet_tolerence     : stream_pos,  #maximum number of ack-eliciting packets after which the receiver sends an acknowledgement.
             update_max_ack_delay : microsecs,
             ignore_order         : bool
          }
@@ -447,6 +447,9 @@ object frame = {
 #      scope is lost, but only while the endpoint is blocked on the
 #      corresponding limit.  These frames always include the limit that
 #      is causing blocking at the time that they are transmitted.
+# - first_ack_freq_received return true if we received the first ack_freq frame
+# - last_ack_freq_seq(C:cid) return the seqnum associated to the last ack_frequency
+#                            frame received 
 #chris
 
 relation stream_seen(C:cid,S:stream_id)
@@ -486,6 +489,10 @@ relation reset_frame_restransmitted(S:stream_id)
 function count_sdb_frame(I:stream_id,O:stream_pos) : stream_pos
 relation sdb_frame_restransmitted(S:stream_id)
 
+function first_ack_freq_received : bool
+
+function last_ack_freq_seq(C:cid) : pkt_num
+
 #TODO faire all retransmission
 relation stop_sending_in_bad_state
 #chris
@@ -514,6 +521,8 @@ after init {
     count_sdb_frame(I,O) := 0;
     sdb_frame_restransmitted(S) := false;
     stop_sending_in_bad_state := false;
+    first_ack_freq_received := true;
+    last_ack_freq_seq(C:cid) := 0;
 #chris
 }
 
@@ -1447,9 +1456,20 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            require f.packet_tolerence > 0;
+            require f.update_max_ack_delay > 20; #hardcoded
+            require f.ignore_order = 1 | f.ignore_order = 0;
             #require min_ack_delay_check(dcid);
             #require f.ignore_order < 2;
             ...
+            
+            if first_ack_freq_received {
+                require f.seq_num = 0;
+                first_ack_freq_received := false;
+            } else {
+                require f.seq_num > last_ack_freq_seq(scid);
+                last_ack_freq_seq(scid) := f.seq_num;
+            };
             call enqueue_frame(scid,f,e,false);
         }
     }
