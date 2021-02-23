@@ -83,7 +83,7 @@ action handle_sending_send(id:stream_id,seq:pkt_num) = {
     # put implication (->) instead of if ?
     if ~stream_frame_restransmitted(id) & ~sdb_frame_restransmitted(id) {
         # possible source state/transition
-        require sending_ready(id) | sending_send(id);
+        # require sending_ready(id) | sending_send(id);
         # set of non allowed state (useless ?) ~sending_send(id) & => problem with restransmion
         # require  ~sending_dataSent(id) & ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
         sending_ready(id) := false;
@@ -99,7 +99,7 @@ action handle_sending_send(id:stream_id,seq:pkt_num) = {
 action handle_sending_dataSent(id:stream_id,seq:pkt_num) = {
     if ~stream_frame_restransmitted(id) {
         # possible source state/transition
-        require sending_send(id) | sending_dataSent(id);
+        # require sending_send(id) | sending_dataSent(id);
         # set of non allowed state  ~sending_dataSent(id) &
         #require  ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
         sending_send(id) := false;
@@ -114,7 +114,7 @@ action handle_sending_dataSent(id:stream_id,seq:pkt_num) = {
 
 action handle_sending_dataRecvd(id:stream_id) = {
     # possible source state/transition
-    require sending_dataSent(id) | sending_dataRecvd(id);
+    #  require sending_dataSent(id) | sending_dataRecvd(id);
     # set of non allowed state  ~sending_dataRecvd(id) &
     # require  ~sending_send(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
     sending_dataSent(id)  := false;
@@ -143,7 +143,7 @@ action handle_sending_resetSent(id:stream_id,seq:pkt_num) = {
 
 action handle_sending_resetRecvd(id:stream_id) = {
     # possible source state/transition
-    require sending_resetSent(id) | sending_resetRecvd(id);
+    # require sending_resetSent(id) | sending_resetRecvd(id);
     # set of non allowed state & ~sending_resetRecvd(id)
     # require  ~sending_send(id) & ~sending_dataSent(id);
     sending_resetSent(id) := false;

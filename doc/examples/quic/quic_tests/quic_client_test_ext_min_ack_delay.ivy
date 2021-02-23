@@ -459,7 +459,7 @@ around client_send_event {
 # that include this one.
 
 export frame.ack.handle
-export frame.ack_frequency.handle
+# export frame.ack_frequency.handle
 export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
