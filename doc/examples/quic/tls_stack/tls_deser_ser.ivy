@@ -130,7 +130,7 @@ object tls_ser_server = {}
         {"loss_bits",0x1057}, //for picoquic
         {"grease_quic_bit",0x2ab2}, //for picoquic
         //{"enable_time_stamp",0x7158}, //for picoquic
-        {"min_ack_delay", (long long int) 13835058059560541722}, //0xFF02DE1A ||  0xc0000000FF02DE1A
+        {"min_ack_delay",-4611686014149009894}, //0xFF02DE1A ||  0xc0000000FF02DE1A (13835058059560541722)
         {"unknown_transport_parameter",-2},
        {0,0}
     };

@@ -247,6 +247,7 @@ object quic_deser = {}
             case quic_padding:
             case quic_ping:
             case quic_handshake_done: // TODO ?
+            case quic_ack_frequency:
             /*case quic_ack_frequency: //TODO
             {
                 get_var_int(res);
