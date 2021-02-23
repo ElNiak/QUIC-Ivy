@@ -106,7 +106,7 @@ object quic_deser = {}
         char hdr_type;
         int dcil;
         int scil;
-        char frame_type;
+        long frame_type;
         int data_remaining;
         long long ack_blocks_expected;
         long long ack_block_count;
@@ -247,34 +247,33 @@ object quic_deser = {}
             case quic_padding:
             case quic_ping:
             case quic_handshake_done: // TODO ?
-            case quic_ack_frequency:
-            /*case quic_ack_frequency: //TODO
+            case quic_ack_frequency: //TODO
             {
                 get_var_int(res);
-		        std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
+		        //std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
                 state = quic_ack_frequency_packet_tolerence;
             }
             break;
             case quic_ack_frequency_packet_tolerence: 
             {
                 get_var_int(res);
-		        std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
+		        //std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
                 state = quic_ack_frequency_update_max_ack_delay;
             }
             break;
             case quic_ack_frequency_update_max_ack_delay: 
             {
                 get_var_int(res);
-		        std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
+		        //std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
                 state = quic_ack_frequency_ignore_order;
             }
             break;
             case quic_ack_frequency_ignore_order:
             {
-		        std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
+		        //std::cout << "deser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
                 getn(res,1);
             }
-            break;*/
+            break;
             case quic_s_retry_token:
             {
                 ivy_binary_deser::getn(res,1);
@@ -435,7 +434,7 @@ object quic_deser = {}
         virtual int open_tag(const std::vector<std::string> &tags) {
             if (state == quic_s_payload) {
                 long long ft;
-                ivy_binary_deser::getn(ft,1);
+                ivy_binary_deser::getn(ft,1); // could be bigger
                 frame_type = ft;
                 if (frame_type == 0x01) {
                     state = quic_ping;
@@ -523,7 +522,7 @@ object quic_deser = {}
                     state = quic_padding;
                     return 20;
                 }
-                if (frame_type == 0xaf) {
+                if (frame_type == 0x80AF) { //0xaf
                     std::cout << "state   0xaf       = " << state << std::endl; 
                     state = quic_ack_frequency;
                     return 21;

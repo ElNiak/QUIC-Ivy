@@ -105,7 +105,7 @@ object quic_ser = {}
         char hdr_type;
         int dcil;
         int scil;
-        char frame_type;
+        long frame_type;
         int data_remaining;
         long long ack_blocks_expected;
         long long ack_block_count;
@@ -392,6 +392,7 @@ object quic_ser = {}
 
         virtual void open_tag(int tag, const std::string &) {
             if (state == quic_s_payload) {
+                int sz = 1;
                 if (tag == 6) {
 		            frame_type = 0x08;
                     state = quic_stream_off;
@@ -479,14 +480,15 @@ object quic_ser = {}
                 }
                  else if (tag == 21) {
                     state = quic_ack_frequency;
-                    frame_type = 0xaf;
+                    frame_type = 0x80AF; // 0100 0000 AF
+                    sz = 2;
 		            std::cout << "saw frame tag " << frame_type << std::endl; 
                 }
 	            else {
                     std::cout << "saw frame tag " << tag << std::endl;  
                     throw deser_err();
 	            }
-	        setn(frame_type,1);
+	        setn(frame_type,sz);
 	        return;
             }
             std::cout << "quic_ser 1" << std::endl;  

@@ -314,7 +314,7 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
 before frame.ack_frequency.handle(f:frame.ack_frequency,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-        force_new_ack := true;
+        # TODO
     }
 }
 
