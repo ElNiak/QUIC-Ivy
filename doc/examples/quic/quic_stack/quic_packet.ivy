@@ -602,13 +602,13 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
         if _generating { 
             require original_destination_connection_id.is_set(trans_params(scid));  # [6]
         };
-    }
+    };
 
     # [7]
     if min_ack_delay.is_set(trans_params(scid)) & max_ack_delay.is_set(trans_params(scid)) {
-        var min_ack_milli := min_ack_delay.value(trans_params(scid)).exponent_8) * 1000;
-        require  min_ack_milli < max_ack_delay.value(trans_params(scid)).exponent_8);  # [1]
-    };
+        var min_ack_milli := min_ack_delay.value(trans_params(scid)).exponent_8 * 1000;
+        require  min_ack_milli < max_ack_delay.value(trans_params(scid)).exponent_8;  # [1]
+    }
 }
 
 

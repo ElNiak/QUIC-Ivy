@@ -57,9 +57,11 @@ instance server : quic_endpoint(endpoint_id.server)
 # An ip endpoint for the client to migrate to.
 
 var client_alt : ip.endpoint
+var first_ack_freq : bool
 
 after init {
-    client_alt := endpoint_id_addr(endpoint_id.client_alt)
+    client_alt := endpoint_id_addr(endpoint_id.client_alt);
+    first_ack_freq := true;
 }
 
 # We create sockets and bind them to the addresses that the client can use.
@@ -313,8 +315,6 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
 # An endpoint MUST use a
 # sequence number of 0 for the first ACK_FREQUENCY frame it constructs
 # and sends, and a strictly increasing value thereafter.
-
-var first_ack_freq := 0;
 
 before frame.ack_frequency.handle(f:frame.ack_frequency,scid:cid,dcid:cid) {
     if _generating {
