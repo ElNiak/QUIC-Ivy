@@ -422,7 +422,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             call tls_client_initial_request(src,dst,dcid);
             conn_requested(src,dst,scid) := true;
         };
-        if retry_token(dcid) {
+        if retry_send(dcid) {
             require pkt.token = retry_token(dcid);
         }
     };
