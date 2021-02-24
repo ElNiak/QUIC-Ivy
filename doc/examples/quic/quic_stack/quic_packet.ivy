@@ -192,6 +192,11 @@ function hi_non_probing(C:cid) : pkt_num
 relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
 
+#chris
+relation retry_send(C:cid)
+function retry_token(C:cid) : stream_data
+#chris
+
 
 # Initial state
 # -------------
@@ -251,6 +256,11 @@ after init {
 #      to zero; clients that receive an Initial packet with a non-zero
 #      Token Length field MUST either discard the packet or generate a
 #      connection error of type PROTOCOL_VIOLATION. [11]
+
+# Upon receiving the client's Initial packet, the server can request address validation 
+# by sending a Retry packet (Section 17.2.5) containing a token. This token MUST be 
+# repeated by the client in all Initial packets it sends for that connection after it 
+# receives the Retry packet.
 
 # ### Effects
 #
@@ -401,13 +411,20 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
  
     # TODO: the following should not be here
 
+    if pkt.ptype = quic_packet_type.retry {
+        retry_send(dcid) := true;
+        retry_token(dcid) := pkt.token;
+    };
+
     if pkt.ptype = quic_packet_type.initial {
         # An initial packet with an unseen destination cid is a connection request.
         if ~conn_seen(dcid) {
             call tls_client_initial_request(src,dst,dcid);
             conn_requested(src,dst,scid) := true;
         };
-    
+        if retry_token(dcid) {
+            require pkt.token = retry_token(dcid);
+        }
     };
 
     conn_seen(scid) := true;  # [1]
