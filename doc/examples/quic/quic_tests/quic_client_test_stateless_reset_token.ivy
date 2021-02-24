@@ -196,9 +196,10 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(odci);
 
     var token : stateless_reset_token;
-    token.data_8 := lower_stream_data(0xFFFFFFFFFFF); # TODO random
+    token.data_8 := lower_stream_data(0xFFFFFFF); # TODO random
     tp.transport_parameters := tp.transport_parameters.append(token);
 }
+
 
 attribute radix=16       # print in hex
 
