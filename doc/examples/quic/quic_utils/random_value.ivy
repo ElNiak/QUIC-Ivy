@@ -13,7 +13,7 @@ implementation {
        <<<
        srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
-       res = ::random()% (max-min+1) + min;
+       res = ::rand()% (max-min+1) + min;
        std::cerr << "between random: " << res << "\n";
        >>>
     }
@@ -22,7 +22,7 @@ implementation {
        <<<
        srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
-       res = ::random()%32767 + (min+1);
+       res = ::rand()%32767 + (min+1);
        std::cerr << "greater random: " << res << "\n";
        >>>
     }
@@ -31,43 +31,50 @@ implementation {
        <<<
        res = 0;
        srand((unsigned) time(0)); //fixed or random seed ?
-       res = ::random()%(max-1) + 0;
+       res = ::rand()%(max-1) + 0;
        std::cerr << "lower random: " << res << "\n";
        >>>
     }
 }
 
-action random_stream_data(min:stream_data,max:stream_data) returns (res:stream_data)
+action random_stream_data(min:stream_pos,max:stream_pos) returns (res:stream_data)
 
-action greater_stream_data(min:stream_data) returns (res:stream_data)
+action greater_stream_data(min:stream_pos) returns (res:stream_data)
 
-action lower_stream_data(max:stream_data) returns (res:stream_data)
+action lower_stream_data(max:stream_pos) returns (res:stream_data)
+
 
 implementation {
-    implement random_stream_data(min:stream_data,max:stream_data) {
+    implement random_stream_data(min:stream_pos,max:stream_pos) {
        <<<
-       // 128 + 38 bit = 2^166 value
+       // 128 + 40 (38..) bit = 2^168 value = 21 bytes
        srand((unsigned) time(0)); //fixed or random seed ?
-       res = 0;
-       res = ::random()%(max-min+1) + min;
+       res.resize(21);
+       for (unsigned i = 0; i < 21; i++) {
+         res[21-i-1] =  0xff & ::rand()%(max-min+1) + min;
+       }
        std::cerr << "between random: " << res << "\n";
        >>>
     }
 
-    implement greater_stream_data(min:stream_data) {
+    implement greater_stream_data(min:stream_pos) {
        <<<
        srand((unsigned) time(0)); //fixed or random seed ?
-       res = 0;
-       res = ::random()%32767 + (min+1);
+       res.resize(21);
+       for (unsigned i = 0; i < 21; i++) {
+         res[21-i-1] =  0xff & ::rand()%32767 + (min+1);
+       }
        std::cerr << "greater random: " << res << "\n";
        >>>
     }
 
-    implement lower_stream_data(max:stream_data) {
+    implement lower_stream_data(max:stream_pos) {
        <<<
-       res = 0;
+       res.resize(21);
        srand((unsigned) time(0)); //fixed or random seed ?
-       res = ::random()%(max-1) + 0;
+       for (unsigned i = 0; i < 21; i++) {
+         res[21-i-1] =  0xff & ::rand()%(max-1) + 0;
+       }
        std::cerr << "lower random: " << res << "\n";
        >>>
     }
@@ -84,7 +91,7 @@ implementation {
        <<<
        srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
-       res = ::random()%(max-min+1) + min;
+       res = ::rand()%(max-min+1) + min;
        std::cerr << "between random: " << res << "\n";
        >>>
     }
@@ -93,7 +100,7 @@ implementation {
        <<<
        srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
-       res = ::random()%32767 + (min+1);
+       res = ::rand()%32767 + (min+1);
        std::cerr << "greater random: " << res << "\n";
        >>>
     }
@@ -102,7 +109,7 @@ implementation {
        <<<
        srand((unsigned) time(0)); //fixed or random seed ?
        res = 0;
-       res = ::random()%(max-1) + 0;
+       res = ::rand()%(max-1) + 0;
        std::cerr << "lower random: " << res << "\n";
        >>>
     }
