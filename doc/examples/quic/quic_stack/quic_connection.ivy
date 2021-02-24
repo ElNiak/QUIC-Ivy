@@ -12,7 +12,7 @@
 # draft-ietf-quic-transport-29](https://tools.ietf.org/html/draft-ietf-quic-transport-29).
 #
 # 2. [Using Transport Layer Security (TLS) to Secure QUIC
-# draft-ietf-quic-tls-19](https://tools.ietf.org/html/draft-ietf-quic-tls-29).
+# draft-ietf-quic-tls-29](https://tools.ietf.org/html/draft-ietf-quic-tls-29).
 #
 # The protocol is modeled as a stack of layers. Each layer
 # is associated with one or more event types. The highest-level
