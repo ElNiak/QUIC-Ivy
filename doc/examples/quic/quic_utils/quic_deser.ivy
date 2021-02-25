@@ -100,6 +100,7 @@ object quic_deser = {}
               quic_ack_frequency_update_max_ack_delay,
               quic_ack_frequency_ignore_order,
               quic_padding,
+              quic_unknow,
               quic_ping,
               quic_s_done} state;
         bool long_format;
@@ -246,6 +247,7 @@ object quic_deser = {}
             case quic_connection_close_reason:
             case quic_padding:
             case quic_ping:
+            case quic_unknow:
             case quic_handshake_done: // TODO ?
             case quic_ack_frequency: //TODO
             /*{
@@ -535,6 +537,10 @@ object quic_deser = {}
                         std::cout << "state   0xaf       = " << state << std::endl; 
                         state = quic_ack_frequency;
                         return 21;
+                    }
+                    if (frame_type == 0x42) {
+                        state = quic_unknow;
+                        return 22;
                     }
                 }
                 std::cerr << "saw tag " << ft << std::endl;  

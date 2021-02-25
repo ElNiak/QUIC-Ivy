@@ -96,6 +96,7 @@ object quic_ser = {}
               quic_handshake_done,
               quic_padding,
               quic_ping,
+              quic_unknow,
               quic_ack_frequency, //seq_num
               quic_ack_frequency_packet_tolerence,
               quic_ack_frequency_update_max_ack_delay,
@@ -215,6 +216,7 @@ object quic_ser = {}
             case quic_path_challenge_data:
             case quic_padding:
             case quic_ping:
+            case quic_unknow:
             case quic_handshake_done: // TODO
             case quic_ack_frequency: //TODO
             /*{
@@ -478,9 +480,15 @@ object quic_ser = {}
                     state = quic_padding;
                     frame_type = 0x00;
                 }
-                 else if (tag == 21) {
+                else if (tag == 21) {
                     state = quic_ack_frequency;
                     frame_type = 0x40AF; // 0100 0000 AF
+                    sz = 2;
+		            std::cout << "saw frame tag " << frame_type << std::endl; 
+                }
+                else if (tag == 22) {
+                    state = quic_unknow;
+                    frame_type = 0x4042; 
                     sz = 2;
 		            std::cout << "saw frame tag " << frame_type << std::endl; 
                 }

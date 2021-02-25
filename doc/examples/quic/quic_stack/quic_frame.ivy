@@ -305,6 +305,13 @@ object frame = {
          }
     } 
 
+    # (0x42) 
+    object unknown_frame = {
+        # unknown_frame  frame frames are a variant of frame and contains nothing
+         variant this of frame = struct {
+         }
+    } 
+
     instance idx : unbounded_sequence
     instance arr : array(idx,this)
 }        
@@ -728,6 +735,8 @@ object frame = {
         }
     }
 }
+
+# Guillaume Roissoin
 
 
 # #### CRYPTO event
@@ -1218,6 +1227,26 @@ object frame = { ...
 object frame = { ...
     object ping = { ...
         action handle(f:frame.ping,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
+	around handle {
+            require connected(dcid) & connected_to(dcid) = scid;
+            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            ...
+            call enqueue_frame(scid,f,e,false);
+        }
+    }
+}
+
+#
+# #### unknown_frame event
+#
+# unknown_frame frames contain no data and have no semantics. They can
+# be used to keep a connection alive.
+#
+
+object frame = { ...
+    object unknown_frame = { ...
+        action handle(f:frame.unknown_frame,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
