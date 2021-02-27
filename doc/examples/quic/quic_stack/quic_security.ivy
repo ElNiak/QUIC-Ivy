@@ -91,6 +91,19 @@ action tls_keys_established_event(scid:cid, e:quic_packet_type)
 action tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid)
 
 #
+# Client initial response event
+# ============================
+#
+# This event occurs when a client transmits in initial request to open
+# a connection. This results in the creation of a TLS instance that
+# generates the initial handshake message. TODO
+
+# - `src`: the soure endpoint
+# - `dst`: the destination endpoint
+
+action tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,ppkt:stream_data)
+
+#
 # Client version request event
 # ============================
 #
@@ -106,24 +119,20 @@ action tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid)
 # Note: the nonce cid is used by TLS as the initial key material to
 # generate the encryption keys for initial packets.
 
-action tls_client_version_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid)
+action tls_client_version_request(src:ip.endpoint,dst:ip.endpoint)
 
 #
-# Client initial response event
+# Client version response event
 # ============================
 #
-# This event occurs when a client transmits in initial request to open
-# a connection. This results in the creation of a TLS instance that
+# This event occurs when a client transmits in version response to
+# supported version. This results in the creation of a TLS instance that
 # generates the initial handshake message. TODO
 
 # - `src`: the soure endpoint
 # - `dst`: the destination endpoint
-# - `nonce`: the nonce CID selected by the client
 
-# Note: the nonce cid is used by TLS as the initial key material to
-# generate the encryption keys for initial packets.
-
-action tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,ppkt:stream_data)
+action tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,ppkt:stream_data)
 
 # Security protocol state
 # -----------------------
