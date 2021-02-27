@@ -1341,7 +1341,7 @@ object frame = { ...
             seqnum_to_cid(scid,f.seq_num) := f.scid;
 
             if ~_generating {
-                require acti_coid_check(num_conn(scid));
+                require acti_coid_check(scid,num_conn(scid));
             };
 
             #chris
@@ -1654,12 +1654,12 @@ action min_ack_delay_check(dcid:cid) returns (ok:bool) = {
     ok := min_ack_delay.value(tp).exponent_8 * 1000 < max_ack_delay.value(tp).exponent_8;
 }
 
-# Check taht the number of connection id proposed is not higher than active_connection_id_limit
+# Check that the number of connection id proposed is not higher than active_connection_id_limit
 
-action acti_coid_check(count:stream_pos) returns (ok:bool) = {
+action acti_coid_check(scid:cid,count:stream_pos) returns (ok:bool) = {
     ok := true;
     var max : stream_pos := 0;
-    var tp := trans_params(dcid);
+    var tp := trans_params(scid);
     if active_connection_id_limit.is_set(tp) {
         max := active_connection_id_limit.value(tp).stream_pos_32;
         ok := count < max;
