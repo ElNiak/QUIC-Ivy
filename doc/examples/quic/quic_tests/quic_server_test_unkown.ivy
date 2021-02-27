@@ -368,6 +368,14 @@ before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
     }
 }
 
+# Generate rst_stream frames only for the environment process(es).
+
+before frame.unknown_frame.handle(f:frame.unknown_frame,scid:cid,dcid:cid) {
+    if _generating {
+        require scid = the_cid;
+    }
+}
+
 # Generate stop_sending frames only for the environment process(es).
 
 before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {

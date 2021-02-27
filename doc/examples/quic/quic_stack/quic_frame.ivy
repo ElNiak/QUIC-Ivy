@@ -1339,8 +1339,8 @@ object frame = { ...
 	        cid_mapped(f.scid) := true;
 	        cid_to_aid(f.scid) := scid;
             seqnum_to_cid(scid,f.seq_num) := f.scid;
-
-            if ~_generating {
+            var tp := trans_params(scid);
+            if ~_generating & active_connection_id_limit.is_set(tp) {
                 require acti_coid_check(scid,num_conn(scid));
             };
 

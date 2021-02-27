@@ -37,7 +37,7 @@ object tls_ser_server = {}
         "initial_source_connection_id",
         "loss_bits"
     };
-    struct tls_name_struct tls_field_length_bytes[32] = {
+    struct tls_name_struct tls_field_length_bytes[33] = {
         {"fragment",2},
         {"content",2},
         {"tls.client_hello",3},
@@ -102,7 +102,7 @@ object tls_ser_server = {}
     };
     tls_name_map tls_field_bytes_map;
     //TODO check old version
-    struct tls_name_struct tls_tags[30] = {
+    struct tls_name_struct tls_tags[31] = {
         {"tls.handshake_record",22},
         {"tls.application_data_record",23},
         {"tls.change_cipher_spec",20},
@@ -137,7 +137,7 @@ object tls_ser_server = {}
        {0,0}
     };
     tls_name_map tls_tags_map;
-    struct tls_name_struct tls_tag_bytes[22] = {
+    struct tls_name_struct tls_tag_bytes[23] = {
         {"tls.unknown_extension",2},
         {"quic_transport_parameters",2},
         {"initial_max_stream_data_bidi_local",1},
