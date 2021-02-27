@@ -309,10 +309,6 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # TEMPORARY: Do not allow zero_rtt packets
 
     require pkt.ptype ~= quic_packet_type.zero_rtt;
-
-    if pkt.ptype = quic_packet_type.retry {
-        require retry_source_connection_id.is_set(trans_params(scid));
-    };
     
     # Extract the source and destination cid's and packet number from the packet.
 
@@ -320,6 +316,10 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     var scid := pkt.src_cid;
     if cid_mapped(dcid) {
 	    dcid := cid_to_aid(dcid);
+    };
+
+    if pkt.ptype = quic_packet_type.retry {
+        require retry_source_connection_id.is_set(trans_params(scid));
     };
     
     # The destination cid must represent an existing connection,

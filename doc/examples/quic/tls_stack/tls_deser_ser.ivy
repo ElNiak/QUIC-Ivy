@@ -66,11 +66,12 @@ object tls_ser_server = {}
         {"initial_max_stream_data_uni",1},
         {"max_ack_delay",1},
         {"initial_source_connection_id",1},
+        {"retry_source_connection_id",1},
         {"loss_bits",2}, //for picoquic TODO test
         {"grease_quic_bit",1}, //for picoquic
         //{"enable_time_stamp",1}, //for picoquic TODO test
         {"min_ack_delay",1},
-    {"unknown_transport_parameter",1},
+        {"unknown_transport_parameter",1},
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
@@ -89,7 +90,7 @@ object tls_ser_server = {}
         {"content",1},
         {"initial_version",4},
         {"stream_pos_32",-1},
-    {"unknown",0},
+        {"unknown",0},
         {"stream_id_16",-1},
         {"seconds_16",-1},
         {"stream_pos_16",-1},
@@ -127,6 +128,7 @@ object tls_ser_server = {}
         {"initial_max_stream_data_uni",0x07},
         {"max_ack_delay",0x0b},
         {"initial_source_connection_id",0x0f},
+        {"retry_source_connection_id",0x1010}, //0x10 = 0100 0000 = 2 bytes with varint
         {"loss_bits",0x1057}, //for picoquic
         {"grease_quic_bit",0x2ab2}, //for picoquic
         //{"enable_time_stamp",0x7158}, //for picoquic
@@ -154,6 +156,7 @@ object tls_ser_server = {}
         {"initial_max_stream_data_uni",1},
         {"max_ack_delay",1},
         {"initial_source_connection_id",1},
+        {"retry_source_connection_id",2},
         {"loss_bits",2}, //for picoquic
         {"grease_quic_bit",2}, //for picoquic
         {"min_ack_delay",8},
