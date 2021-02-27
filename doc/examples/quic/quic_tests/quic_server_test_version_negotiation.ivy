@@ -7,30 +7,68 @@ include file
 include quic_shim
 include quic_locale
 include quic_server
-include random_value
+include quic_fsm_sending
+include quic_fsm_receiving
+
+# This is a simple tester for quic servers. The tester plays the role of a
+# single client, which may use multiple UDP ports.
+#
+# Compile the tester like this:
+#
+#     ivyc target=test quic_server_test.ivy
+#
+# Run it like this:
+#
+#     ./quic_server_test [parameter=value...]
+#
+# Parameters are:
+#
+#     the_cid:int      cid to be used by the client (default 0xd)
+#     client_addr:int  the client IP address (default 0x7f000001, i.e., the loopback interface)
+#     server_addr:int  the server IP address (default 0x7f000001, i.e., the loopback interface)
+#     server_port:int  the server port number (default 4443)
+#     server_cid:int   the initial server CID used by the client (default 0xb)
+#     client_port:int  the client port number (default 4987)
+#     client_port_alt:int     the alternate client port (for migration) (default 4988)
+#     max_stream_data:int     the initial max stream data (0x2000)
+#
+#
+# Notes:
+#
+# - All IP addresses are IPv4 and are given as single 32-bit numbers,
+#   rather than using the dot notation.
+#
+#
+
+# The command-line parameters, with their defaults
+
+#
+# Restrict generation to packets from the designated client endpoints
+# to the server endpoint.
+#
+
+#   If the version selected by the client is not acceptable to the
+#   server, the server responds with a Version Negotiation packet; see
+#   Section 17.2.1.  This includes a list of versions that the server
+#   will accept. 
+
+var first_initial : bool := true
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         require src = client.ep | src = client_alt;
         require dst = server.ep;
         require pkt.token.end = 0; 
+        if first_initial {
+            require pkt.long -> pkt.pversion < 0xff00001d;  #version 29
+            first_initial := false;
+        } else { # Not finished
+            require pkt.long -> pkt.pversion = 0xff00001d;
+        };
+        
+    } else {
+        require pkt.ptype = quic_packet_type.version_negociation;
     };
-    require pkt.long -> pkt.pversion = 0xff00001d  #version 29
-}
-
-#    Maximum Streams:  A variable-length integer indicating the maximum
-#       number of streams allowed at the time the frame was sent.  This
-#       value cannot exceed 2^60, as it is not possible to encode stream
-#       IDs larger than 2^62-1.  Receipt of a frame that encodes a larger
-#       stream ID MUST be treated as a STREAM_LIMIT_ERROR or a
-#       FRAME_ENCODING_ERROR.
-
-before frame.streams_blocked.handle(f:frame.streams_blocked,scid:cid,dcid:cid) {
-    if _generating {
-        require client.ep.addr ~= 0;
-        require scid = the_cid;
-        require f.id > 0x1000000000000000;
-    }
 }
 
 # The protocol specification describes all the events occurring the
@@ -85,7 +123,8 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
         force_new_ack := true;
-    }
+        #call handle_sending_ack(f.largest_acked);
+    } 
 }
 
 # Generate rst_stream frames only for the environment process(es).
@@ -137,7 +176,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
     if _generating {
         require scid = the_cid;
     } else {
-        require is_frame_encoding_error | is_stream_limit_error
+        require f.err_code = 0
     }
 }
 
@@ -235,8 +274,6 @@ export frame.path_response.handle
 export packet_event
 export client_send_event
 export tls_recv_event
-
-export frame.streams_blocked.handle
 #export frame.new_connection_id.handle
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
@@ -252,8 +289,7 @@ export frame.streams_blocked.handle
 # action with additional checks.
 
 export action _finalize = {
-    # chris TODO
-    require is_frame_encoding_error | is_stream_limit_error;
+    # chris TODO 
+    require conn_total_data(the_cid) > 0;
 }
-
 

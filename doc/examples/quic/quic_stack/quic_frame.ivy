@@ -308,8 +308,8 @@ object frame = {
     # (0x42) 
     object unknown_frame = {
         # unknown_frame  frame frames are a variant of frame and contains nothing
-         variant this of frame = struct {
-         }
+        variant this of frame = struct {
+        }
     } 
 
     instance idx : unbounded_sequence
@@ -735,9 +735,6 @@ object frame = {
         }
     }
 }
-
-# Guillaume Roissoin
-
 
 # #### CRYPTO event
 #
@@ -1307,7 +1304,7 @@ object frame = { ...
 # - length field less than 1 and greater than 20 are invalid [1]
 # - An endpoint that is sending packets with a zero-length Destination
 #   Connection ID MUST treat receipt of a NEW_CONNECTION_ID frame as a
-#   connection error of type PROTOCOL_VIOLATION. [2] TODO
+#   connection error of type PROTOCOL_VIOLATION. [2] 
 # - Receipt of the same frame multiple times MUST NOT be treated as a connection
 #   error. [3]
 # - The Retire Prior To field MUST be less than or equal to the Sequence Number field [4]
@@ -1337,9 +1334,16 @@ object frame = { ...
             require f.seq_num < max_rtp_num(scid) -> send_retire_cid(dcid); #[6] 
             #chris
             ...
+            
+            num_conn(scid) = num_conn(scid) + 1;
 	        cid_mapped(f.scid) := true;
 	        cid_to_aid(f.scid) := scid;
             seqnum_to_cid(scid,f.seq_num) := f.scid;
+
+            if ~_generating {
+                require acti_coid_check(num_conn(scid));
+            };
+
             #chris
             if (f.retire_prior_to > max_rtp_num(scid)) {
                max_rtp_num(scid) := f.retire_prior_to; #[5] 
@@ -1387,6 +1391,7 @@ object frame = { ...
             #
 	        ... 
 	        cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
+            num_conn(scid) = num_conn(scid) - 1;
             #Hamid
             # the connection id seqnum_to_cid is being retired, append it to an array and iterate over the array in packet
             #Hamid
@@ -1647,6 +1652,18 @@ action min_ack_delay_check(dcid:cid) returns (ok:bool) = {
     ok := false;
     var tp := trans_params(dcid);
     ok := min_ack_delay.value(tp).exponent_8 * 1000 < max_ack_delay.value(tp).exponent_8;
+}
+
+# Check taht the number of connection id proposed is not higher than active_connection_id_limit
+
+action acti_coid_check(count:stream_pos) returns (ok:bool) = {
+    ok := true;
+    var max : stream_pos := 0;
+    var tp := trans_params(dcid);
+    if active_connection_id_limit.is_set(tp) {
+        max := active_connection_id_limit.value(tp).stream_pos_32;
+        ok := count < max;
+    };
 }
 
 

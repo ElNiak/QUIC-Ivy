@@ -101,6 +101,11 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             # for client test
             call tls_client_initial_response(src,dst,ppkt)
         };
+        if ~ host = endpoint_id.server &  ppkt.value(0) = 0x80 {
+            # for server test, for version_negociation
+            # 1000 0000 == version_negociation
+            call tls_client_version_response(src,dst,ppkt)
+        };
         var rnum := reference_pkt_num(ppkt);
         var res := prot.decrypt(tls_id,rnum,ppkt);
         if res.ok {
@@ -114,7 +119,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                 call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
             }
         } else {
-            call undecryptable_packet_event(src,dst,ppkt); #TODO not working for client test
+            call undecryptable_packet_event(src,dst,ppkt);
         };
         idx := idx.next;
     }
@@ -387,6 +392,31 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         initial_keys_set := true;
     }
 }
+
+# TLS client Version Negotiation response shim
+# ============================================
+#
+
+#   If the version selected by the client is not acceptable to the
+#   server, the server responds with a Version Negotiation packet; see
+#   Section 17.2.1.  This includes a list of versions that the server
+#   will accept.  An endpoint MUST NOT send a Version Negotiation packet
+#   in response to receiving a Version Negotiation packet.
+
+#   This system allows a server to process packets with unsupported
+#   versions without retaining state.  Though either the Initial packet
+#   or the Version Negotiation packet that is sent in response could be
+#   lost, the client will send new packets until it successfully receives
+#   a response or it abandons the connection attempt.  As a result, the
+#   client discards all state for the connection and does not send any
+#   more packets on the connection.
+
+# We simply resend Initial packet
+
+after tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
+ # Not finished TODO
+}
+
 
 
 

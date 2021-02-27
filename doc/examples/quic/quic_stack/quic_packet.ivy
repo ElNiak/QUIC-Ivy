@@ -193,6 +193,8 @@ relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
 
 #chris
+# We start with the initial cid
+function num_conn(C:cid) : stream_pos
 relation retry_send(C:cid)
 function retry_token(C:cid) : stream_data
 #chris
@@ -225,6 +227,9 @@ after init {
     #Hamid
     max_seq_num(C) := 0;
     #Hamid
+    #chris
+    num_conn(C) := 1; 
+    #chris
 }
 
 # Packet event specification
@@ -285,6 +290,18 @@ after init {
 #   cannot specify this limit because we don't know the byte size of
 #   packets or the timings of packets. 
 
+#   An endpoint MUST treat the following as a connection error of type
+#   TRANSPORT_PARAMETER_ERROR or PROTOCOL_VIOLATION:
+#   *  absence of the retry_source_connection_id transport parameter from
+#      the server after receiving a Retry packet, [1]
+#   *  presence of the retry_source_connection_id transport parameter
+#      when no Retry packet was received, or [3]
+#   *  a mismatch between values received from a peer in these transport
+#      parameters and the value sent in the corresponding Destination or
+#      Source Connection ID fields of Initial packets. [2]
+#   If a zero-length connection ID is selected, the corresponding
+#   transport parameter is included with a zero-length value.
+
 around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     
     require pkt.token.end ~= 0 -> (pkt.ptype = quic_packet_type.initial);
@@ -292,6 +309,10 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # TEMPORARY: Do not allow zero_rtt packets
 
     require pkt.ptype ~= quic_packet_type.zero_rtt;
+
+    if pkt.ptype = quic_packet_type.retry {
+        require retry_source_connection_id.is_set(trans_params(scid));
+    };
     
     # Extract the source and destination cid's and packet number from the packet.
 
@@ -566,7 +587,6 @@ action handle_tls_extensions
     };
 }
 
-
 # The rules in `handle_transport_parameter` apply to each
 # `transport_parameter` instance a `quic_transport_parameters`
 # extension, in order of occurrence.
@@ -627,10 +647,6 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
         require  min_ack_milli < max_ack_delay.value(trans_params(scid)).exponent_8;  # [1]
     }
 }
-
-
-
-
 
 
 # action client_transport_parameters_event(src:ip.endpoint,dst:ip.endpoint,scid:cid,

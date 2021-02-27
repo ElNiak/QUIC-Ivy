@@ -3,7 +3,7 @@
 include quic_types
 include quic_frame
 
-# https://tools.ietf.org/html/draft-ietf-quic-transport-31#page-15
+# https://tools.ietf.org/html/draft-ietf-quic-transport-29#page-15
 
 # Since we want to represent the receiving FSM of the tested implementation,
 # we will use these relations when WE sent frame infering the state
