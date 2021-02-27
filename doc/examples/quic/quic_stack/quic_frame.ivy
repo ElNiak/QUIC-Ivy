@@ -500,6 +500,10 @@ function first_ack_freq_received : bool
 
 function last_ack_freq_seq(C:cid) : pkt_num
 
+function count_newcid_frame(I:cid_seq,O:cid_seq, 
+                            L:cid_length,D:cid,T:reset_token) : stream_pos
+
+function count_rcid_frame(I:cid_seq) : stream_pos
 #TODO faire all retransmission
 relation stop_sending_in_bad_state
 #chris
@@ -707,7 +711,7 @@ object frame = {
             if count_stream_frame(f.id,f.offset,f.length,f.data) > 1 {
                 stream_frame_restransmitted(f.id) := true;
             };
-            call show_stream_retransmisstion(f.id,f.offset,f.length,f.data,count_stream_frame(f.id,f.offset,f.length,f.data));
+            call show_stream_retransmission(f.id,f.offset,f.length,f.data,count_stream_frame(f.id,f.offset,f.length,f.data));
             stream_seen(scid,f.id) := true;
             if ~_generating {
                 call handle_sending_send(f.id,seq_num);
@@ -1335,15 +1339,18 @@ object frame = { ...
             #chris
             ...
             
-            num_conn(scid) := num_conn(scid) + 1;
 	        cid_mapped(f.scid) := true;
 	        cid_to_aid(f.scid) := scid;
             seqnum_to_cid(scid,f.seq_num) := f.scid;
-            var tp := trans_params(scid);
-            if ~_generating & active_connection_id_limit.is_set(tp) {
-                require acti_coid_check(scid,num_conn(scid));
+            count_newcid_frame(f.seq_num,f.retire_prior_to,f.length,f.scid,f.token) := count_newcid_frame(f.seq_num,f.retire_prior_to,f.length,f.scid,f.token) + 1;
+            if  count_newcid_frame(f.seq_num,f.retire_prior_to,f.length,f.scid,f.token) = 1 {
+                num_conn(dcid) := num_conn(dcid) + 1;
+                var tp := trans_params(dcid);
+                if ~_generating & active_connection_id_limit.is_set(tp)  {
+                    require acti_coid_check(dcid,num_conn(dcid));
+                };
             };
-
+            
             #chris
             if (f.retire_prior_to > max_rtp_num(scid)) {
                max_rtp_num(scid) := f.retire_prior_to; #[5] 
@@ -1391,7 +1398,10 @@ object frame = { ...
             #
 	        ... 
 	        cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
-            num_conn(scid) := num_conn(scid) - 1;
+            count_rcid_frame(f.seq_num) := count_rcid_frame(f.seq_num) + 1;
+            if  count_rcid_frame(f.seq_num) = 1 {
+                num_conn(dcid) := num_conn(dcid) - 1;
+            };
             #Hamid
             # the connection id seqnum_to_cid is being retired, append it to an array and iterate over the array in packet
             #Hamid
@@ -1662,10 +1672,10 @@ action acti_coid_check(scid:cid,count:stream_pos) returns (ok:bool) = {
     var tp := trans_params(scid);
     if active_connection_id_limit.is_set(tp) {
         max := active_connection_id_limit.value(tp).stream_pos_32;
-        ok := count < max;
+        ok := count <= max;
     };
 }
 
 
-import action show_stream_retransmisstion(i:stream_id,o:stream_pos,
+import action show_stream_retransmission(i:stream_id,o:stream_pos,
                                           l:stream_pos,d:stream_data,c:stream_pos)
