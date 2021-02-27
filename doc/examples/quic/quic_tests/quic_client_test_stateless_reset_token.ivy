@@ -163,7 +163,6 @@ after init {
 
 # HACK: we fix the initial client transport parameters here
 
-
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsdbl : initial_max_stream_data_bidi_local;
     imsdbl.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
@@ -195,7 +194,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     odci.dcid := client_initial_dcid;
     tp.transport_parameters := tp.transport_parameters.append(odci);
 
-    var token : stateless_reset_token;
+    var token : stateless_reset_token; # TODO normal senario
     token.data_8 := random_stream_data(0,0xFFFFFFF,16); 
     tp.transport_parameters := tp.transport_parameters.append(token);
 }
@@ -320,24 +319,6 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     }
 }
 
-# An endpoint MUST use a
-# sequence number of 0 for the first ACK_FREQUENCY frame it constructs
-# and sends, and a strictly increasing value thereafter.
-
-
-before frame.ack_frequency.handle(f:frame.ack_frequency,scid:cid,dcid:cid) {
-    if _generating {
-        require client.ep.addr ~= 0;
-        require scid = the_cid;
-        if first_ack_freq  {
-            require f.seq_num = 0;
-            first_ack_freq := false;
-        };
-        require f.packet_tolerence > 0;
-        require f.update_max_ack_delay > 0x20; #hardcoded
-        require f.ignore_order = 1 | f.ignore_order = 0;
-    }
-}
 
 # Generate rst_stream frames only for the client.
 

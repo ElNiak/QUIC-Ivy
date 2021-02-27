@@ -1335,7 +1335,7 @@ object frame = { ...
             #chris
             ...
             
-            num_conn(scid) = num_conn(scid) + 1;
+            num_conn(scid) := num_conn(scid) + 1;
 	        cid_mapped(f.scid) := true;
 	        cid_to_aid(f.scid) := scid;
             seqnum_to_cid(scid,f.seq_num) := f.scid;
@@ -1391,7 +1391,7 @@ object frame = { ...
             #
 	        ... 
 	        cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
-            num_conn(scid) = num_conn(scid) - 1;
+            num_conn(scid) := num_conn(scid) - 1;
             #Hamid
             # the connection id seqnum_to_cid is being retired, append it to an array and iterate over the array in packet
             #Hamid
