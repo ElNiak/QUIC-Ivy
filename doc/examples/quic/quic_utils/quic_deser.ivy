@@ -47,6 +47,7 @@ object quic_deser = {}
     }
 
     #define QUIC_DESER_FAKE_CHECKSUM_LENGTH 0
+    #include "quic_ser_deser.h"
 
     class `quic_deser` : public ivy_binary_deser {
         enum {quic_s_init,
@@ -144,13 +145,23 @@ object quic_deser = {}
             }
             break;
             case quic_s_dcid:
-            {
+            {   
+                /*if(const char* env_p = std::getenv("TEST_TYPE")) {
+                    if(strcmp(env_p, "server")) {
+
+                    } else {
+
+                    }
+                }*/
+                    
+
                 if (long_format) {
                     long long cil;
                     getn(cil,1);
                     std::cerr << "dstID size " << cil << std::endl;
                     dcil = cil;
-                    #dcil_long = cil;
+                    dcid_h = cil;
+                    //dcil_long = cil;
                 } else {
                     dcil = 8; //dcil_long
                 }
@@ -166,6 +177,7 @@ object quic_deser = {}
                     getn(cil,1);
                     std::cerr << "sourceID size " << cil << std::endl;  
                     scil = cil;
+                    scid_h = cil;
                 } else {
                     scil = 0;
                 }
