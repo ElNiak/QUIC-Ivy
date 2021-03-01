@@ -60,7 +60,7 @@ object tls_ser_server = {}
         {"stateless_reset_token",1},
         {"ack_delay_exponent",1},
         {"initial_max_stream_id_uni",1},
-        {"disable_active_migration ",1},
+        {"disable_active_migration",0},
         {"active_connection_id_limit",1},
         {"initial_max_stream_data_bidi_remote",1},
         {"initial_max_stream_data_uni",1},
@@ -122,7 +122,7 @@ object tls_ser_server = {}
         {"stateless_reset_token",0x02},
         {"ack_delay_exponent",0x0a},
         {"initial_max_stream_id_uni",0x09},
-        {"disable_active_migration ",0x0c},
+        {"disable_active_migration",0x0c},
         {"active_connection_id_limit",0x0e},
         {"initial_max_stream_data_bidi_remote",0x06},
         {"initial_max_stream_data_uni",0x07},
@@ -137,7 +137,7 @@ object tls_ser_server = {}
        {0,0}
     };
     tls_name_map tls_tags_map;
-    struct tls_name_struct tls_tag_bytes[23] = {
+    struct tls_name_struct tls_tag_bytes[24] = {
         {"tls.unknown_extension",2},
         {"quic_transport_parameters",2},
         {"initial_max_stream_data_bidi_local",1},
@@ -157,6 +157,7 @@ object tls_ser_server = {}
         {"max_ack_delay",1},
         {"initial_source_connection_id",1},
         {"retry_source_connection_id",2},
+        {"disable_active_migration",1},
         {"loss_bits",2}, //for picoquic
         {"grease_quic_bit",2}, //for picoquic
         {"min_ack_delay",8},
@@ -266,7 +267,8 @@ object tls_ser_server = {}
 
             std::cout <<  "Tag size: " <<  tag_size << std::endl;
             long long value_size;
-            if(tag_size != bytes && tags[0] != "tls.unknown_extension") {
+            if((tag_size != bytes && tags[0] != "tls.unknown_extension") ||
+               (tags[0] == "retry_source_connection_id" || tags[0] == "initial_source_connection_id" || tags[0] == "original_destination_connection_id" )) {
                 tls_tag_bytes_map["unknown_transport_parameter"] = tag_size;
                 pos -= bytes;
 

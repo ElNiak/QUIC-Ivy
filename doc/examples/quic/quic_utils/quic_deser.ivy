@@ -105,6 +105,7 @@ object quic_deser = {}
               quic_s_done} state;
         bool long_format;
         char hdr_type;
+        int dcil_long;
         int dcil;
         int scil;
         long frame_type;
@@ -147,9 +148,11 @@ object quic_deser = {}
                 if (long_format) {
                     long long cil;
                     getn(cil,1);
+                    std::cerr << "dstID size " << cil << std::endl;
                     dcil = cil;
+                    dcil_long = cil;
                 } else {
-                    dcil = 8;
+                    dcil = dcil_long;
                 }
 		        getn(res,(dcil));
                 state = quic_s_scid;
@@ -160,6 +163,7 @@ object quic_deser = {}
                 if (long_format) {
                     long long cil;
                     getn(cil,1);
+                    std::cerr << "sourceID size " << cil << std::endl;  
                     scil = cil;
                 } else {
                     scil = 0;
