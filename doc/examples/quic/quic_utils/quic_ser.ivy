@@ -136,11 +136,12 @@ object quic_ser = {}
             break;
             case quic_s_dcid:
             {
-                std::cerr << "ser res dcid " << res << std::endl;
+                std::cerr << "ser res dcid 1 " << res << std::endl;
                 if (long_format) {
                     setn(8,1);
                 }
 		        setn(res,8);
+                std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
             break;

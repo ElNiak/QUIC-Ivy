@@ -150,11 +150,12 @@ object quic_deser = {}
                     getn(cil,1);
                     std::cerr << "dstID size " << cil << std::endl;
                     dcil = cil;
-                    dcil_long = cil;
+                    #dcil_long = cil;
                 } else {
-                    dcil = dcil_long;
+                    dcil = 8; //dcil_long
                 }
 		        getn(res,(dcil));
+                std::cerr << "dstID res " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
@@ -169,6 +170,7 @@ object quic_deser = {}
                     scil = 0;
                 }
 		        getn(res,(scil));
+                std::cerr << "sourceID res " << res << std::endl;
                 long long len;
                 if (long_format & ((hdr_type & 0x30) == 0x00))
                     get_var_int(len);
