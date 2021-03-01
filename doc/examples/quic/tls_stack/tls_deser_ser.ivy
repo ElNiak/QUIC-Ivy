@@ -98,6 +98,10 @@ object tls_ser_server = {}
         {"data_8",1},
         {"dcid",8},
         {"scid",8},
+        {"ip_addr",4},
+        {"ip_port",2},
+        {"ip6_addr",16},
+        {"ip6_port",2},
         {0,0}
     };
     tls_name_map tls_field_bytes_map;

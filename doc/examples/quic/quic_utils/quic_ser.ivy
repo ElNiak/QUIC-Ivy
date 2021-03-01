@@ -140,9 +140,9 @@ object quic_ser = {}
             {
                 std::cerr << "ser res dcid 1 " << res << std::endl;
                 if (long_format) {
-                    setn(dcid_h,1);
+                    setn(8,1);
                 }
-		        setn(res,dcid_h);
+		        setn(res,8); //scid_h
                 std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
@@ -150,8 +150,8 @@ object quic_ser = {}
             case quic_s_scid:
             {
                 if (long_format) {
-                    setn(scid_h,1);
-		            setn(res,scid_h);
+                    setn(8,1);
+		            setn(res,8);
                 }
                 state = quic_s_retry_token_length;
             }
