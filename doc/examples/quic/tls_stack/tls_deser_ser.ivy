@@ -100,8 +100,12 @@ object tls_ser_server = {}
         {"scid",8},
         {"ip_addr",4},
         {"ip_port",2},
+<<<<<<< HEAD
         {"ip6_addr1",8},
         {"ip6_addr2",8},
+=======
+        {"ip6_addr",16},
+>>>>>>> 30e8c6b42f38c7e638e11baee02b9ce7ada8cefd
         {"ip6_port",2},
         {0,0}
     };
