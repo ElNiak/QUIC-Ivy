@@ -47,7 +47,9 @@ object quic_deser = {}
     }
 
     #define QUIC_DESER_FAKE_CHECKSUM_LENGTH 0
-    #include "quic_ser_deser.h"
+    #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    int scid_h = 8;
+    int dcid_h = 8;
 
     class `quic_deser` : public ivy_binary_deser {
         enum {quic_s_init,
@@ -163,9 +165,9 @@ object quic_deser = {}
                     dcid_h = cil;
                     //dcil_long = cil;
                 } else {
-                    dcil = 8; //dcil_long
+                    dcil = dcid_h; //dcil_long
                 }
-		        getn(res,(dcil));
+		getn(res,(dcil));
                 std::cerr << "dstID res " << res << std::endl;
                 state = quic_s_scid;
             }
@@ -181,7 +183,8 @@ object quic_deser = {}
                 } else {
                     scil = 0;
                 }
-		        getn(res,(scil));
+		if(scil != 0)
+			getn(res,scil);
                 std::cerr << "sourceID res " << res << std::endl;
                 long long len;
                 if (long_format & ((hdr_type & 0x30) == 0x00))
