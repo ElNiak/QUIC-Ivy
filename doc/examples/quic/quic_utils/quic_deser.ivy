@@ -174,8 +174,8 @@ object quic_deser = {}
                 } else {
                     scil = 0;
                 }
-		        if(scil != 0)
-			        getn(res,scil);
+		        //if(scil != 0)
+			    getn(res,scil);
                 //std::cerr << "sourceID res " << res << std::endl;
                 long long len;
                 if (long_format & ((hdr_type & 0x30) == 0x00))

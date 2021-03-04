@@ -109,7 +109,7 @@ interpret cid_seq -> bv[8]
 type reset_token
 interpret reset_token -> bv[31]
 
-# IP (before ip module but bugs)
+# IP (or before ip module ?)
 
 type port
 interpret port -> bv[2]
