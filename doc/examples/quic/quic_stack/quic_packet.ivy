@@ -363,7 +363,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     require pkt.ptype = queued_level(scid);
 
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
-    # require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
+    require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x30;
 
 
     require ~sent_pkt(scid,pkt.ptype,pkt.seq_num);  # [4]

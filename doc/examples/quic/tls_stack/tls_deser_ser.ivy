@@ -98,6 +98,7 @@ object tls_ser_server = {}
         {"data_8",1},
         {"dcid",8},
         {"scid",8},
+        {"pcid",8},
         {"ip_addr",4},
         {"ip_port",2},
         {"ip6_addr1",8},
