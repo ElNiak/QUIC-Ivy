@@ -60,7 +60,7 @@ object tls_ser_server = {}
         {"stateless_reset_token",1},
         {"ack_delay_exponent",1},
         {"initial_max_stream_id_uni",1},
-        {"disable_active_migration",0},
+        {"disable_active_migration",1},
         {"active_connection_id_limit",1},
         {"initial_max_stream_data_bidi_remote",1},
         {"initial_max_stream_data_uni",1},
@@ -75,7 +75,7 @@ object tls_ser_server = {}
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
-    struct tls_name_struct tls_field_bytes[23] = {
+    struct tls_name_struct tls_field_bytes[28] = {
         {"version",2},
         {"client_version",2}, //0x0303 = 2 bytes
         {"server_version",2},
@@ -100,7 +100,12 @@ object tls_ser_server = {}
         {"scid",8},
         {"ip_addr",4},
         {"ip_port",2},
+<<<<<<< HEAD
+        {"ip6_addr1",8},
+        {"ip6_addr2",8},
+=======
         {"ip6_addr",16},
+>>>>>>> 30e8c6b42f38c7e638e11baee02b9ce7ada8cefd
         {"ip6_port",2},
         {0,0}
     };
@@ -193,7 +198,7 @@ object tls_ser_server = {}
         virtual bool more(unsigned bytes) {
             if (fence.size() > 0 && pos + bytes > fence.back()) {
                 return false;
-	        }
+	    }
             return ivy_binary_deser::more(bytes);
         }
     
@@ -249,7 +254,7 @@ object tls_ser_server = {}
             long long tag;
             long long tag_new;
             unsigned long long tag_final;
-	        long long mask;
+	    long long mask;
             getn(tag,bytes);
             std::cout << "tag v1: " << tag << std::endl;  
 
@@ -268,11 +273,17 @@ object tls_ser_server = {}
                 tag_size = 8;
                 mask = 0x3fffffffffffffff;
             } 
+	    bool is_unknow = true;
+	   for (int i = 0; i < tags.size(); i++) {
+                if (tag_final == tls_tags_map[tags[i]]) {
+                   is_unknow = false;
+                }
+            }
 
             std::cout <<  "Tag size: " <<  tag_size << std::endl;
             long long value_size;
             if((tag_size != bytes && tags[0] != "tls.unknown_extension") ||
-               (tags[0] == "retry_source_connection_id" || tags[0] == "initial_source_connection_id" || tags[0] == "original_destination_connection_id" )) {
+               (tag == 0x1010 || tag == 0x0f || tag == 0x00 || tag == 0x0d) || is_unknow) {
                 tls_tag_bytes_map["unknown_transport_parameter"] = tag_size;
                 pos -= bytes;
 
@@ -286,17 +297,18 @@ object tls_ser_server = {}
                 pos -= 1;
 
                 tls_field_bytes_map["unknown"] = value_size;
-                if(tags[0] == "retry_source_connection_id" || tags[0] == "initial_source_connection_id") {
+		std::cout <<  "cool " << std::endl;
+                if(tag == 0x0f || tag == 0x00 || tag == 0x0d) {
                     tls_field_bytes_map["scid"] = value_size;
                 }
-                if(tags[0] == "original_destination_connection_id") {
+                if(tag == 0x1010) {
                     tls_field_bytes_map["dcid"] = value_size;
                 }
             } else {
                 tag_final = tag;
             }
 
-	        std::cout << "value_size: " << value_size << std::endl;
+	    std::cout << "value_size: " << value_size << std::endl;
             std::cout << "tag v2: " << tag_final << std::endl;
   
             for (int i = 0; i < tags.size(); i++) {
@@ -425,6 +437,19 @@ object tls_ser_server = {}
             long long tag = tls_tags_map[name];
             if (tag !=-1) 
                 setn(tag,bytes); // var int ?
+	    if(const char* env_p = std::getenv("TEST_IMPL")) { 
+	    if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
+	      //because it seralize directly so we dont know the scid/dcid length
+	      std::cout << "TEST_TYPE " << env_p2 << std::endl;
+	      std::cout << "TEST_IMPL " << env_p << std::endl;
+              if(strcmp(env_p, "quant") == 0 && strcmp(env_p2, "client") == 0) {
+		tls_field_bytes_map["scid"] = 4;
+              }
+              if(strcmp(env_p, "quic-go") == 0 && strcmp(env_p2, "client") == 0) {
+		tls_field_bytes_map["scid"] = 0;
+              }
+            }
+            }
             open_field(name);
         }
 
