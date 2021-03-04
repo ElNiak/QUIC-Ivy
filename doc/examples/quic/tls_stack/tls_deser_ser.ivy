@@ -273,17 +273,9 @@ object tls_ser_server = {}
                 mask = 0x3fffffffffffffff;
             } 
 
-	        bool is_unknow = true;
-	        for (int i = 0; i < tags.size(); i++) {
-                if (tag_final == tls_tags_map[tags[i]]) {
-                   is_unknow = false;
-                }
-            }
-            for (int i = 0; i < tags.size(); i++) {
-                if (-1 == tls_tags_map[tags[i]]) {
-                    is_unknow = false;
-                }
-            }
+	        bool is_unknow = false;
+	        if(tag > 0x0f)
+                is_unknow = true;
 
             std::cout <<  "Tag size: " <<  tag_size << std::endl;
             long long value_size;
