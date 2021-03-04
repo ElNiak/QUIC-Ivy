@@ -47,6 +47,7 @@ object quic_deser = {}
     }
 
     #define QUIC_DESER_FAKE_CHECKSUM_LENGTH 0
+    //TODO
     #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     int scid_h = 8;
     int dcid_h = 8;
@@ -148,27 +149,17 @@ object quic_deser = {}
             break;
             case quic_s_dcid:
             {   
-                /*if(const char* env_p = std::getenv("TEST_TYPE")) {
-                    if(strcmp(env_p, "server")) {
-
-                    } else {
-
-                    }
-                }*/
-                    
-
                 if (long_format) {
                     long long cil;
                     getn(cil,1);
-                    std::cerr << "dstID size " << cil << std::endl;
+                    //std::cerr << "dstID size " << cil << std::endl;
                     dcil = cil;
                     dcid_h = cil;
-                    //dcil_long = cil;
                 } else {
                     dcil = dcid_h; //dcil_long
                 }
-		getn(res,(dcil));
-                std::cerr << "dstID res " << res << std::endl;
+		        getn(res,(dcil));
+                //std::cerr << "dstID res " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
@@ -177,15 +168,15 @@ object quic_deser = {}
                 if (long_format) {
                     long long cil;
                     getn(cil,1);
-                    std::cerr << "sourceID size " << cil << std::endl;  
+                    //std::cerr << "sourceID size " << cil << std::endl;  
                     scil = cil;
                     scid_h = cil;
                 } else {
                     scil = 0;
                 }
-		if(scil != 0)
-			getn(res,scil);
-                std::cerr << "sourceID res " << res << std::endl;
+		        if(scil != 0)
+			        getn(res,scil);
+                //std::cerr << "sourceID res " << res << std::endl;
                 long long len;
                 if (long_format & ((hdr_type & 0x30) == 0x00))
                     get_var_int(len);
@@ -555,7 +546,6 @@ object quic_deser = {}
                     ivy_binary_deser::getn(ft,1); // could be bigger
                     frame_type = ft;
                     if (frame_type == 0xAF) { //0x40af
-                        std::cout << "state   0xaf       = " << state << std::endl; 
                         state = quic_ack_frequency;
                         return 21;
                     }

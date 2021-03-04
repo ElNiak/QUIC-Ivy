@@ -12,7 +12,7 @@ object quic_ser = {}
 
 <<< impl
 
-//TODO check old version
+    //TODO check old version
 
     /*typedef struct transport_error_struct {
         const char *name;
@@ -48,6 +48,7 @@ object quic_ser = {}
         }
     }*/
 
+    //TODO
     #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
 
     class `quic_ser` : public ivy_binary_ser {
@@ -122,7 +123,7 @@ object quic_ser = {}
             switch (state) {
             case quic_s_init:
             {
-                std::cerr << "ser res init " << res << std::endl;
+                //std::cerr << "ser res init " << res << std::endl;
                 long_format = res != 3;
                 hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
 		        setn(hdr_type | (long_format ? 0x80 : 0), 1);
@@ -138,31 +139,20 @@ object quic_ser = {}
             break;
             case quic_s_dcid:
             {
-                std::cerr << "ser res dcid 1 " << res << std::endl;
+                //std::cerr << "ser res dcid 1 " << res << std::endl;
                 if (long_format) {
-<<<<<<< HEAD
                     setn(scid_h,1);
                 }
-		setn(res,scid_h); //scid_h
-=======
-                    setn(8,1);
-                }
-		        setn(res,8); //scid_h
->>>>>>> 30e8c6b42f38c7e638e11baee02b9ce7ada8cefd
-                std::cerr << "ser res dcid 2 " << res << std::endl;
+		        setn(res,scid_h); //scid_h
+                //std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
             case quic_s_scid:
             {
                 if (long_format) {
-<<<<<<< HEAD
                     setn(dcid_h,1);
-		    setn(res,dcid_h);
-=======
-                    setn(8,1);
-		            setn(res,8);
->>>>>>> 30e8c6b42f38c7e638e11baee02b9ce7ada8cefd
+		            setn(res,dcid_h);
                 }
                 state = quic_s_retry_token_length;
             }
@@ -500,20 +490,20 @@ object quic_ser = {}
                     state = quic_ack_frequency;
                     frame_type = 0x40AF; // 0100 0000 AF
                     sz = 2;
-		            std::cout << "saw frame tag " << frame_type << std::endl; 
+		            //std::cout << "saw frame tag " << frame_type << std::endl; 
                 }
                 else if (tag == 22) {
                     state = quic_unknow;
                     frame_type = 0x4042; 
                     sz = 2;
-		            std::cout << "saw frame tag " << frame_type << std::endl; 
+		            //std::cout << "saw frame tag " << frame_type << std::endl; 
                 }
 	            else {
                     std::cout << "saw frame tag " << tag << std::endl;  
                     throw deser_err();
 	            }
-	        setn(frame_type,sz);
-	        return;
+                setn(frame_type,sz);
+                return;
             }
             std::cout << "quic_ser 1" << std::endl;  
             throw deser_err();

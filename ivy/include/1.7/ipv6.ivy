@@ -5,38 +5,25 @@
 # Note, "ipv6" here refers to IPv6.
 
 object ipv6 = {
-<<<<<<< HEAD
     #use 2 types or only one ?
     type addr1
     type addr2
-=======
-
-    type addr
->>>>>>> 30e8c6b42f38c7e638e11baee02b9ce7ada8cefd
     type port
     type protocol = {udp6,tcp6}
 
     object endpoint = {
         type this = struct {
             protocol : ipv6.protocol,
-<<<<<<< HEAD
             addr1 : ipv6.addr1,
             addr2 : ipv6.addr2,
-=======
-            addr : ipv6.addr,
->>>>>>> 30e8c6b42f38c7e638e11baee02b9ce7ada8cefd
             port : ipv6.port
         }
     }
 
     implementation {
         
-<<<<<<< HEAD
         interpret addr1 -> bv[62]
         interpret addr2 -> bv[62]
-=======
-        interpret addr -> bv[128]
->>>>>>> 30e8c6b42f38c7e638e11baee02b9ce7ada8cefd
         interpret port -> bv[16]
 
     }
