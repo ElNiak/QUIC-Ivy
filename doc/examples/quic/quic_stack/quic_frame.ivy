@@ -829,8 +829,10 @@ object frame = { ...
             stream_reset(dcid,f.id) := true;  # [2]
             stream_length(dcid,f.id) := f.final_offset;  #[3]
             require stream_id_allowed(dcid,f.id);  # [4]
-            call handle_transport_error(f.err_code);
 	    ...
+            if ~_generating {
+                call handle_transport_error(f.err_code);
+            };
             count_reset_frame(f.id,f.err_code,f.final_offset) := count_reset_frame(f.id,f.err_code,f.final_offset) + 1;
             if count_reset_frame(f.id,f.err_code,f.final_offset) > 1 {
                 reset_frame_restransmitted(f.id) := true;
@@ -879,8 +881,10 @@ object frame = { ...
             require ~conn_closed(scid);  # [5]
             require connected(scid) & connected_to(scid) = dcid;
             require stream_id_allowed(dcid,f.id);  # [4]
-            call handle_transport_error(f.err_code);
 	    ...
+            if ~_generating {
+                call handle_transport_error(f.err_code);
+            };
             if ~_generating {
                 #   A STOP_SENDING frame requests that the receiving endpoint send a
                 #   RESET_STREAM frame.  An endpoint that receives a STOP_SENDING frame
