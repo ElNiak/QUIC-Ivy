@@ -4,8 +4,8 @@ include quic_types
 include quic_transport_error_code
 include quic_stream
 include tls_record
-include ip
-include ipv6
+#include ip
+#include ipv6
 
 type trans_params_struct
 
@@ -67,11 +67,10 @@ object max_idle_timeout  = {
 object preferred_address = {
     variant this of transport_parameter = struct {  # tag = 4
         # TODO: fill this in
-        ip_addr : ip.addr,
-        ip_port : ip.port,
-        ip6_addr1: ipv6.addr1,
-	    ip6_addr2: ipv6.addr2,
-        ip6_port: ipv6.port,
+        ip_addr : ipv4,
+        ip_port : port,
+        ip6_addr : ipv6,
+        ip6_port: port,
         pcid : cid,
         data_8 : stream_data # stateless_reset_token
     }

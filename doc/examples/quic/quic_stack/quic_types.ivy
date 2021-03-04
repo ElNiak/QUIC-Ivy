@@ -109,6 +109,17 @@ interpret cid_seq -> bv[8]
 type reset_token
 interpret reset_token -> bv[31]
 
+# IP (before ip module but bugs)
+
+type port
+interpret port -> bv[2]
+
+type ipv4
+interpret ipv4 -> bv[4]
+
+type ipv6
+interpret ipv6 -> bv[16]
+
 # Packet type, also determines encryption keys
 
 object quic_packet_type = {
