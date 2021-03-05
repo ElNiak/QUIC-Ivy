@@ -77,7 +77,7 @@ object tls_ser_server = {}
         {0,0}
     };
     tls_name_map tls_field_length_bytes_map;
-    struct tls_name_struct tls_field_bytes[29] = {
+    struct tls_name_struct tls_field_bytes[31] = {
         {"version",2},
         {"client_version",2}, //0x0303 = 2 bytes
         {"server_version",2},
@@ -106,6 +106,8 @@ object tls_ser_server = {}
         {"ip6_addr1",8},
         {"ip6_addr2",8},
         {"ip6_port",2},
+	{"pref_token",16},
+	{"pcid_len",1},
         {0,0}
     };
     tls_name_map tls_field_bytes_map;
@@ -220,12 +222,12 @@ object tls_ser_server = {}
                 long long bytes;
                 getn(bytes,length_field_bytes);
                 //TODO hardcoded for parsing last tls.unknow_extension of picoquic client
-		        if(name == "grease_quic_bit") bytes += 10;
+		if(name == "grease_quic_bit") bytes += 10;
                 fence.push_back(pos+bytes);
             }
             else if (fence.size() > 0) {
                 unsigned b = fence.back();
-                std::cout << "4) fence.back() +=  " << b << std::endl; 
+                std::cout << "4) pkt-pos =  " << b << std::endl; 
                 fence.push_back(b);
             } 
             if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
@@ -245,7 +247,7 @@ object tls_ser_server = {}
 
         virtual int open_tag(const std::vector<std::string> &tags) {
             std::cout << std::endl; 
-	        //std::cout << "open_tag : " << tags << std::endl;  
+	    //std::cout << "open_tag : " << tags << std::endl;  
             int bytes = 1;
             if (tls_tag_bytes_map.find(tags[0]) != tls_tag_bytes_map.end())   {
                 bytes = tls_tag_bytes_map[tags[0]];
@@ -253,11 +255,11 @@ object tls_ser_server = {}
             long long tag;
             long long tag_new;
             unsigned long long tag_final;
-	        long long mask;
+	    long long mask;
             getn(tag,bytes);
             std::cout << "tag v1: " << tag << std::endl;  
 
-	        u_int tag_int = (u_int) tag;  //TODO change could be dangerous
+	    u_int tag_int = (u_int) tag;  //TODO change could be dangerous
             int tag_size = (tag_int >> 6) & ((1 << 2) -1);
             if(tag_size == 0) {
                 tag_size = 1;
@@ -273,14 +275,14 @@ object tls_ser_server = {}
                 mask = 0x3fffffffffffffff;
             } 
 
-	        bool is_unknow = false;
-	        if(tag > 0x0f)
+	    bool is_unknow = false;
+	    if(tag > 0x0f)
                 is_unknow = true;
 
             std::cout <<  "Tag size: " <<  tag_size << std::endl;
-            long long value_size;
-            if((tag_size != bytes && tags[0] != "tls.unknown_extension") ||
-               (tag == 0x1010 || tag == 0x0f || tag == 0x00 || tag == 0x0d) || is_unknow) {
+            long long value_size = 0;
+            if(((tag_size != bytes || is_unknow || tag == 0x1010 || tag == 0x0f || tag == 0x00 || tag == 0x0d) 
+		&& tags[0] != "tls.unknown_extension")) { //|| tag == 0x0d
                 tls_tag_bytes_map["unknown_transport_parameter"] = tag_size;
                 pos -= bytes;
 
@@ -290,25 +292,42 @@ object tls_ser_server = {}
                 tag_final = (tag_intt & mask);
                 
                 getn(value_size,1);                
-                value_size = value_size & 0xff;
+                //value_size = value_size & 0xff;
                 pos -= 1;
 
-                tls_field_bytes_map["unknown"] = value_size;
-		        std::cout <<  "cool " << std::endl;
+		std::cout <<  "cool " << std::endl;
+		std::cout << "tag: " << tag << std::endl;  
+		std::cout << "isPref: " << (tag ==  0x0d) << std::endl;    
                 if(tag == 0x0f || tag == 0x00) {
                     tls_field_bytes_map["scid"] = value_size;
                 }
-                if(tag == 0x0d) {
-                    tls_field_bytes_map["pcid"] = value_size;
+                else if(tag == 0x0d) {
+		    long long value_size_pcid;	
+		    pos += 1;  // TP len
+		    pos += 4;  // ipv4
+		    pos += 2;  // port
+		    pos += 16; // ipv6
+		    pos += 2;  // port
+                    getn(value_size_pcid,1);   
+		    //value_size = value_size & 0xff;
+		    pos -= (4+2+16+2);    
+		    pos -= 1;
+		    std::cout << "pcid: " << value_size_pcid << std::endl;     
+		    std::cout << "pref_add: " << (value_size_pcid+4+2+16+2+1+16) << std::endl;   
+                    tls_field_bytes_map["pcid"] = value_size_pcid;
                 }
-                if(tag == 0x1010) {
+                else if(tag == 0x1010) {
                     tls_field_bytes_map["dcid"] = value_size;
+                } 
+		else {
+		    tls_field_bytes_map["unknown"] = value_size;
                 }
             } else {
                 tag_final = tag;
             }
 
-	        std::cout << "value_size: " << value_size << std::endl;
+
+	    std::cout << "value_size: " << value_size << std::endl;
             std::cout << "tag v2: " << tag_final << std::endl;
   
             for (int i = 0; i < tags.size(); i++) {
