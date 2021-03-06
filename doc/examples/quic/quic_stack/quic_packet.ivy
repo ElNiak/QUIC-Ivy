@@ -38,7 +38,9 @@ include ip
 
 object quic_packet = {
 
-    type this
+    type this= struct {
+            hdr_long : bool
+        }
 
     object long_packet = {
 
