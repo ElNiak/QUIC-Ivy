@@ -106,8 +106,8 @@ object tls_ser_server = {}
         {"ip6_addr1",8},
         {"ip6_addr2",8},
         {"ip6_port",2},
-	{"pref_token",16},
-	{"pcid_len",1},
+        {"pref_token",16},
+        {"pcid_len",1},
         {0,0}
     };
     tls_name_map tls_field_bytes_map;
