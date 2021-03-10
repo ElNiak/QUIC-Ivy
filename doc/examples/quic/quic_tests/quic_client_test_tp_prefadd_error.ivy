@@ -188,7 +188,6 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     odci.dcid := client_initial_dcid;
     tp.transport_parameters := tp.transport_parameters.append(odci);
 
-   
     # preferred_address (0x0d):  The server's preferred address is used to
     #   The Connection ID and Stateless Reset Token fields of a preferred
     #   address are identical in syntax and semantics to the corresponding

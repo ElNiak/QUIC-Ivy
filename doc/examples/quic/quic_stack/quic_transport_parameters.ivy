@@ -168,9 +168,9 @@ object loss_bits = {
 
 #TODO for now, used for picoquic client as marker for the last tls.unknown_extension that bug to 
 #parse without hardcode
+#https://tools.ietf.org/html/draft-thomson-quic-bit-grease-01
 object grease_quic_bit = {
     variant this of transport_parameter = struct {  # tag = 0x2ab2
-        stream_pos_32 : stream_pos
     }
     instantiate trans_params_ops(this)
 }

@@ -102,7 +102,7 @@ interpret cid_length -> bv[4]
 # Connection id sequence numbers
 
 type cid_seq
-interpret cid_seq -> bv[8]
+interpret cid_seq -> bv[16]
 
 # Stateless reset tokens
 

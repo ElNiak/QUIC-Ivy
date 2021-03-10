@@ -88,7 +88,7 @@ object frame = {
             largest_acked   : pkt_num,    # largest acknowledged packet number
             ack_delay       : microsecs,  # delay of largest acked packet
             ack_ranges      : range.arr   # ack ranges
-			# ecnp            : bool,        # is this the final offset
+			# ecnp            : bool,     # is this the final offset
 			# ecn_counts      : ecn.arr
         }
     }

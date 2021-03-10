@@ -19,14 +19,14 @@ include ip
 
 object tls = { ...
 
-# Record parser
-# =============
+    # Record parser
+    # =============
 
     instance handshakes : vector(handshake)
     instance handshake_parser : deserializer(stream_pos,stream_data,handshakes,tls_deser)
 
-# Protocol event
-# ==============
+    # Protocol event
+    # ==============
 
     action handshake_event(src : ip.endpoint, dst : ip.endpoint, h : handshake)
 

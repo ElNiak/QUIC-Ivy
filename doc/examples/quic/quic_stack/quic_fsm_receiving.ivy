@@ -139,7 +139,7 @@ action handle_receiving_resetRecvd(id:stream_id,seq:pkt_num) = {
         # possible source state/transition
         # require receiving_recv(id) | receiving_sizeKnown(id) | receiving_dataRecvd(id);
         # set of non allowed state 
-        #require  ~receiving_resetRead(id) & ~receiving_dataRead(id);
+        # require  ~receiving_resetRead(id) & ~receiving_dataRead(id);
         receiving_recv(id) := false;
         receiving_sizeKnown(id) := false;
         receiving_dataRecvd(id) := false;
