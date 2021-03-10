@@ -44,6 +44,7 @@ static int x_to_bv(const BASECLASS &s){
             if(bv_to_x_hash.find(next_bv) == bv_to_x_hash.end()) {
                 x_to_bv_hash[s] = next_bv;
                 bv_to_x_hash[next_bv] = s;
+		//std::cerr << (next_bv + 1)<< std::endl;
                 return next_bv++;
             } 
         }
@@ -66,11 +67,129 @@ static BASECLASS bv_to_x(int bv){
             if(x_to_bv_hash.find(s) == x_to_bv_hash.end()){
                x_to_bv_hash[s] = bv;
                bv_to_x_hash[bv] = s;
+	       //std::cerr << "bv_to_x_hash: " << s << std::endl;
                return s;
             }
             num++;
         }
     }
+    //std::cerr << "bv_to_x_hash: " << bv_to_x_hash[bv] << std::endl;
+    return bv_to_x_hash[bv];
+}
+static void prepare() {}
+static void cleanup() {
+    x_to_bv_hash.clear();
+    bv_to_x_hash.clear();
+    next_bv = 0;
+}
+#endif""").replace('BITS',str(bits)).replace('CLASSNAME',classname).replace('BASECLASS',baseclass))
+     
+    def emit_inlines(self):
+        pass
+
+    def emit_templates(self):
+       add_impl(
+"""
+hash_space::hash_map<BASECLASS,int> CLASSNAME::x_to_bv_hash;
+hash_space::hash_map<int,BASECLASS> CLASSNAME::bv_to_x_hash;
+std::vector<BASECLASS> CLASSNAME::nonces;
+int CLASSNAME::next_bv = 0;
+
+#ifdef Z3PP_H_
+template <>
+void __from_solver<CLASSNAME>( gen &g, const  z3::expr &v, CLASSNAME &res) {
+    res = CLASSNAME::bv_to_x(g.eval(v));
+}
+template <>
+z3::expr __to_solver<CLASSNAME>( gen &g, const  z3::expr &v, CLASSNAME &val) {
+//    std::cout << v << ":" << v.get_sort() << std::endl;
+    return v == g.int_to_z3(v.get_sort(),CLASSNAME::x_to_bv(val));
+}
+template <>
+void __randomize<CLASSNAME>( gen &g, const  z3::expr &apply_expr) {
+    z3::sort range = apply_expr.get_sort();
+    CLASSNAME value;
+    if (CLASSNAME::bv_to_x_hash.size() == (1<<BITS)) {
+        value = CLASSNAME::bv_to_x(rand() % (1<<BITS));
+    } else {
+        if (CLASSNAME::nonces.size() == 0) 
+           for (int i = 0; i < 2; i++)
+               CLASSNAME::nonces.push_back(CLASSNAME::random_x());
+        value = CLASSNAME::nonces[rand() % CLASSNAME::nonces.size()];
+    }
+    z3::expr val_expr = g.int_to_z3(range,CLASSNAME::x_to_bv(value));
+    z3::expr pred = apply_expr == val_expr;
+    g.add_alit(pred);
+}
+
+#endif
+""".replace('BITS',str(self.bits)).replace('CLASSNAME',self.short_name()).replace('BASECLASS',self.baseclass))
+
+class XBVI(CppClass):
+    """ A type that represents a **very** large type t using a bit vector. It
+    maintains a mapping from bit vector values to t. Each
+    time a new t constant is introduced, it is given an entry in
+    the table. This can fail, however, if the number of t constants
+    exceeds the number of bit vector values.
+    """
+
+    def __init__(self,classname,bits,baseclass,constructors=""):
+        """ bits is the number of bits in the bit vector representation """
+        CppClass.__init__(self,classname,baseclass=baseclass)
+        self.bits = bits
+        self.baseclass = baseclass
+        with self:
+                add_member(
+("""
+CLASSNAME(){}
+CLASSNAME(const BASECLASS &s) : BASECLASS(s) {}
+""" + 
+constructors +
+"""
+size_t __hash() const { return hash_space::hash<BASECLASS>()(*this); }
+#ifdef Z3PP_H_
+static z3::sort z3_sort(z3::context &ctx) {return ctx.bv_sort(BITS);}
+static hash_space::hash_map<BASECLASS,int> x_to_bv_hash;
+static hash_space::hash_map<int,BASECLASS> bv_to_x_hash;
+static int next_bv;
+static std::vector<BASECLASS> nonces;
+static BASECLASS random_x();
+static int x_to_bv(const BASECLASS &s){
+    if(x_to_bv_hash.find(s) == x_to_bv_hash.end()){
+        for (; next_bv < (1<<BITS); next_bv++) {
+            if(bv_to_x_hash.find(next_bv) == bv_to_x_hash.end()) {
+                x_to_bv_hash[s] = next_bv;
+                bv_to_x_hash[next_bv] = s;
+		//std::cerr << "bv_to_x_hash[next_bv]" << s << std::endl;
+                return next_bv++;
+            } 
+        }
+        std::cerr << "Ran out of values for type CLASSNAME" << std::endl;
+        __ivy_out << "out_of_values(CLASSNAME,\\"" << s << "\\")" << std::endl;
+        for (int i = 0; i < (1<<BITS); i++)
+            __ivy_out << "value(\\"" << bv_to_x_hash[i] << "\\")" << std::endl;
+        __ivy_exit(1);
+    }
+    return x_to_bv_hash[s];
+}
+static BASECLASS bv_to_x(int bv){
+    if(bv_to_x_hash.find(bv) == bv_to_x_hash.end()){
+        int num = 0;
+        while (true) {
+            // std::ostringstream str;
+            // str << num;
+            // BASECLASS s = str.str();
+            BASECLASS s = random_x();
+            if(x_to_bv_hash.find(s) == x_to_bv_hash.end()){
+               x_to_bv_hash[s] = bv;
+               bv_to_x_hash[bv] = s;
+	       //sstd::cerr << "bv_to_x_hash: " << s << std::endl;
+               return s;
+            }
+            num++;
+        }
+    }
+    //std::cerr << "bv_to_x_hash: " << bv_to_x_hash[bv] << std::endl;
     return bv_to_x_hash[bv];
 }
 static void prepare() {}
@@ -150,6 +269,16 @@ CLASSNAME _arg<CLASSNAME>(std::vector<ivy_value> &args, unsigned idx, long long 
     return args[idx].atom;
 }
 template <>
+void __ser<CLASSNAME>(ivy_ser_128 &res, const CLASSNAME &inp) {
+    res.set(inp);
+}
+template <>
+void __deser<CLASSNAME>(ivy_deser_128 &inp, CLASSNAME &res) {
+    BASECLASS tmp;
+    inp.get(tmp);
+    res = tmp;
+}
+template <>
 void __ser<CLASSNAME>(ivy_ser &res, const CLASSNAME &inp) {
     res.set(inp);
 }
@@ -226,6 +355,17 @@ template <>
 void __deser<CLASSNAME>(ivy_deser &inp, CLASSNAME &res) {
     inp.get(res.val);
 }
+
+template <>
+void __ser<CLASSNAME>(ivy_ser_128 &res, const CLASSNAME &inp) {
+    res.set((int128_t)inp.val);
+}
+template <>
+void __deser<CLASSNAME>(ivy_deser_128 &inp, CLASSNAME &res) {
+    int128_t temp;
+    inp.get(temp);
+    res = temp;
+}
 BASECLASS CLASSNAME::random_x(){
     return RAND;
 }
@@ -239,6 +379,176 @@ BASECLASS CLASSNAME::random_x(){
 
     def rand(self):
             return '((rand()%{}) + {})'.format(self.card(),self.loval) # TODO: let user control random string generation
+
+class LongBV(XBVI):
+    """ A type that represents a large range of integers using a long a
+    bit vector. It maintains a mapping from bit vector values to
+    string values. Each time a new string constant is introduces, it
+    is given an entry in the table. This can fail, however, if the
+    number of string constants exceeds the number of bit vector
+    values.  """
+    def __init__(self,classname,loval,hival,bits):
+        """ bits is the number of bits in the bit vector representation """
+        add_once_global("""
+    struct LongClass {
+        LongClass() : val(0) {}
+        LongClass(int128_t val) : val(val) {}
+        int128_t val;
+        int128_t __hash() const {return val;}
+    };
+""")
+	#"std::ostream& operator<<(std::ostream&s, const LongClass &v) {return s << v.val;}\n"
+	printed = """
+	    std::ostream& operator<<(std::ostream&s, const LongClass &v) {
+		std::ostream::sentry ss( s ); 
+		if ( ss ) { 
+		   __int128_t value = v.val; 
+		   //https://stackoverflow.com/questions/25114597/how-to-print-int128-in-g 
+		   __uint128_t tmp = value < 0 ? -value : value; 
+		   char buffer[ 128 ]; 
+		   char* d = std::end( buffer ); 
+		   do 
+		   { 
+		     -- d; 
+		     *d = "0123456789"[ tmp % 10 ]; 
+		     tmp /= 10; 
+		   } while ( tmp != 0 ); 
+		   if ( value < 0 ) { 
+		      -- d; 
+		      *d = '-'; 
+		   } 
+		   int len = std::end( buffer ) - d; 
+		   if ( s.rdbuf()->sputn( d, len ) != len ) { 
+		      s.setstate( std::ios_base::badbit ); 
+		} 
+	       } 
+	       return s; 
+	  }
+	"""
+        add_once_global(printed)
+        add_once_global("bool operator==(const LongClass &x, const LongClass &y) {return x.val == y.val;}\n")
+        self.loval = loval
+        self.hival = hival
+        XBVI.__init__(self,classname,bits,baseclass='LongClass',constructors="CLASSNAME(int128_t v) : BASECLASS(v) {}")
+
+
+    def emit_templates(self):
+        XBVI.emit_templates(self)
+        add_impl(
+"""
+int128_t atoint128_t(std::string const & in)
+{
+    //https://stackoverflow.com/questions/45608424/atoi-for-int128-t-type
+    int128_t res = 0;
+    size_t i = 0;
+    bool sign = false;
+
+    if (in[i] == '-')
+    {
+        ++i;
+        sign = true;
+    }
+
+    if (in[i] == '+')
+    {
+        ++i;
+    }
+
+    for (; i < in.size(); ++i)
+    {
+        const char c = in[i];
+        if (not std::isdigit(c)) 
+            throw std::runtime_error(std::string("Non-numeric character: ") + c);
+        res *= 10;
+        res += c - '0';
+    }
+
+    if (sign)
+    {
+        res *= -1;
+    }
+
+    return res;
+}
+
+std::ostream &operator <<(std::ostream &s, const CLASSNAME &t){
+    //s << t.val;
+    std::ostream::sentry ss( s ); 
+    if ( ss ) { 
+	__int128_t value = t.val; 
+	//https://stackoverflow.com/questions/25114597/how-to-print-int128-in-g 
+	__uint128_t tmp = value < 0 ? -value : value; 
+	char buffer[ 128 ]; 
+	char* d = std::end( buffer ); 
+	do 
+	{ 
+	  -- d; 
+	  *d = "0123456789"[ tmp % 10 ]; 
+	  tmp /= 10; 
+	} while ( tmp != 0 ); 
+	  if ( value < 0 ) { 
+	     -- d; 
+	     *d = '-'; 
+	} 
+	int len = std::end( buffer ) - d; 
+	if ( s.rdbuf()->sputn( d, len ) != len ) { 
+	    s.setstate( std::ios_base::badbit ); 
+	} 
+    } 
+    return s;
+}
+
+template <>
+CLASSNAME _arg<CLASSNAME>(std::vector<ivy_value> &args, unsigned idx, long long bound) {
+    if (args[idx].fields.size())
+        throw out_of_bounds(idx);
+    CLASSNAME res;
+   // res.val = int128_t(args[idx].atom.c_str());
+    return res;
+    /*if (args[idx].fields.size())
+        throw out_of_bounds(idx);
+    CLASSNAME res;
+//    res.val = atoll(args[idx].atom.c_str());
+    std::istringstream s(args[idx].atom.c_str());
+    s.unsetf(std::ios::dec);
+    s.unsetf(std::ios::hex);
+    s.unsetf(std::ios::oct);
+    s  >> res.val;
+//    unsigned long long res = atoll(args[idx].atom.c_str());
+    return res;*/
+}
+template <>
+void __ser<CLASSNAME>(ivy_ser &res, const CLASSNAME &inp) {
+    res.set((long long)inp.val);
+}
+template <>
+void __deser<CLASSNAME>(ivy_deser &inp, CLASSNAME &res) {
+    long long temp;
+    inp.get(temp);
+    res = temp;
+}
+template <>
+void __ser<CLASSNAME>(ivy_ser_128 &res, const CLASSNAME &inp) {
+    res.set(inp.val);
+}
+template <>
+void __deser<CLASSNAME>(ivy_deser_128 &inp, CLASSNAME &res) {
+    inp.get(res.val);
+}
+BASECLASS CLASSNAME::random_x(){
+    return RAND;
+}
+""".replace('BITS',str(self.bits)).replace('CLASSNAME',self.short_name()).replace('BASECLASS',self.baseclass).replace('LOVAL',str(self.loval)).replace('HIVAL',str(self.hival)).replace('RAND',self.rand()))
+
+    def card(self):
+        return self.hival - self.loval + 1 # Note this is cardinality of the int type, not the bit vector type
+
+    def literal(self,s):
+        return str(s)
+
+    def rand(self):
+            return '((rand()%{}) + {})'.format(self.card(),self.loval) # TODO: let user control random string generation
+
 
 
 class VariantType(CppClass):
@@ -379,6 +689,7 @@ CLASSNAME _arg<CLASSNAME>(std::vector<ivy_value> &args, unsigned idx, long long 
        for idx,var in enumerate(self.variants):
            sort,ctype = var
            add_impl('    if (args[idx].fields[0].atom == "{}") return {};\n'.format(sort.name,self.upcast(idx,'_arg<{}>(args[idx].fields[0].fields,0,0)'.format(ctype))))
+
        add_impl(
 """
         throw out_of_bounds("unexpected field sort SORTNAME: " + args[idx].fields[0].atom, args[idx].pos);
@@ -412,6 +723,42 @@ void __deser<CLASSNAME>(ivy_deser &res, CLASSNAME &inp) {
     }
     res.close_tag();
 }
+""")
+#CHRIIS
+       add_impl(
+"""
+template <>
+void __ser<CLASSNAME>(ivy_ser_128 &res, const CLASSNAME &inp) {
+""".replace('CLASSNAME',self.short_name()))
+       for idx,var in enumerate(self.variants):
+           sort,ctype = var
+           add_impl('    if (inp.tag == {}) {{res.open_tag({},"{}"); __ser(res,{}); res.close_tag();}}\n'.format(idx,idx,sort.name,self.downcast(idx,'inp')))
+       add_impl(
+"""
+}
+template <>
+void __deser<CLASSNAME>(ivy_deser_128 &res, CLASSNAME &inp) {
+    std::vector<std::string> tags;
+""".replace('CLASSNAME',self.short_name()))
+       for idx,var in enumerate(self.variants):
+           sort,ctype = var
+           add_impl('    tags.push_back("{}");\n'.format(sort.name))
+       add_impl(
+"""
+    int tag = res.open_tag(tags);
+    switch (tag) {
+""".replace('CLASSNAME',self.short_name()))
+       for idx,var in enumerate(self.variants):
+           sort,ctype = var
+           add_impl('    case {}: {{{} tmp; __deser(res,tmp); inp = {}; break;}} \n'.format(idx,ctype,self.upcast(idx,'tmp')))
+       add_impl(
+"""
+    }
+    res.close_tag();
+}
+""")
+#CHRIIS
+       add_impl("""
 #ifdef Z3PP_H_
 template <>
 void __from_solver<CLASSNAME>( gen &g, const  z3::expr &v, CLASSNAME &res) {
@@ -503,7 +850,8 @@ def parse_descr(name):
 
 cpptypes_by_title = {
     'strbv' : (StrBV,1),
-    'intbv' : (IntBV,3)
+    'intbv' : (IntBV,3),
+    'longbv' : (LongBV,3)
 }
 
 def get_cpptype_constructor(descr):

@@ -265,7 +265,8 @@ module tcp_impl(addr,pkt,me,port_base) = {
 //            std::cout << "RECEIVING\n";
 
             `pkt` pkt;                      // holds received message
-            ivy_socket_deser ds(sock,buf);  // initializer deserialize with any leftover bytes
+            //ivy_socket_deser ds(sock,buf);  // initializer deserialize with any leftover bytes
+            ivy_socket_deser_128 ds(sock,buf);  // initializer deserialize with any leftover bytes
             buf.clear();                    // clear the leftover bytes
 
             try {
@@ -614,7 +615,8 @@ module tcp_impl(addr,pkt,me,port_base) = {
 
     implement send(s:socket,p:pkt) returns (ok:bool) {
         <<< impure
-                ivy_binary_ser sr;
+                //ivy_binary_ser sr;
+                ivy_binary_ser_128 sr;
                 __ser(sr,p);
 //                std::cout << "SENDING\n";
 

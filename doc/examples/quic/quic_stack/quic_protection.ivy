@@ -318,13 +318,15 @@ object quic_prot_ser = {}
 
 <<< impl
 
-    class `quic_prot_ser` : public ivy_binary_ser {
+    class `quic_prot_ser` : public ivy_binary_ser_128 {
+    //class `quic_prot_ser` : public ivy_binary_ser {
     public:
 
         void open_list(int) {
         }
 
-        virtual void  set(long long res) {
+        virtual void  set(int128_t res) {
+        //virtual void  set(long long res) {
             setn(res,1);
         }    
     };
@@ -347,13 +349,16 @@ object quic_prot_deser = {}
 
 <<< impl
 
-    class `quic_prot_deser` : public ivy_binary_deser {
+    class `quic_prot_deser` : public ivy_binary_deser_128 {
+    //class `quic_prot_deser` : public ivy_binary_deser {
         int data_remaining;
         int level;
     public:
-        quic_prot_deser(const std::vector<char> &inp) : ivy_binary_deser(inp),level(0) {}
+        quic_prot_deser(const std::vector<char> &inp) : ivy_binary_deser_128(inp),level(0) {}
+        //quic_prot_deser(const std::vector<char> &inp) : ivy_binary_deser(inp),level(0) {}
 
-        void  get(long long &res) {
+        void  get(int128_t &res) {
+        //void  get(long long &res) {
             getn(res,1);
         }    
 

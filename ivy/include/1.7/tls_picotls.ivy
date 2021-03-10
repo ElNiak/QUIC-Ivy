@@ -400,13 +400,14 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ptls_raw_extension_t *ptls_exts = new ptls_raw_extension_t[e.size()+1];
         for (unsigned i = 0; i < e.size(); i++) {
             `exten_ser` ser;
+	    std::cout << "etype =" << std::endl;  
             __ser(ser,e[i]);
             unsigned etype = (((unsigned char)(ser.res[0])) << 8) + ((unsigned char)(ser.res[1]));
             unsigned len = (((unsigned char)(ser.res[2])) << 8) + ((unsigned char)(ser.res[3]));
             unsigned char *data = new unsigned char[ser.res.size()-4];
             std::copy(ser.res.begin()+4,ser.res.end(),data);
             ptls_exts[i].type = etype;
-            //std::cerr << "etype =" << etype << std::endl;  
+            std::cout << "etype =" << etype << std::endl;  
             ptls_exts[i].data.base = data;
             //std::cerr << "data =" << data << std::endl;  
             ptls_exts[i].data.len = len;

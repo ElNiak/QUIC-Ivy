@@ -363,8 +363,10 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     require pkt.ptype = queued_level(scid);
 
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
-    require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
-
+    # Removed for MVFST that start with big PKT_NUM
+    if  _generating {
+        require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
+    };
 
     require ~sent_pkt(scid,pkt.ptype,pkt.seq_num);  # [4]
     sent_pkt(scid,pkt.ptype,pkt.seq_num) := true;  # [1]
@@ -624,11 +626,11 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
         trans_params(scid) := tps.transport_parameters.value(idx).set(trans_params(scid));
         idx := idx.next
     };
-    require initial_max_stream_data_bidi_local.is_set(trans_params(scid));  # [1]
-    require initial_max_data.is_set(trans_params(scid));  # [2]
+    #require initial_max_stream_data_bidi_local.is_set(trans_params(scid));  # [1]
+    #require initial_max_data.is_set(trans_params(scid));  # [2]
     #require max_idle_timeout.is_set(trans_params(scid));  # [3] TODO
-    require initial_max_stream_data_bidi_remote.is_set(trans_params(scid));  # [1]
-    require initial_max_stream_data_uni.is_set(trans_params(scid));  # [1]
+    #require initial_max_stream_data_bidi_remote.is_set(trans_params(scid));  # [1]
+    #require initial_max_stream_data_uni.is_set(trans_params(scid));  # [1]
     if _generating { 
         # for tests where we check that the implementation behave well if not present 
         require initial_source_connection_id.is_set(trans_params(scid));  # [5]
