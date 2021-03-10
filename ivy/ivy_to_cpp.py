@@ -2894,7 +2894,7 @@ struct ivy_binary_ser_128 : public ivy_ser_128 {
     std::vector<char> res;
     void setn(int128_t inp, int len) {
         for (int i = len-1; i >= 0 ; i--)
-            res.push_back((inp>>(8*i))&0xff); //16 ?
+            res.push_back((inp>>(16*i))&0xff); //16 ?
     }
     void set(int128_t inp) {
         setn(inp,sizeof(int128_t));
@@ -2960,7 +2960,7 @@ struct ivy_binary_deser_128 : public ivy_deser_128 {
             throw deser_err();
         } res = 0;
         for (int i = 0; i < bytes; i++)
-            res = (res << 8) | (((int128_t)inp[pos++]) & 0xff);
+            res = (res << 16) | (((int128_t)inp[pos++]) & 0xff);
     }
     void get(std::string &res) {
         while (more(1) && inp[pos]) {
