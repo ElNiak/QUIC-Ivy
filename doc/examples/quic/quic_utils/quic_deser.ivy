@@ -155,7 +155,7 @@ object quic_deser = {}
                 if (long_format) {
                     ivy_binary_deser_128::getn(res,4);
                     //ivy_binary_deser::getn(res,4);
-		}
+	        	}
                 else
                     res = 0;
                 state = quic_s_dcid;
@@ -173,19 +173,8 @@ object quic_deser = {}
                 } else {
                     dcil = dcid_h; //dcil_long
                 }
-		getn(res,(dcil));
-		/*if(dcil != 8) { //tricks
-	           //tls_field_bytes_map["dcid"] = dcil;
-		   char str[20];
-		   char dest[20] = "TEST_DCIL=";
-		   sprintf(str,"%d",dcil);
-		   std::cerr << "str res " << str << std::endl;
-		   strcat(dest,str);
-		   std::cerr << "dest res " << dest << std::endl;
-		   if(putenv(dest) != 0) 
-			fprintf(stderr, "putenv failed\n");
-		}*/
-                std::cerr << "dstID res " << res << std::endl;
+		        getn(res,(dcil));
+                //std::cerr << "dstID res " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
@@ -195,30 +184,29 @@ object quic_deser = {}
                     int128_t cil;
                     //long long cil;
                     getn(cil,1);
-                    std::cerr << "sourceID size " << cil << std::endl;  
-		    if(cil > 0)
-			have_scid = true;
-		    else 
-			have_scid = false;
+                    //std::cerr << "sourceID size " << cil << std::endl;  
+                    if(cil > 0)
+                        have_scid = true;
+                    else 
+                        have_scid = false;
                     scil = cil;
                     scid_h = cil;
                 } else {
                     scil = 0;
                 }
-		getn(res,scil);
-		/*if(scil != 8) { //tricks
-		   tls_field_bytes_map["scid"] = scil;
-		}*/
-                std::cerr << "sourceID res " << res << std::endl;
+                getn(res,scil);
+                /*if(scil != 8) { //tricks
+                tls_field_bytes_map["scid"] = scil;
+                }*/
+                //std::cerr << "sourceID res " << res << std::endl;
                 int128_t len;
                 //long long len;
                 if (long_format & ((hdr_type & 0x30) == 0x00)){
-		    std::cerr << "yoylog " << std::endl;
                     get_var_int(len);
-		}
+		        }
                 else len = 0;
                 data_remaining = len;
-		std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
+		        //std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
                 state = quic_s_retry_token;
             }
             break;
@@ -327,11 +315,10 @@ object quic_deser = {}
             break;*/
             case quic_s_retry_token:
             {
-		//if(have_scid)
-		//std::cerr << "sourceID quic_s_retry_token 1 " << res << std::endl;
+		        //std::cerr << "sourceID quic_s_retry_token 1 " << res << std::endl;
                 ivy_binary_deser_128::getn(res,1);
                 //ivy_binary_deser::getn(res,1);
-		//std::cerr << "sourceID quic_s_retry_token 2" << res << std::endl;
+		        //std::cerr << "sourceID quic_s_retry_token 2" << res << std::endl;
             }
             break;
             case quic_ack_largest:
@@ -609,9 +596,9 @@ object quic_deser = {}
                 }
                 std::cerr << "saw tag " << ft << std::endl;  
             }
-            std::cout << "state          = " << state << std::endl;  
-            std::cout << "quic_s_payload = " << quic_s_payload << std::endl;
-            std::cout << "quic_s_payload == " << (quic_s_payload == state) << std::endl;
+            //std::cout << "state          = " << state << std::endl;  
+            //std::cout << "quic_s_payload = " << quic_s_payload << std::endl;
+            //std::cout << "quic_s_payload == " << (quic_s_payload == state) << std::endl;
             std::cout << "quic_deser 2" << std::endl;  
             throw deser_err();
         }

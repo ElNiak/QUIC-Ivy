@@ -239,7 +239,7 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 # TLS here in the shim.
 
 after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
-    var ikm := cid_to_bytes(nonce,8);
+    var ikm := cid_to_bytes(nonce,cid_size(nonce));
     var salt : stream_data := stream_data.empty;
 
         #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
@@ -319,16 +319,22 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     if ~tp_client_set {
         var lens := spkt.value(5);
         var dcil : stream_pos := bfe[0][7](spkt.value(5));
-        var ikm := spkt.segment(6,6+dcil); # dcid
-        
+        var ikm := cid_to_bytes(0,1); # dcid
+	if(~dcil = 0) {
+	    ikm := spkt.segment(6,6+dcil); # dcid
+        };
         var lenss := spkt.value(6+dcil);
         var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
-        var skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
-        
+        var skm := cid_to_bytes(0,1); # scid
+        if(~scil = 0) {
+	    skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # dcid
+        };
+
         client_initial_dcid := bytes_to_cid(ikm);
         client_initial_scid := bytes_to_cid(skm); # skm
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
+	call export_length_cid_extension(dcil,scil);
         call tls_api.upper.create(0,true,extns);  
         # 'true' means this instance of tls is a server
         tp_client_set := true;
@@ -476,12 +482,30 @@ action cid_to_bytes(c:cid,len:cid_length) returns(res:stream_data) = {
     >>>
 }
 
+action cid_size(c:cid) returns(res:cid_length) = {
+    <<<
+    res = 0;
+    if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
+      if(strcmp(env_p2, "client") == 0) {
+         if(const char* env_p3 = std::getenv("TEST_SCIL")) {
+            //std::cout << "TEST_SCIL " << env_p3 << std::endl;
+	        res = atoi(env_p3);
+         } else 
+	   res = 8;
+      } else 
+	  res = 8;
+    } else 
+      res = 8;
+    //std::cerr <<  "cid_size size: " <<  res << std::endl;
+    >>>
+}
+
 action hi_byte_pos(x:stream_pos) returns (res:byte) = {
     <<< res = (x >> 8) & 0xff; >>>
 }
 
 action lo_byte_pos(x:stream_pos) returns (res:byte) = {
-    <<< res = x  & 0xff; >>>
+    <<< res = x & 0xff; >>>
 }
 
 action bytes_to_cid(bytes:stream_data) returns (val:cid) = {
@@ -489,5 +513,26 @@ action bytes_to_cid(bytes:stream_data) returns (val:cid) = {
     val.val = 0;
     for (unsigned i = 0; i < bytes.size(); i++)
         val.val = (val.val << 8) + bytes[i];
+    >>>
+}
+
+# Hack, should be moved
+# Here we set environment variable to indicate to the tls_ser
+# the size of the cids for parsing
+# For now we use environment variable to avoid touching too much
+# to the parse but should be done too
+action export_length_cid_extension(dcil:stream_pos,scil:stream_pos) = {
+    <<<
+
+	char str_d[20];
+	sprintf(str_d,"%llu",dcil);
+	if(setenv("TEST_DCIL",str_d,true) != 0) 
+		fprintf(stderr, "setenv failed\n");
+
+	char str[20];
+	sprintf(str,"%llu",scil);
+	if(setenv("TEST_SCIL",str,true) != 0) 
+		fprintf(stderr, "setenv failed\n");
+
     >>>
 }
