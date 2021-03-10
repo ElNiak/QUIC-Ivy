@@ -12,55 +12,12 @@ object quic_ser = {}
 
 <<< impl
 
-    //TODO check old version
-
-    /*typedef struct transport_error_struct {
-        const char *name;
-        int value;
-    } *transport_error_struct_ptr;
-
-    struct transport_error_map : hash_space::hash_map<std::string,int> {};
-    
-    struct transport_error_struct transport_error_codes[17] = {
-        {"no_error",0x0},
-        {"internal_error",0x1},
-        {"server_busy",0x2},
-        {"flow_control_error",0x3},
-        {"stream_limit_error",0x4},
-        {"stream_state_error",0x5},
-        {"final_size_error",0x6},
-        {"frame_encoding_error",0x7},
-        {"transport_parameter_error",0x8},
-        {"connection_id_limit_error",0x9},
-        {"protocol_violation",0xa},
-        {"invalid_token",0xb},
-        {"application_error",0xc},
-        {"crypto_buffer_exceeded",0xd},
-        {"crypto_error",-1},
-       {0,0}
-    };
-    transport_error_map transport_error_codes_map;
-
-    void transport_error_name_map(transport_error_struct *vals, transport_error_map &map) {
-        while (vals->name) {
-            map[vals->name] = vals->value;
-            vals++;
-        }
-    }*/
-
     //TODO
-<<<<<<< HEAD
     #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     //#include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     
     class `quic_ser` : public ivy_binary_ser_128 {
     //class `quic_ser` : public ivy_binary_ser {
-=======
-    //#include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
-    #include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
-    
-    class `quic_ser` : public ivy_binary_ser {
->>>>>>> bfe3e0a9bf756db0a6a2dc32dfc10d121b3d4499
         enum {quic_s_init,
               quic_s_version,
 	          quic_s_dcil,

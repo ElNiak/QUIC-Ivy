@@ -4,6 +4,42 @@ extern int scid_h;
 extern int dcid_h;
 #include <inttypes.h>
 
+
+    /*typedef struct transport_error_struct {
+        const char *name;
+        int value;
+    } *transport_error_struct_ptr;
+
+    struct transport_error_map : hash_space::hash_map<std::string,int> {};
+    
+    struct transport_error_struct transport_error_codes[17] = {
+        {"no_error",0x0},
+        {"internal_error",0x1},
+        {"server_busy",0x2},
+        {"flow_control_error",0x3},
+        {"stream_limit_error",0x4},
+        {"stream_state_error",0x5},
+        {"final_size_error",0x6},
+        {"frame_encoding_error",0x7},
+        {"transport_parameter_error",0x8},
+        {"connection_id_limit_error",0x9},
+        {"protocol_violation",0xa},
+        {"invalid_token",0xb},
+        {"application_error",0xc},
+        {"crypto_buffer_exceeded",0xd},
+        {"crypto_error",-1},
+       {0,0}
+    };
+    transport_error_map transport_error_codes_map;
+
+    void transport_error_name_map(transport_error_struct *vals, transport_error_map &map) {
+        while (vals->name) {
+            map[vals->name] = vals->value;
+            vals++;
+        }
+    }*/
+
+
 typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
 
