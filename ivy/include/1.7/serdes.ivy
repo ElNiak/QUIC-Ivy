@@ -60,15 +60,20 @@ module serdes(data,bytes,serializer,deserializer) = {
 
 <<< header
 
-    class ivy_binary_ser;
-    class ivy_binary_deser;
+    //class ivy_binary_ser;
+    //class ivy_binary_deser;
+    class ivy_binary_ser_128;
+    class ivy_binary_deser_128;
+
 
 >>>
 
 <<< member
 
-    typedef ivy_binary_ser `std_serializer`;
-    typedef ivy_binary_deser `std_deserializer`;
+    //typedef ivy_binary_ser `std_serializer`;
+    //typedef ivy_binary_deser `std_deserializer`;
+    typedef ivy_binary_ser_128 `std_serializer`;
+    typedef ivy_binary_deser_128 `std_deserializer`;
 
 >>>
 

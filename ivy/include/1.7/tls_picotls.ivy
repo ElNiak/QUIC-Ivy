@@ -402,6 +402,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ptls_raw_extension_t *ptls_exts = new ptls_raw_extension_t[e.size()+1];
         for (unsigned i = 0; i < e.size(); i++) {
             `exten_ser` ser;
+	        //std::cout << "etype =" << std::endl;  
             __ser(ser,e[i]);
             unsigned etype = (((unsigned char)(ser.res[0])) << 8) + ((unsigned char)(ser.res[1]));
             unsigned len = (((unsigned char)(ser.res[2])) << 8) + ((unsigned char)(ser.res[3]));

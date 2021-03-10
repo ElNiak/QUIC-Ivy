@@ -154,6 +154,29 @@ module array_impl = {
 	        res.close_list();
 	    }
 
+	    template <>
+	    void __deser<`t`>(ivy_deser_128 &inp, `t` &res) {
+	        inp.open_list();
+	        while(inp.open_list_elem()) {
+		    res.resize(res.size()+1);
+	            __deser(inp,res.back());
+		    inp.close_list_elem();
+                }
+		inp.close_list();
+	    }
+
+	    template <>
+	    void __ser<`t`>(ivy_ser_128 &res, const `t` &inp) {
+	        int sz = inp.size();
+	        res.open_list(sz);
+	        for (unsigned i = 0; i < (unsigned)sz; i++) {
+		    res.open_list_elem();
+	            __ser(res,inp[i]);
+		    res.close_list_elem();
+                }
+	        res.close_list();
+	    }
+
 	    #ifdef Z3PP_H_
 	    template <>
             z3::expr __to_solver(gen& g, const z3::expr& z3val, `t`& val) {

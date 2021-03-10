@@ -49,10 +49,18 @@ object quic_ser = {}
     }*/
 
     //TODO
+<<<<<<< HEAD
+    #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    //#include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    
+    class `quic_ser` : public ivy_binary_ser_128 {
+    //class `quic_ser` : public ivy_binary_ser {
+=======
     //#include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     #include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     
     class `quic_ser` : public ivy_binary_ser {
+>>>>>>> bfe3e0a9bf756db0a6a2dc32dfc10d121b3d4499
         enum {quic_s_init,
               quic_s_version,
 	          quic_s_dcil,
@@ -112,15 +120,18 @@ object quic_ser = {}
         int scil;
         long frame_type;
         int data_remaining;
-        long long ack_blocks_expected;
-        long long ack_block_count;
+        int128_t ack_blocks_expected;
+        int128_t ack_block_count;
+        //long long ack_blocks_expected;
+        //long long ack_block_count;
         int payload_length_pos;
         int fence;
 
     public:
         quic_ser() : state(quic_s_init) {
         }
-        virtual void  set(long long res) {
+        virtual void  set(int128_t res) {
+        //virtual void  set(long long res) {
             switch (state) {
             case quic_s_init:
             {
@@ -140,21 +151,23 @@ object quic_ser = {}
             break;
             case quic_s_dcid:
             {
-                //std::cerr << "ser res dcid 1 " << res << std::endl;
+                std::cerr << "ser res dcid 1 " << res << std::endl;
                 if (long_format) {
                     setn(scid_h,1);
                 }
-		        setn(res,scid_h); //scid_h
-                //std::cerr << "ser res dcid 2 " << res << std::endl;
+		setn(res,scid_h); //scid_h
+                std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
             case quic_s_scid:
             {
+		std::cerr << "ser res scid_h 1 " << res << std::endl;
                 if (long_format) {
-                    setn(dcid_h,1);
-		            setn(res,dcid_h);
+                    setn(8,1);
+		    setn(res,8);
                 }
+		std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token_length;
             }
             break;
@@ -385,15 +398,18 @@ object quic_ser = {}
             }
         }
 
-        void set_var_int(long long res) {
-            long long val = res & 0x3fffffffffffffff;
+        void set_var_int(int128_t res) {
+            int128_t val = res & 0x3fffffffffffffff; //TODO modify with 16 bytes mask
+        //void set_var_int(long long res) {
+        //    long long val = res & 0x3fffffffffffffff; //TODO modify with 16 bytes mask
             int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
             int bytes = 1 << bytecode;
             val |= bytecode << ((bytes << 3) - 2);
             setn(val,bytes);
         }
 
-        void set_pkt_num(long long &res) {
+        void set_pkt_num(int128_t &res) {
+        //void set_pkt_num(long long &res) {
             // setn(0xc0000000 | (0x3fffffff & res),4);
             // pkt number length is low two bits of first packet byte, plus one 
             setn(res,(hdr_type & 3) + 1);

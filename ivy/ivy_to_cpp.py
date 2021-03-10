@@ -28,6 +28,658 @@ from collections import defaultdict
 from operator import mul
 import re
 
+hash_h = """
+/*++
+  Copyright (c) Microsoft Corporation
+
+  This hash template is borrowed from Microsoft Z3
+  (https://github.com/Z3Prover/z3).
+
+  Simple implementation of bucket-list hash tables conforming roughly
+  to SGI hash_map and hash_set interfaces, though not all members are
+  implemented.
+
+  These hash tables have the property that insert preserves iterators
+  and references to elements.
+
+  This package lives in namespace hash_space. Specializations of
+  class "hash" should be made in this namespace.
+
+  --*/
+
+#pragma once
+
+#ifndef HASH_H
+#define HASH_H
+
+#ifdef _WINDOWS
+#pragma warning(disable:4267)
+#endif
+
+#include <string>
+#include <vector>
+#include <iterator>
+#include <fstream>
+
+namespace hash_space {
+
+    unsigned string_hash(const char * str, unsigned length, unsigned init_value);
+
+    template <typename T> class hash {
+    public:
+        size_t operator()(const T &s) const {
+            return s.__hash();
+        }
+    };
+
+    template <>
+        class hash<int> {
+    public:
+        size_t operator()(const int &s) const {
+            return s;
+        }
+    };
+
+    template <>
+        class hash<long long> {
+    public:
+        size_t operator()(const long long &s) const {
+            return s;
+        }
+    };
+
+    template <>
+        class hash<unsigned> {
+    public:
+        size_t operator()(const unsigned &s) const {
+            return s;
+        }
+    };
+
+    template <>
+        class hash<unsigned long long> {
+    public:
+        size_t operator()(const unsigned long long &s) const {
+            return s;
+        }
+    };
+
+    template <>
+        class hash<bool> {
+    public:
+        size_t operator()(const bool &s) const {
+            return s;
+        }
+    };
+
+    template <>
+        class hash<std::string> {
+    public:
+        size_t operator()(const std::string &s) const {
+            return string_hash(s.c_str(), (unsigned)s.size(), 0);
+        }
+    };
+
+    template <>
+        class hash<std::pair<int,int> > {
+    public:
+        size_t operator()(const std::pair<int,int> &p) const {
+            return p.first + p.second;
+        }
+    };
+
+    template <typename T>
+        class hash<std::vector<T> > {
+    public:
+        size_t operator()(const std::vector<T> &p) const {
+            hash<T> h;
+            size_t res = 0;
+            for (unsigned i = 0; i < p.size(); i++)
+                res += h(p[i]);
+            return res;
+        }
+    };
+
+    template <class T>
+        class hash<std::pair<T *, T *> > {
+    public:
+        size_t operator()(const std::pair<T *,T *> &p) const {
+            return (size_t)p.first + (size_t)p.second;
+        }
+    };
+
+    template <class T>
+        class hash<T *> {
+    public:
+        size_t operator()(T * const &p) const {
+            return (size_t)p;
+        }
+    };
+
+    enum { num_primes = 29 };
+
+    static const unsigned long primes[num_primes] =
+        {
+            7ul,
+            53ul,
+            97ul,
+            193ul,
+            389ul,
+            769ul,
+            1543ul,
+            3079ul,
+            6151ul,
+            12289ul,
+            24593ul,
+            49157ul,
+            98317ul,
+            196613ul,
+            393241ul,
+            786433ul,
+            1572869ul,
+            3145739ul,
+            6291469ul,
+            12582917ul,
+            25165843ul,
+            50331653ul,
+            100663319ul,
+            201326611ul,
+            402653189ul,
+            805306457ul,
+            1610612741ul,
+            3221225473ul,
+            4294967291ul
+        };
+
+    inline unsigned long next_prime(unsigned long n) {
+        const unsigned long* to = primes + (int)num_primes;
+        for(const unsigned long* p = primes; p < to; p++)
+            if(*p >= n) return *p;
+        return primes[num_primes-1];
+    }
+
+    template<class Value, class Key, class HashFun, class GetKey, class KeyEqFun>
+        class hashtable
+    {
+    public:
+
+        typedef Value &reference;
+        typedef const Value &const_reference;
+    
+        struct Entry
+        {
+            Entry* next;
+            Value val;
+      
+        Entry(const Value &_val) : val(_val) {next = 0;}
+        };
+    
+
+        struct iterator
+        {      
+            Entry* ent;
+            hashtable* tab;
+
+            typedef std::forward_iterator_tag iterator_category;
+            typedef Value value_type;
+            typedef std::ptrdiff_t difference_type;
+            typedef size_t size_type;
+            typedef Value& reference;
+            typedef Value* pointer;
+
+        iterator(Entry* _ent, hashtable* _tab) : ent(_ent), tab(_tab) { }
+
+            iterator() { }
+
+            Value &operator*() const { return ent->val; }
+
+            Value *operator->() const { return &(operator*()); }
+
+            iterator &operator++() {
+                Entry *old = ent;
+                ent = ent->next;
+                if (!ent) {
+                    size_t bucket = tab->get_bucket(old->val);
+                    while (!ent && ++bucket < tab->buckets.size())
+                        ent = tab->buckets[bucket];
+                }
+                return *this;
+            }
+
+            iterator operator++(int) {
+                iterator tmp = *this;
+                operator++();
+                return tmp;
+            }
+
+
+            bool operator==(const iterator& it) const { 
+                return ent == it.ent;
+            }
+
+            bool operator!=(const iterator& it) const {
+                return ent != it.ent;
+            }
+        };
+
+        struct const_iterator
+        {      
+            const Entry* ent;
+            const hashtable* tab;
+
+            typedef std::forward_iterator_tag iterator_category;
+            typedef Value value_type;
+            typedef std::ptrdiff_t difference_type;
+            typedef size_t size_type;
+            typedef const Value& reference;
+            typedef const Value* pointer;
+
+        const_iterator(const Entry* _ent, const hashtable* _tab) : ent(_ent), tab(_tab) { }
+
+            const_iterator() { }
+
+            const Value &operator*() const { return ent->val; }
+
+            const Value *operator->() const { return &(operator*()); }
+
+            const_iterator &operator++() {
+                const Entry *old = ent;
+                ent = ent->next;
+                if (!ent) {
+                    size_t bucket = tab->get_bucket(old->val);
+                    while (!ent && ++bucket < tab->buckets.size())
+                        ent = tab->buckets[bucket];
+                }
+                return *this;
+            }
+
+            const_iterator operator++(int) {
+                const_iterator tmp = *this;
+                operator++();
+                return tmp;
+            }
+
+
+            bool operator==(const const_iterator& it) const { 
+                return ent == it.ent;
+            }
+
+            bool operator!=(const const_iterator& it) const {
+                return ent != it.ent;
+            }
+        };
+
+    private:
+
+        typedef std::vector<Entry*> Table;
+
+        Table buckets;
+        size_t entries;
+        HashFun hash_fun ;
+        GetKey get_key;
+        KeyEqFun key_eq_fun;
+    
+    public:
+
+    hashtable(size_t init_size) : buckets(init_size,(Entry *)0) {
+            entries = 0;
+        }
+    
+        hashtable(const hashtable& other) {
+            dup(other);
+        }
+
+        hashtable& operator= (const hashtable& other) {
+            if (&other != this)
+                dup(other);
+            return *this;
+        }
+
+        ~hashtable() {
+            clear();
+        }
+
+        size_t size() const { 
+            return entries;
+        }
+
+        bool empty() const { 
+            return size() == 0;
+        }
+
+        void swap(hashtable& other) {
+            buckets.swap(other.buckets);
+            std::swap(entries, other.entries);
+        }
+    
+        iterator begin() {
+            for (size_t i = 0; i < buckets.size(); ++i)
+                if (buckets[i])
+                    return iterator(buckets[i], this);
+            return end();
+        }
+    
+        iterator end() { 
+            return iterator(0, this);
+        }
+
+        const_iterator begin() const {
+            for (size_t i = 0; i < buckets.size(); ++i)
+                if (buckets[i])
+                    return const_iterator(buckets[i], this);
+            return end();
+        }
+    
+        const_iterator end() const { 
+            return const_iterator(0, this);
+        }
+    
+        size_t get_bucket(const Value& val, size_t n) const {
+            return hash_fun(get_key(val)) % n;
+        }
+    
+        size_t get_key_bucket(const Key& key) const {
+            return hash_fun(key) % buckets.size();
+        }
+
+        size_t get_bucket(const Value& val) const {
+            return get_bucket(val,buckets.size());
+        }
+
+        Entry *lookup(const Value& val, bool ins = false)
+        {
+            resize(entries + 1);
+
+            size_t n = get_bucket(val);
+            Entry* from = buckets[n];
+      
+            for (Entry* ent = from; ent; ent = ent->next)
+                if (key_eq_fun(get_key(ent->val), get_key(val)))
+                    return ent;
+      
+            if(!ins) return 0;
+
+            Entry* tmp = new Entry(val);
+            tmp->next = from;
+            buckets[n] = tmp;
+            ++entries;
+            return tmp;
+        }
+
+        Entry *lookup_key(const Key& key) const
+        {
+            size_t n = get_key_bucket(key);
+            Entry* from = buckets[n];
+      
+            for (Entry* ent = from; ent; ent = ent->next)
+                if (key_eq_fun(get_key(ent->val), key))
+                    return ent;
+      
+            return 0;
+        }
+
+        const_iterator find(const Key& key) const {
+            return const_iterator(lookup_key(key),this);
+        }
+
+        iterator find(const Key& key) {
+            return iterator(lookup_key(key),this);
+        }
+
+        std::pair<iterator,bool> insert(const Value& val){
+            size_t old_entries = entries;
+            Entry *ent = lookup(val,true);
+            return std::pair<iterator,bool>(iterator(ent,this),entries > old_entries);
+        }
+    
+        iterator insert(const iterator &it, const Value& val){
+            Entry *ent = lookup(val,true);
+            return iterator(ent,this);
+        }
+
+        size_t erase(const Key& key)
+        {
+            Entry** p = &(buckets[get_key_bucket(key)]);
+            size_t count = 0;
+            while(*p){
+                Entry *q = *p;
+                if (key_eq_fun(get_key(q->val), key)) {
+                    ++count;
+                    *p = q->next;
+                    delete q;
+                }
+                else
+                    p = &(q->next);
+            }
+            entries -= count;
+            return count;
+        }
+
+        void resize(size_t new_size) {
+            const size_t old_n = buckets.size();
+            if (new_size <= old_n) return;
+            const size_t n = next_prime(new_size);
+            if (n <= old_n) return;
+            Table tmp(n, (Entry*)(0));
+            for (size_t i = 0; i < old_n; ++i) {
+                Entry* ent = buckets[i];
+                while (ent) {
+                    size_t new_bucket = get_bucket(ent->val, n);
+                    buckets[i] = ent->next;
+                    ent->next = tmp[new_bucket];
+                    tmp[new_bucket] = ent;
+                    ent = buckets[i];
+                }
+            }
+            buckets.swap(tmp);
+        }
+    
+        void clear()
+        {
+            for (size_t i = 0; i < buckets.size(); ++i) {
+                for (Entry* ent = buckets[i]; ent != 0;) {
+                    Entry* next = ent->next;
+                    delete ent;
+                    ent = next;
+                }
+                buckets[i] = 0;
+            }
+            entries = 0;
+        }
+
+        void dup(const hashtable& other)
+        {
+            clear();
+            buckets.resize(other.buckets.size());
+            for (size_t i = 0; i < other.buckets.size(); ++i) {
+                Entry** to = &buckets[i];
+                for (Entry* from = other.buckets[i]; from; from = from->next)
+                    to = &((*to = new Entry(from->val))->next);
+            }
+            entries = other.entries;
+        }
+    };
+
+    template <typename T> 
+        class equal {
+    public:
+        bool operator()(const T& x, const T &y) const {
+            return x == y;
+        }
+    };
+
+    template <typename T>
+        class identity {
+    public:
+        const T &operator()(const T &x) const {
+            return x;
+        }
+    };
+
+    template <typename T, typename U>
+        class proj1 {
+    public:
+        const T &operator()(const std::pair<T,U> &x) const {
+            return x.first;
+        }
+    };
+
+    template <typename Element, class HashFun = hash<Element>, 
+        class EqFun = equal<Element> >
+        class hash_set
+        : public hashtable<Element,Element,HashFun,identity<Element>,EqFun> {
+
+    public:
+
+    typedef Element value_type;
+
+    hash_set()
+    : hashtable<Element,Element,HashFun,identity<Element>,EqFun>(7) {}
+    };
+
+    template <typename Key, typename Value, class HashFun = hash<Key>, 
+        class EqFun = equal<Key> >
+        class hash_map
+        : public hashtable<std::pair<Key,Value>,Key,HashFun,proj1<Key,Value>,EqFun> {
+
+    public:
+
+    hash_map()
+    : hashtable<std::pair<Key,Value>,Key,HashFun,proj1<Key,Value>,EqFun>(7) {}
+
+    Value &operator[](const Key& key) {
+	std::pair<Key,Value> kvp(key,Value());
+	return 
+	hashtable<std::pair<Key,Value>,Key,HashFun,proj1<Key,Value>,EqFun>::
+        lookup(kvp,true)->val.second;
+    }
+    };
+
+    template <typename D,typename R>
+        class hash<hash_map<D,R> > {
+    public:
+        size_t operator()(const hash_map<D,R> &p) const {
+            hash<D > h1;
+            hash<R > h2;
+            size_t res = 0;
+            
+            for (typename hash_map<D,R>::const_iterator it=p.begin(), en=p.end(); it!=en; ++it)
+                res += (h1(it->first)+h2(it->second));
+            return res;
+        }
+    };
+
+    template <typename D,typename R>
+    inline bool operator ==(const hash_map<D,R> &s, const hash_map<D,R> &t){
+        for (typename hash_map<D,R>::const_iterator it=s.begin(), en=s.end(); it!=en; ++it) {
+            typename hash_map<D,R>::const_iterator it2 = t.find(it->first);
+            if (it2 == t.end() || !(it->second == it2->second)) return false;
+        }
+        for (typename hash_map<D,R>::const_iterator it=t.begin(), en=t.end(); it!=en; ++it) {
+            typename hash_map<D,R>::const_iterator it2 = s.find(it->first);
+            if (it2 == t.end() || !(it->second == it2->second)) return false;
+        }
+        return true;
+    }
+}
+#endif
+"""
+
+hash_cpp = """
+/*++
+Copyright (c) Microsoft Corporation
+
+This string hash function is borrowed from Microsoft Z3
+(https://github.com/Z3Prover/z3). 
+
+--*/
+
+
+#define mix(a,b,c)              \\
+{                               \\
+  a -= b; a -= c; a ^= (c>>13); \\
+  b -= c; b -= a; b ^= (a<<8);  \\
+  c -= a; c -= b; c ^= (b>>13); \\
+  a -= b; a -= c; a ^= (c>>12); \\
+  b -= c; b -= a; b ^= (a<<16); \\
+  c -= a; c -= b; c ^= (b>>5);  \\
+  a -= b; a -= c; a ^= (c>>3);  \\
+  b -= c; b -= a; b ^= (a<<10); \\
+  c -= a; c -= b; c ^= (b>>15); \\
+}
+
+#ifndef __fallthrough
+#define __fallthrough
+#endif
+
+namespace hash_space {
+
+// I'm using Bob Jenkin's hash function.
+// http://burtleburtle.net/bob/hash/doobs.html
+unsigned string_hash(const char * str, unsigned length, unsigned init_value) {
+    register unsigned a, b, c, len;
+
+    /* Set up the internal state */
+    len = length;
+    a = b = 0x9e3779b9;  /* the golden ratio; an arbitrary value */
+    c = init_value;      /* the previous hash value */
+
+    /*---------------------------------------- handle most of the key */
+    while (len >= 12) {
+        a += reinterpret_cast<const unsigned *>(str)[0];
+        b += reinterpret_cast<const unsigned *>(str)[1];
+        c += reinterpret_cast<const unsigned *>(str)[2];
+        mix(a,b,c);
+        str += 12; len -= 12;
+    }
+
+    /*------------------------------------- handle the last 11 bytes */
+    c += length;
+    switch(len) {        /* all the case statements fall through */
+    case 11: 
+        c+=((unsigned)str[10]<<24);
+        __fallthrough;
+    case 10: 
+        c+=((unsigned)str[9]<<16);
+        __fallthrough;
+    case 9 : 
+        c+=((unsigned)str[8]<<8);
+        __fallthrough;
+        /* the first byte of c is reserved for the length */
+    case 8 : 
+        b+=((unsigned)str[7]<<24);
+        __fallthrough;
+    case 7 : 
+        b+=((unsigned)str[6]<<16);
+        __fallthrough;
+    case 6 : 
+        b+=((unsigned)str[5]<<8);
+        __fallthrough;
+    case 5 : 
+        b+=str[4];
+        __fallthrough;
+    case 4 : 
+        a+=((unsigned)str[3]<<24);
+        __fallthrough;
+    case 3 : 
+        a+=((unsigned)str[2]<<16);
+        __fallthrough;
+    case 2 : 
+        a+=((unsigned)str[1]<<8);
+        __fallthrough;
+    case 1 : 
+        a+=str[0];
+        __fallthrough;
+        /* case 0: nothing left to add */
+    }
+    mix(a,b,c);
+    /*-------------------------------------------- report the result */
+    return c;
+}
+
+}
+
+"""
 
 def all_state_symbols():
     syms = il.all_symbols()
@@ -122,11 +774,7 @@ def varname(name):
     return name.replace(':','__COLON__')
 #    return name.split(':')[-1]
 
-def other_varname(name):
-    if global_classname is not None:
-        return global_classname + '::' + varname(name)
-    return varname(name)
-    
+other_varname = varname
 
 def funname(name):
     if not isinstance(name,str):
@@ -209,7 +857,7 @@ def declare_ctuple(header,dom):
     header.append(t+'('+','.join('const '+ctypefull(d)+' &arg'+str(idx) for idx,d in enumerate(dom))
                   + ') : '+','.join('arg'+str(idx)+'(arg'+str(idx)+')' for idx,d in enumerate(dom))
                   + '{}\n')
-    header.append("        size_t __hash() const { "+struct_hash_fun(['arg{}'.format(n) for n in range(len(dom))],dom) + "}\n")
+    header.append("        size_t __hash() const { return "+struct_hash_fun(['arg{}'.format(n) for n in range(len(dom))],dom) + ";}\n")
     header.append('};\n')
 
 def ctuple_hash(dom):
@@ -388,12 +1036,6 @@ def native_type_full(self):
 
 large_thresh = 1024
 
-def is_large_destr(sort):
-    if hasattr(sort,'dom') and any(not is_any_integer_type(s) for s in sort.dom[1:]):
-        return True
-    cards = map(sort_card,sort.dom[1:] if hasattr(sort,'dom') else [])
-    return not(all(cards) and reduce(mul,cards,1) <= large_thresh)
-
 def is_large_type(sort):
     if hasattr(sort,'dom') and any(not is_any_integer_type(s) for s in sort.dom):
         return True
@@ -498,31 +1140,17 @@ def make_thunk(impl,vs,expr):
     close_scope(impl,semi=True)
     return 'hash_thunk<{},{}>(new {}({}))'.format(D,R,name,','.join(envnames))
 
-# def struct_hash_fun(field_names,field_sorts):
-#     if len(field_names) == 0:
-#         return '0'
-#     return '+'.join('hash_space::hash<{}>()({})'.format(hashtype(s),varname(f)) for s,f in zip(field_sorts,field_names))
-
 def struct_hash_fun(field_names,field_sorts):
-    code = []
-    code_line(code,'size_t hv = 0')
-    for sort,f in zip(field_sorts,field_names):
-        domain = sort_domain(sort)[1:]
-        if not is_large_destr(sort):
-            vs = variables(domain)
-            open_loop(code,vs)
-            code_line(code,'hv += ' + 'hash_space::hash<{}>()({})'.format(hashtype(sort.rng),varname(f) + ''.join('['+varname(a)+']' for a in vs)))
-            close_loop(code,vs)
-    code_line(code,'return hv')
-    return ''.join(code)
-    
+    if len(field_names) == 0:
+        return '0'
+    return '+'.join('hash_space::hash<{}>()({})'.format(hashtype(s),varname(f)) for s,f in zip(field_sorts,field_names))
 
 def emit_struct_hash(header,the_type,field_names,field_sorts):
     header.append("""
     template<> class hash<the_type> {
         public:
             size_t operator()(const the_type &__s) const {
-                the_val
+                return the_val;
              }
     };
 """.replace('the_type',the_type).replace('the_val',struct_hash_fun(['__s.'+n for n in field_names],field_sorts)))
@@ -542,7 +1170,7 @@ def emit_cpp_sorts(header):
             destrs = im.module.sort_destructors[name]
             for destr in destrs:
                 declare_symbol(header,destr,skip_params=1)
-            header.append("        size_t __hash() const { "+struct_hash_fun(map(memname,destrs),[d.sort for d in destrs]) + "}\n")
+            header.append("        size_t __hash() const { return "+struct_hash_fun(map(memname,destrs),[d.sort.rng for d in destrs]) + ";}\n")
             header.append("    };\n");
         elif isinstance(il.sig.sorts[name],il.EnumeratedSort):
             sort = il.sig.sorts[name]
@@ -696,8 +1324,7 @@ def emit_set(header,symbol):
     cname = varname(name)
     sort = symbol.sort
     domain = sort_domain(sort)
-    if sort.rng.name in im.module.sort_destructors and not is_large_type(sort):
-    # all(is_finite_iterable_sort(s) for s in domain):
+    if sort.rng.name in im.module.sort_destructors and all(is_finite_iterable_sort(s) for s in domain):
         destrs = im.module.sort_destructors[sort.rng.name]
         for destr in destrs:
             vs = variables(domain)
@@ -710,12 +1337,7 @@ def emit_set(header,symbol):
     if is_large_type(sort):
         vs = variables(sort.dom)
         cvars = ','.join('ctx.constant("{}",sort("{}"))'.format(varname(v),v.sort.name) for v in vs)
-        open_scope(header)
-        code_line(header,'std::vector<z3::expr> __quants;');
-        for v in vs:
-            code_line(header,'__quants.push_back(ctx.constant("{}",sort("{}")));'.format(varname(v),v.sort.name));
-        code_line(header,'slvr.add(forall({},__to_solver(*this,apply("{}",{}),obj.{})))'.format("__quants",sname,cvars,cname))
-        close_scope(header)
+        code_line(header,'slvr.add(forall({},__to_solver(*this,apply("{}",{}),obj.{})))'.format(cvars,sname,cvars,cname))
         return
     for idx,dsort in enumerate(domain):
         dcard = sort_card(dsort)
@@ -1770,6 +2392,11 @@ def module_to_cpp_class(classname,basename):
     header.append("typedef std::string __strlit;\n")
     header.append("extern std::ofstream __ivy_out;\n")
     header.append("void __ivy_exit(int);\n")
+
+    #chris
+    header.append("#include <inttypes.h>\n")
+    header.append("typedef __int128_t int128_t;\n")
+    header.append("typedef __uint128_t uint128_t;\n")
     
     declare_hash_thunk(header)
 
@@ -2095,7 +2722,10 @@ struct ivy_ser {
     virtual void  close_struct() = 0;
     virtual void  open_field(const std::string &) = 0;
     virtual void  close_field() = 0;
-    virtual void  open_tag(int, const std::string &) {throw deser_err();}
+    virtual void  open_tag(int, const std::string &) {
+	std::cout << "ivy_ser open_tag deser_err" << std::endl; 
+	throw deser_err();
+    }
     virtual void  close_tag() {}
     virtual ~ivy_ser(){}
 };
@@ -2103,7 +2733,7 @@ struct ivy_binary_ser : public ivy_ser {
     std::vector<char> res;
     void setn(long long inp, int len) {
         for (int i = len-1; i >= 0 ; i--)
-            res.push_back((inp>>(8*i))&0xff);
+            res.push_back((inp>>(8*i))&0xff); //16 ?
     }
     void set(long long inp) {
         setn(inp,sizeof(long long));
@@ -2144,7 +2774,10 @@ struct ivy_deser {
     virtual void  close_struct() = 0;
     virtual void  open_field(const std::string &) = 0;
     virtual void  close_field() = 0;
-    virtual int   open_tag(const std::vector<std::string> &) {throw deser_err();}
+    virtual int   open_tag(const std::vector<std::string> &) {
+	std::cout << "ivy_deser open_tag deser_err" << std::endl; 
+	throw deser_err();
+    }
     virtual void  close_tag() {}
     virtual void  end() = 0;
     virtual ~ivy_deser(){}
@@ -2162,10 +2795,9 @@ struct ivy_binary_deser : public ivy_deser {
     }
     void getn(long long &res, int bytes) {
         if (!more(bytes)) {
-             std::cout << "ivy_binary_deser getn 0" << std::endl;  
-             throw deser_err();
-        }  
-        res = 0;
+	    std::cout << "ivy_binary_deser getn deser_err" << std::endl; 
+            throw deser_err();
+        } res = 0;
         for (int i = 0; i < bytes; i++)
             res = (res << 8) | (((long long)inp[pos++]) & 0xff);
     }
@@ -2176,10 +2808,9 @@ struct ivy_binary_deser : public ivy_deser {
             res.push_back(inp[pos++]);
         }
         if(!(more(1) && inp[pos] == 0)) {
-            std::cout << "ivy_binary_deser getn 1" << std::endl; 
+	    std::cout << "ivy_binary_deser get deser_err" << std::endl; 
             throw deser_err();
-        }
-        pos++;
+        } pos++;
     }
     void open_list() {
         long long len;
@@ -2203,18 +2834,18 @@ struct ivy_binary_deser : public ivy_deser {
         long long res;
         get(res);
         if (res >= tags.size()) {
-            std::cout << "ivy_binary_deser open_tag 1" << std::endl; 
+	    std::cout << "ivy_binary_deser open_tag deser_err" << std::endl; 
             throw deser_err();
-        }    
-        return res;
+        } return res;
     }
     void end() {
         if (!can_end()) {
-            std::cout << "ivy_binary_deser end 1" << std::endl; 
+	    std::cout << "ivy_binary_deser end deser_err" << std::endl; 
             throw deser_err();
-        }
+	}
     }
 };
+
 struct ivy_socket_deser : public ivy_binary_deser {
       int sock;
     public:
@@ -2238,6 +2869,168 @@ struct ivy_socket_deser : public ivy_binary_deser {
     virtual bool can_end() {return true;}
 };
 
+struct ivy_ser_128 {
+    virtual void  set(int128_t) = 0;
+    virtual void  set(bool) = 0;
+    virtual void  setn(int128_t inp, int len) = 0;
+    virtual void  set(const std::string &) = 0;
+    virtual void  open_list(int len) = 0;
+    virtual void  close_list() = 0;
+    virtual void  open_list_elem() = 0;
+    virtual void  close_list_elem() = 0;
+    virtual void  open_struct() = 0;
+    virtual void  close_struct() = 0;
+    virtual void  open_field(const std::string &) = 0;
+    virtual void  close_field() = 0;
+    virtual void  open_tag(int, const std::string &) {
+	std::cout << "ivy_ser_128 open_tag deser_err" << std::endl; 
+	throw deser_err();
+    }
+    virtual void  close_tag() {}
+    virtual ~ivy_ser_128(){}
+};
+
+struct ivy_binary_ser_128 : public ivy_ser_128 {
+    std::vector<char> res;
+    void setn(int128_t inp, int len) {
+        for (int i = len-1; i >= 0 ; i--)
+            res.push_back((inp>>(8*i))&0xff); //16 ?
+    }
+    void set(int128_t inp) {
+        setn(inp,sizeof(int128_t));
+    }
+    void set(bool inp) {
+        set((int128_t)inp);
+    }
+    void set(const std::string &inp) {
+        for (unsigned i = 0; i < inp.size(); i++)
+            res.push_back(inp[i]);
+        res.push_back(0);
+    }
+    void open_list(int len) {
+        set((int128_t)len);
+    }
+    void close_list() {}
+    void open_list_elem() {}
+    void close_list_elem() {}
+    void open_struct() {}
+    void close_struct() {}
+    virtual void  open_field(const std::string &) {}
+    void close_field() {}
+    virtual void  open_tag(int tag, const std::string &) {
+        set((int128_t)tag);
+    }
+    virtual void  close_tag() {}
+};
+
+struct ivy_deser_128 {
+    virtual void  get(int128_t&) = 0;
+    virtual void  get(std::string &) = 0;
+    virtual void  getn(int128_t &res, int bytes) = 0;
+    virtual void  open_list() = 0;
+    virtual void  close_list() = 0;
+    virtual bool  open_list_elem() = 0;
+    virtual void  close_list_elem() = 0;
+    virtual void  open_struct() = 0;
+    virtual void  close_struct() = 0;
+    virtual void  open_field(const std::string &) = 0;
+    virtual void  close_field() = 0;
+    virtual int   open_tag(const std::vector<std::string> &) {
+	std::cout << "ivy_deser_128 open_tag deser_err" << std::endl; 
+	throw deser_err();
+    }
+    virtual void  close_tag() {}
+    virtual void  end() = 0;
+    virtual ~ivy_deser_128(){}
+};
+
+struct ivy_binary_deser_128 : public ivy_deser_128 {
+    std::vector<char> inp;
+    int pos;
+    std::vector<int> lenstack;
+    ivy_binary_deser_128(const std::vector<char> &inp) : inp(inp),pos(0) {}
+    virtual bool more(unsigned bytes) {return inp.size() >= pos + bytes;}
+    virtual bool can_end() {return pos == inp.size();}
+    void get(int128_t &res) {
+       getn(res,16);
+    }
+    void getn(int128_t &res, int bytes) {
+        if (!more(bytes)) {
+	    std::cout << "ivy_binary_deser_128 getn deser_err" << std::endl; 
+            throw deser_err();
+        } res = 0;
+        for (int i = 0; i < bytes; i++)
+            res = (res << 8) | (((int128_t)inp[pos++]) & 0xff);
+    }
+    void get(std::string &res) {
+        while (more(1) && inp[pos]) {
+//            if (inp[pos] == '\"')
+//                throw deser_err();
+            res.push_back(inp[pos++]);
+        }
+        if(!(more(1) && inp[pos] == 0)) {
+	    std::cout << "ivy_binary_deser_128 get deser_err" << std::endl; 
+            throw deser_err();
+        } pos++;
+    }
+    void open_list() {
+        int128_t len;
+        get(len);
+        lenstack.push_back(len);
+    }
+    void close_list() {
+        lenstack.pop_back();
+    }
+    bool open_list_elem() {
+        return lenstack.back();
+    }
+    void close_list_elem() {
+        lenstack.back()--;
+    }
+    void open_struct() {}
+    void close_struct() {}
+    virtual void  open_field(const std::string &) {}
+    void close_field() {}
+    int open_tag(const std::vector<std::string> &tags) {
+        int128_t res;
+        get(res);
+        if (res >= tags.size()) {
+	    std::cout << "ivy_binary_deser_128 open_tag deser_err" << std::endl; 
+            throw deser_err();
+        } return res;
+    }
+    void end() {
+        if (!can_end()) {
+	    std::cout << "ivy_binary_deser_128 end deser_err" << std::endl; 
+            throw deser_err();
+	}
+    }
+};
+
+struct ivy_socket_deser_128 : public ivy_binary_deser_128 {
+    int sock;
+    public:
+      ivy_socket_deser_128(int sock, const std::vector<char> &inp)
+          : ivy_binary_deser_128(inp), sock(sock) {}
+    virtual bool more(unsigned bytes) {
+        while (inp.size() < pos + bytes) {
+            int oldsize = inp.size();
+            int get = pos + bytes - oldsize;
+            get = (get < 1024) ? 1024 : get;
+            inp.resize(oldsize + get);
+            int newbytes;
+	    if ((newbytes = read(sock,&inp[oldsize],get)) < 0)
+		 { std::cerr << "recvfrom failed\\n"; exit(1); }
+            inp.resize(oldsize + newbytes);
+            if (newbytes == 0)
+                 return false;
+        }
+        return true;
+    }
+    virtual bool can_end() {return true;}
+};
+
+
 struct out_of_bounds {
     std::string txt;
     int pos;
@@ -2248,6 +3041,7 @@ struct out_of_bounds {
     }
     out_of_bounds(const std::string &s, int pos = 0) : txt(s), pos(pos) {}
 };
+
 
 template <class T> T _arg(std::vector<ivy_value> &args, unsigned idx, long long bound);
 template <class T> T __lit(const char *);
@@ -2266,7 +3060,7 @@ int _arg<int>(std::vector<ivy_value> &args, unsigned idx, long long bound) {
     s.unsetf(std::ios::hex);
     s.unsetf(std::ios::oct);
     long long res;
-    s  >> res;
+    s >> res;
     // int res = atoi(args[idx].atom.c_str());
     if (bound && (res < 0 || res >= bound) || args[idx].fields.size())
         throw out_of_bounds(idx,args[idx].pos);
@@ -2280,7 +3074,7 @@ long long _arg<long long>(std::vector<ivy_value> &args, unsigned idx, long long 
     s.unsetf(std::ios::hex);
     s.unsetf(std::ios::oct);
     long long res;
-    s  >> res;
+    s >> res;
 //    long long res = atoll(args[idx].atom.c_str());
     if (bound && (res < 0 || res >= bound) || args[idx].fields.size())
         throw out_of_bounds(idx,args[idx].pos);
@@ -2294,7 +3088,7 @@ unsigned long long _arg<unsigned long long>(std::vector<ivy_value> &args, unsign
     s.unsetf(std::ios::hex);
     s.unsetf(std::ios::oct);
     unsigned long long res;
-    s  >> res;
+    s >> res;
 //    unsigned long long res = atoll(args[idx].atom.c_str());
     if (bound && (res < 0 || res >= bound) || args[idx].fields.size())
         throw out_of_bounds(idx,args[idx].pos);
@@ -2316,16 +3110,17 @@ unsigned _arg<unsigned>(std::vector<ivy_value> &args, unsigned idx, long long bo
 }
 
 
-std::ostream &operator <<(std::ostream &s, const __strlit &t){
-    s << "\\"" << t.c_str() << "\\"";
-    return s;
-}
-
 template <>
 __strlit _arg<__strlit>(std::vector<ivy_value> &args, unsigned idx, long long bound) {
     if (args[idx].fields.size())
         throw out_of_bounds(idx,args[idx].pos);
     return args[idx].atom;
+}
+
+
+std::ostream &operator <<(std::ostream &s, const __strlit &t){
+    s << "\\"" << t.c_str() << "\\"";
+    return s;
 }
 
 template <class T> void __ser(ivy_ser &res, const T &inp);
@@ -2341,9 +3136,15 @@ void __ser<long long>(ivy_ser &res, const long long &inp) {
 }
 
 template <>
+void __ser<int128_t>(ivy_ser &res, const int128_t &inp) {
+    res.set((long long)inp);
+}
+
+template <>
 void __ser<unsigned long long>(ivy_ser &res, const unsigned long long &inp) {
     res.set((long long)inp);
 }
+
 
 template <>
 void __ser<unsigned>(ivy_ser &res, const unsigned &inp) {
@@ -2375,6 +3176,13 @@ void __deser<long long>(ivy_deser &inp, long long &res) {
 }
 
 template <>
+void __deser<int128_t>(ivy_deser &inp, int128_t &res) {
+    long long temp;
+    inp.get(temp);
+    res = temp;
+}
+
+template <>
 void __deser<unsigned long long>(ivy_deser &inp, unsigned long long &res) {
     long long temp;
     inp.get(temp);
@@ -2399,6 +3207,100 @@ void __deser<bool>(ivy_deser &inp, bool &res) {
     inp.get(thing);
     res = thing;
 }
+
+//we could probably merge that but we prefered to not modify too much initial
+//code
+
+template <class T> void __ser(ivy_ser_128 &res, const T &inp);
+
+template <>
+void __ser<int>(ivy_ser_128 &res, const int &inp) {
+    res.set((int128_t)inp);
+}
+
+template <>
+void __ser<long long>(ivy_ser_128 &res, const long long &inp) {
+    res.set((int128_t)inp);
+}
+
+template <>
+void __ser<int128_t>(ivy_ser_128 &res, const int128_t &inp) {
+    res.set(inp);
+}
+
+template <>
+void __ser<unsigned long long>(ivy_ser_128 &res, const unsigned long long &inp) {
+    res.set((int128_t)inp);
+}
+
+template <>
+void __ser<uint128_t>(ivy_ser_128 &res, const uint128_t &inp) {
+    res.set((int128_t)inp);
+}
+
+template <>
+void __ser<unsigned>(ivy_ser_128 &res, const unsigned &inp) {
+    res.set((int128_t)inp);
+}
+
+template <>
+void __ser<bool>(ivy_ser_128 &res, const bool &inp) {
+    res.set(inp);
+}
+
+template <>
+void __ser<__strlit>(ivy_ser_128 &res, const __strlit &inp) {
+    res.set(inp);
+}
+
+template <class T> void __deser(ivy_deser_128 &inp, T &res);
+
+template <>
+void __deser<int>(ivy_deser_128 &inp, int &res) {
+    int128_t temp;
+    inp.get(temp);
+    res = temp;
+}
+
+template <>
+void __deser<long long>(ivy_deser_128 &inp, long long &res) {
+    int128_t temp;
+    inp.get(temp);
+    res = temp;
+}
+
+template <>
+void __deser<int128_t>(ivy_deser_128 &inp, int128_t &res) {
+    inp.get(res);
+}
+
+
+template <>
+void __deser<unsigned long long>(ivy_deser_128 &inp, unsigned long long &res) {
+    int128_t temp;
+    inp.get(temp);
+    res = temp;
+}
+
+template <>
+void __deser<unsigned>(ivy_deser_128 &inp, unsigned &res) {
+    int128_t temp;
+    inp.get(temp);
+    res = temp;
+}
+
+template <>
+void __deser<__strlit>(ivy_deser_128 &inp, __strlit &res) {
+    inp.get(res);
+}
+
+template <>
+void __deser<bool>(ivy_deser_128 &inp, bool &res) {
+    int128_t thing;
+    inp.get(thing);
+    res = thing;
+}
+
 
 class gen;
 
@@ -2544,10 +3446,16 @@ class z3_thunk : public thunk<D,R> {
             impl.append('std::ostream &operator <<(std::ostream &s, const {} &t);\n'.format(cfsname))
             impl.append('template <>\n')
             impl.append(cfsname + ' _arg<' + cfsname + '>(std::vector<ivy_value> &args, unsigned idx, long long bound);\n')
+            #impl.append('template <>\n')
+            #impl.append(cfsname + ' _arg<' + cfsname + '>(std::vector<ivy_value> &args, unsigned idx, int128_t bound);\n')
             impl.append('template <>\n')
             impl.append('void  __ser<' + cfsname + '>(ivy_ser &res, const ' + cfsname + '&);\n')
             impl.append('template <>\n')
-            impl.append('void  __deser<' + cfsname + '>(ivy_deser &inp, ' + cfsname + ' &res);\n')                
+            impl.append('void  __deser<' + cfsname + '>(ivy_deser &inp, ' + cfsname + ' &res);\n')     
+            impl.append('template <>\n')
+            impl.append('void  __ser<' + cfsname + '>(ivy_ser_128 &res, const ' + cfsname + '&);\n')
+            impl.append('template <>\n')
+            impl.append('void  __deser<' + cfsname + '>(ivy_deser_128 &inp, ' + cfsname + ' &res);\n')                 
         if target.get() in ["test","gen"]:
             impl.append('template <>\n')
             impl.append('void __from_solver<' + cfsname + '>( gen &g, const  z3::expr &v, ' + cfsname + ' &res);\n')
@@ -2564,10 +3472,16 @@ class z3_thunk : public thunk<D,R> {
                 impl.append('std::ostream &operator <<(std::ostream &s, const {} &t);\n'.format(cfsname))
                 impl.append('template <>\n')
                 impl.append(cfsname + ' _arg<' + cfsname + '>(std::vector<ivy_value> &args, unsigned idx, long long bound);\n')
+                #impl.append('template <>\n')
+                #impl.append(cfsname + ' _arg<' + cfsname + '>(std::vector<ivy_value> &args, unsigned idx, int128_t bound);\n')
                 impl.append('template <>\n')
                 impl.append('void  __ser<' + cfsname + '>(ivy_ser &res, const ' + cfsname + '&);\n')
                 impl.append('template <>\n')
-                impl.append('void  __deser<' + cfsname + '>(ivy_deser &inp, ' + cfsname + ' &res);\n')                
+                impl.append('void  __deser<' + cfsname + '>(ivy_deser &inp, ' + cfsname + ' &res);\n')     
+                impl.append('template <>\n')
+                impl.append('void  __ser<' + cfsname + '>(ivy_ser_128 &res, const ' + cfsname + '&);\n')
+                impl.append('template <>\n')
+                impl.append('void  __deser<' + cfsname + '>(ivy_deser_128 &inp, ' + cfsname + ' &res);\n')              
 
     if target.get() in ["test","gen"]:
         for sort_name in sorted(im.module.sort_destructors):
@@ -2587,7 +3501,6 @@ class z3_thunk : public thunk<D,R> {
         cpptype.emit_templates()
 
     global native_classname
-    global global_classname
     once_memo = set()
     for native in im.module.natives:
         tag = native_type(native)
@@ -2758,7 +3671,6 @@ class z3_thunk : public thunk<D,R> {
         variant_of = set((x.name,y) for y,l in im.module.variants.iteritems() for x in l)
         arcs = [a for a in arcs if a in variant_of]
         inline_sort_order = iu.topological_sort(im.module.sort_order,arcs)
-        global_classname = classname
         for sort_name in inline_sort_order:
             if sort_name in im.module.variants:
                 sort = im.module.sig.sorts[sort_name] 
@@ -2815,7 +3727,22 @@ class z3_thunk : public thunk<D,R> {
                         close_loop(impl,[v])
                 code_line(impl,"res.close_struct()")
                 close_scope(impl)
-        global_classname = None
+		#chris
+                impl.append('template <>\n')
+                open_scope(impl,line='void  __ser<' + cfsname + '>(ivy_ser_128 &res, const ' + cfsname + '&t)')
+                code_line(impl,"res.open_struct()")
+                for idx,sym in enumerate(destrs):
+                    dom = sym.sort.dom[1:]
+                    vs = variables(dom)
+                    for d,v in zip(dom,vs):
+                        open_loop(impl,[v])
+                    code_line(impl,'res.open_field("'+memname(sym)+'")')
+                    code_line(impl,'__ser<' + ctype(sym.sort.rng,classname=classname) + '>(res,t.' + memname(sym) + subscripts(vs) + ')')
+                    code_line(impl,'res.close_field()')
+                    for d,v in zip(dom,vs):
+                        close_loop(impl,[v])
+                code_line(impl,"res.close_struct()")
+                close_scope(impl)
 
 
         for sort_name in enum_sort_names:
@@ -2832,7 +3759,11 @@ class z3_thunk : public thunk<D,R> {
                 open_scope(impl,line='void  __ser<' + cfsname + '>(ivy_ser &res, const ' + cfsname + '&t)')
                 code_line(impl,'__ser(res,(int)t)')
                 close_scope(impl)
-
+		#chris
+                impl.append('template <>\n')
+                open_scope(impl,line='void  __ser<' + cfsname + '>(ivy_ser_128 &res, const ' + cfsname + '&t)')
+                code_line(impl,'__ser(res,(int)t)')
+                close_scope(impl)
 
         if target.get() in ["repl","test"]:
 
@@ -2840,7 +3771,6 @@ class z3_thunk : public thunk<D,R> {
                 emit_repl_imports(header,impl,classname)
                 emit_repl_boilerplate1(header,impl,classname)
 
-            global_classname = classname
             for sort_name in sorted(im.module.sort_destructors):
                 destrs = im.module.sort_destructors[sort_name]
                 sort = im.module.sig.sorts[sort_name]
@@ -2882,7 +3812,6 @@ class z3_thunk : public thunk<D,R> {
                             close_scope(impl)
                     code_line(impl,'return res')
                     close_scope(impl)
-
                     impl.append('template <>\n')
                     open_scope(impl,line='void __deser<' + cfsname + '>(ivy_deser &inp, ' + cfsname + ' &res)')
                     code_line(impl,"inp.open_struct()")
@@ -2892,7 +3821,26 @@ class z3_thunk : public thunk<D,R> {
                         code_line(impl,'inp.open_field("'+fname+'")')
                         for v in vs:
                             card = sort_card(v.sort)
-                            code_line(impl,'inp.open_list()')
+                            code_line(impl,'inp.open_list('+str(card)+')')
+                            open_loop(impl,[v])
+                        code_line(impl,'__deser(inp,res.'+fname+''.join('[{}]'.format(varname(v)) for v in vs) + ')')
+                        for v in vs:
+                            close_loop(impl,[v])
+                            code_line(impl,'inp.close_list()')
+                        code_line(impl,'inp.close_field()')
+                    code_line(impl,"inp.close_struct()")
+                    close_scope(impl)
+			#chris
+                    impl.append('template <>\n')
+                    open_scope(impl,line='void __deser<' + cfsname + '>(ivy_deser_128 &inp, ' + cfsname + ' &res)')
+                    code_line(impl,"inp.open_struct()")
+                    for idx,sym in enumerate(destrs):
+                        fname = memname(sym)
+                        vs = variables(sym.sort.dom[1:])
+                        code_line(impl,'inp.open_field("'+fname+'")')
+                        for v in vs:
+                            card = sort_card(v.sort)
+                            code_line(impl,'inp.open_list('+str(card)+')')
                             open_loop(impl,[v])
                         code_line(impl,'__deser(inp,res.'+fname+''.join('[{}]'.format(varname(v)) for v in vs) + ')')
                         for v in vs:
@@ -2947,7 +3895,6 @@ class z3_thunk : public thunk<D,R> {
                         for v in vs:
                             close_loop(impl,[v])
                     close_scope(impl)
-            global_classname = None
 
 
             for sort_name in enum_sort_names:
@@ -2965,6 +3912,13 @@ class z3_thunk : public thunk<D,R> {
                     close_scope(impl)
                     impl.append('template <>\n')
                     open_scope(impl,line='void __deser<' + cfsname + '>(ivy_deser &inp, ' + cfsname + ' &res)')
+                    code_line(impl,'int __res')
+                    code_line(impl,'__deser(inp,__res)')
+                    code_line(impl,'res = ({})__res'.format(cfsname))
+                    close_scope(impl)
+		#chris
+                    impl.append('template <>\n')
+                    open_scope(impl,line='void __deser<' + cfsname + '>(ivy_deser_128 &inp, ' + cfsname + ' &res)')
                     code_line(impl,'int __res')
                     code_line(impl,'__deser(inp,__res)')
                     code_line(impl,'res = ({})__res'.format(cfsname))
@@ -3293,8 +4247,6 @@ def emit_constant(self,header,code):
         if is_native_sym(self):
             code.append('__lit<'+varname(self.sort)+'>(' + self.name + ')')
             return
-        if has_string_interp(self.sort) and self.name[0] != '"' :
-            raise iu.IvyError(None,'Cannot compile numeral {} of string sort {}'.format(self,self.sort))
         if self.sort.name in im.module.sort_destructors:
             raise iu.IvyError(None,"cannot compile symbol {} of sort {}".format(self.name,self.sort))
         if self.sort.name in il.sig.interp and il.sig.interp[self.sort.name].startswith('bv['):
@@ -4155,9 +5107,9 @@ int ask_ret(long long bound) {
     impl.append("""
 
     class classname_repl : public classname {
-
+    
     public:
-
+	
     virtual void ivy_assert(bool truth,const char *msg){
         if (!truth) {
             __ivy_out << "assertion_failed(\\"" << msg << "\\")" << std::endl;
@@ -4173,40 +5125,40 @@ int ask_ret(long long bound) {
         if (!truth) {
             int i;
             __ivy_out << "assumption_failed(\\"" << msg << "\\")" << std::endl;
-            
-            std::string path ="";
-            std::string msgstr ="";
-            std::string lineNumber = "1";
-            int line;
-            std::string command = "";
-
-            std::string::size_type pos = msgstr.find(".ivy");
+            std::string::size_type pos = std::string(msg).find(".ivy");
+            std::string path = "";
             if (pos != std::string::npos)
                 path = std::string(msg+0,msg+pos);
             
+	    std::string lineNumber = "1";
+	    std::string::size_type pos_n = std::string(msg).find("line");
+	    if (pos_n != std::string::npos)
+                lineNumber = std::string(msg+pos_n,msg+std::string(msg).length());
+	    int num;
+	    sscanf(lineNumber.c_str(),"%*[^0-9]%d", &num);
+	    lineNumber = std::to_string(num);
 
-            std::string::size_type pos_n = msgstr.find("line");
-            if (pos_n != std::string::npos)
-                lineNumber = std::string(msg+pos_n, msg+msgstr.length());
-            sscanf(lineNumber.c_str(),"%*[^0-9]%d",&num);
-            lineNumber = std::to_string(num);
+	    std::string command = "";
+	    if(path.find("test") != std::string::npos) 
+		path = std::string("$HOME/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_tests/") + path;
+            command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
+            //std::cerr << command.c_str() << std::endl;
 
-            if (path.find("test") != std::string::npos)
-                path = std::string("$HOME/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_tests/");
-            
-            command = std::string("sed \'") + lineNumber + std::string("!d\'") + path + std::string(".ivy > temps.txt");
-            
             if (system(NULL)) i=system(command.c_str());
             else exit (EXIT_FAILURE);
 
-            std::ifstream ifs("temps.txt");
-            stdstringstream strStream;
-            strStream << ifs.rdbuf();
-            std::string res = strStream.str();
-            if(std::remove("temps.txt") != 0)
-                std::cerr << "error: remove(temps.txt) failed\\n"
-            std::cerr << msg << ": error: assumption failed\\n";
-            std::cerr << res;
+	    std::ifstream ifs("temps.txt"); //.rdbuf()
+	    std::stringstream strStream;
+	    strStream << ifs.rdbuf();
+	    std::string str = strStream.str();
+
+	    //std::string str((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+	    //str.erase(std::remove(str.begin(), str.end(), "\t"), str.end());
+	    	
+            std::cerr << str << std::endl;
+	    if(std::remove("temps.txt") != 0) 
+		std::cerr << "error: remove(temps.txt) failed\\n";
+	    std::cerr << msg << ": error: assumption failed\\n";
             __ivy_exit(1);
         }
     }
@@ -4592,9 +5544,10 @@ def emit_repl_boilerplate3test(header,impl,classname):
 #endif
     for(int cycle = 0; cycle < test_iters; cycle++) {
 
-        double choices = totalweight + readers.size() + timers.size();
-        double frnd = choices * (((double)rand())/(((double)RAND_MAX)+1.0));
-        if (frnd < totalweight) {
+        int choices = num_gens + readers.size() + timers.size();
+        int rnd = choices ? (rand() % choices) : 0;
+        if (rnd < num_gens) {
+            double frnd = totalweight * (((double)rand())/(((double)RAND_MAX)+1.0));
             int idx = 0;
             double sum = 0.0;
             while (idx < num_gens-1) {
@@ -4722,15 +5675,6 @@ def emit_boilerplate1(header,impl,classname):
 
 using namespace hash_space;
 
-inline z3::expr forall(const std::vector<z3::expr> &exprs, z3::expr const & b) {
-    Z3_app *vars = new  Z3_app [exprs.size()];
-    std::copy(exprs.begin(),exprs.end(),vars);
-    Z3_ast r = Z3_mk_forall_const(b.ctx(), 0, exprs.size(), vars, 0, 0, b);
-    b.check_error();
-    delete vars;
-    return z3::expr(b.ctx(), r);
-}
-
 class gen : public ivy_gen {
 
 public:
@@ -4855,11 +5799,6 @@ public:
         return eval_apply(decl_name,3,args);
     }
 
-    int eval_apply(const char *decl_name, int arg0, int arg1, int arg2, int arg3) {
-        int args[4] = {arg0,arg1,arg2,arg3};
-        return eval_apply(decl_name,4,args);
-    }
-
     z3::expr apply(const char *decl_name, std::vector<z3::expr> &expr_args) {
         z3::func_decl decl = decls_by_name.find(decl_name)->second;
         unsigned arity = decl.arity();
@@ -4899,16 +5838,6 @@ public:
         a.push_back(arg1);
         a.push_back(arg2);
         a.push_back(arg3);
-        return apply(decl_name,a);
-    }
-
-    z3::expr apply(const char *decl_name, z3::expr arg0, z3::expr arg1, z3::expr arg2, z3::expr arg3, z3::expr arg4) {
-        std::vector<z3::expr> a;
-        a.push_back(arg0);
-        a.push_back(arg1);
-        a.push_back(arg2);
-        a.push_back(arg3);
-        a.push_back(arg4);
         return apply(decl_name,a);
     }
 
@@ -4972,13 +5901,11 @@ public:
     }
 
     void add_alit(const z3::expr &pred){
-        if (__ivy_modelfile.is_open()) 
-            __ivy_modelfile << "pred: " << pred << std::endl;
+        // std::cout << "pred: " << pred << std::endl;
         std::ostringstream ss;
         ss << "alit:" << alits.size();
         z3::expr alit = ctx.bool_const(ss.str().c_str());
-        if (__ivy_modelfile.is_open()) 
-            __ivy_modelfile << "alit: " << alit << std::endl;
+        // std::cout << "alit: " << alit << std::endl;
         alits.push_back(alit);
         slvr.add(!alit || pred);
     }
@@ -5106,15 +6033,7 @@ public:
     bool solve() {
         // std::cout << alits.size();
         static bool show_model = true;
-        if (__ivy_modelfile.is_open()) 
-            __ivy_modelfile << "begin check:\\n" << slvr << "end check:\\n" << std::endl;
         while(true){
-            if (__ivy_modelfile.is_open()) {
-                __ivy_modelfile << "(check-sat"; 
-                for (unsigned i = 0; i < alits.size(); i++)
-                    __ivy_modelfile << " " << alits[i];
-                __ivy_modelfile << ")" << std::endl;
-            }
             z3::check_result res = slvr.check(alits.size(),&alits[0]);
             if (res != z3::unsat)
                 break;
@@ -5124,13 +6043,11 @@ public:
 //                    __ivy_modelfile << "begin unsat:\\n" << slvr << "end unsat:\\n" << std::endl;
                 return false;
             }
-            if (__ivy_modelfile.is_open()) 
-                for (unsigned i = 0; i < core.size(); i++)
-                    __ivy_modelfile << "core: " << core[i] << std::endl;
+            //for (unsigned i = 0; i < core.size(); i++)
+            //    std::cout << "core: " << core[i] << std::endl;
             unsigned idx = rand() % core.size();
             z3::expr to_delete = core[idx];
-            if (__ivy_modelfile.is_open()) 
-                __ivy_modelfile << "to delete: " << to_delete << std::endl;
+            // std::cout << "to delete: " << to_delete << std::endl;
             for (unsigned i = 0; i < alits.size(); i++)
                 if (z3::eq(alits[i],to_delete)) {
                     alits[i] = alits.back();
@@ -5229,18 +6146,16 @@ def main_int(is_ivyc):
             if isolate != None:
                 isolates = [isolate]
             else:
-                if target.get() == 'test':
-                    isolates = ['this']
-                else:
-                    extracts = list((x,y) for x,y in im.module.isolates.iteritems()
-                                    if isinstance(y,ivy_ast.ExtractDef))
-                    if len(extracts) == 0:
-                        isol = ivy_ast.ExtractDef(ivy_ast.Atom('extract'),ivy_ast.Atom('this'))
-                        isol.with_args = 1
-                        im.module.isolates['extract'] = isol
-                        isolates = ['extract']
-                    elif len(extracts) == 1:
-                        isolates = [extracts[0][0]]
+                extracts = list((x,y) for x,y in im.module.isolates.iteritems()
+                                if isinstance(y,ivy_ast.ExtractDef))
+                if len(extracts) == 0:
+                    isol = ivy_ast.ExtractDef(ivy_ast.Atom('extract'),ivy_ast.Atom('this'))
+                    isol.with_args = 1
+                    im.module.isolates['extract'] = isol
+                    isolates = ['extract']
+                elif len(extracts) == 1:
+                    isolates = [extracts[0][0]]
+
         else:
             if isolate != None:
                 isolates = [isolate]
@@ -5416,655 +6331,3 @@ def find_vs():
 if __name__ == "__main__":
     main_int(True)
         
-hash_h = """
-/*++
-  Copyright (c) Microsoft Corporation
-
-  This hash template is borrowed from Microsoft Z3
-  (https://github.com/Z3Prover/z3).
-
-  Simple implementation of bucket-list hash tables conforming roughly
-  to SGI hash_map and hash_set interfaces, though not all members are
-  implemented.
-
-  These hash tables have the property that insert preserves iterators
-  and references to elements.
-
-  This package lives in namespace hash_space. Specializations of
-  class "hash" should be made in this namespace.
-
-  --*/
-
-#pragma once
-
-#ifndef HASH_H
-#define HASH_H
-
-#ifdef _WINDOWS
-#pragma warning(disable:4267)
-#endif
-
-#include <string>
-#include <vector>
-#include <iterator>
-#include <fstream>
-
-namespace hash_space {
-
-    unsigned string_hash(const char * str, unsigned length, unsigned init_value);
-
-    template <typename T> class hash {
-    public:
-        size_t operator()(const T &s) const {
-            return s.__hash();
-        }
-    };
-
-    template <>
-        class hash<int> {
-    public:
-        size_t operator()(const int &s) const {
-            return s;
-        }
-    };
-
-    template <>
-        class hash<long long> {
-    public:
-        size_t operator()(const long long &s) const {
-            return s;
-        }
-    };
-
-    template <>
-        class hash<unsigned> {
-    public:
-        size_t operator()(const unsigned &s) const {
-            return s;
-        }
-    };
-
-    template <>
-        class hash<unsigned long long> {
-    public:
-        size_t operator()(const unsigned long long &s) const {
-            return s;
-        }
-    };
-
-    template <>
-        class hash<bool> {
-    public:
-        size_t operator()(const bool &s) const {
-            return s;
-        }
-    };
-
-    template <>
-        class hash<std::string> {
-    public:
-        size_t operator()(const std::string &s) const {
-            return string_hash(s.c_str(), (unsigned)s.size(), 0);
-        }
-    };
-
-    template <>
-        class hash<std::pair<int,int> > {
-    public:
-        size_t operator()(const std::pair<int,int> &p) const {
-            return p.first + p.second;
-        }
-    };
-
-    template <typename T>
-        class hash<std::vector<T> > {
-    public:
-        size_t operator()(const std::vector<T> &p) const {
-            hash<T> h;
-            size_t res = 0;
-            for (unsigned i = 0; i < p.size(); i++)
-                res += h(p[i]);
-            return res;
-        }
-    };
-
-    template <class T>
-        class hash<std::pair<T *, T *> > {
-    public:
-        size_t operator()(const std::pair<T *,T *> &p) const {
-            return (size_t)p.first + (size_t)p.second;
-        }
-    };
-
-    template <class T>
-        class hash<T *> {
-    public:
-        size_t operator()(T * const &p) const {
-            return (size_t)p;
-        }
-    };
-
-    enum { num_primes = 29 };
-
-    static const unsigned long primes[num_primes] =
-        {
-            7ul,
-            53ul,
-            97ul,
-            193ul,
-            389ul,
-            769ul,
-            1543ul,
-            3079ul,
-            6151ul,
-            12289ul,
-            24593ul,
-            49157ul,
-            98317ul,
-            196613ul,
-            393241ul,
-            786433ul,
-            1572869ul,
-            3145739ul,
-            6291469ul,
-            12582917ul,
-            25165843ul,
-            50331653ul,
-            100663319ul,
-            201326611ul,
-            402653189ul,
-            805306457ul,
-            1610612741ul,
-            3221225473ul,
-            4294967291ul
-        };
-
-    inline unsigned long next_prime(unsigned long n) {
-        const unsigned long* to = primes + (int)num_primes;
-        for(const unsigned long* p = primes; p < to; p++)
-            if(*p >= n) return *p;
-        return primes[num_primes-1];
-    }
-
-    template<class Value, class Key, class HashFun, class GetKey, class KeyEqFun>
-        class hashtable
-    {
-    public:
-
-        typedef Value &reference;
-        typedef const Value &const_reference;
-    
-        struct Entry
-        {
-            Entry* next;
-            Value val;
-      
-        Entry(const Value &_val) : val(_val) {next = 0;}
-        };
-    
-
-        struct iterator
-        {      
-            Entry* ent;
-            hashtable* tab;
-
-            typedef std::forward_iterator_tag iterator_category;
-            typedef Value value_type;
-            typedef std::ptrdiff_t difference_type;
-            typedef size_t size_type;
-            typedef Value& reference;
-            typedef Value* pointer;
-
-        iterator(Entry* _ent, hashtable* _tab) : ent(_ent), tab(_tab) { }
-
-            iterator() { }
-
-            Value &operator*() const { return ent->val; }
-
-            Value *operator->() const { return &(operator*()); }
-
-            iterator &operator++() {
-                Entry *old = ent;
-                ent = ent->next;
-                if (!ent) {
-                    size_t bucket = tab->get_bucket(old->val);
-                    while (!ent && ++bucket < tab->buckets.size())
-                        ent = tab->buckets[bucket];
-                }
-                return *this;
-            }
-
-            iterator operator++(int) {
-                iterator tmp = *this;
-                operator++();
-                return tmp;
-            }
-
-
-            bool operator==(const iterator& it) const { 
-                return ent == it.ent;
-            }
-
-            bool operator!=(const iterator& it) const {
-                return ent != it.ent;
-            }
-        };
-
-        struct const_iterator
-        {      
-            const Entry* ent;
-            const hashtable* tab;
-
-            typedef std::forward_iterator_tag iterator_category;
-            typedef Value value_type;
-            typedef std::ptrdiff_t difference_type;
-            typedef size_t size_type;
-            typedef const Value& reference;
-            typedef const Value* pointer;
-
-        const_iterator(const Entry* _ent, const hashtable* _tab) : ent(_ent), tab(_tab) { }
-
-            const_iterator() { }
-
-            const Value &operator*() const { return ent->val; }
-
-            const Value *operator->() const { return &(operator*()); }
-
-            const_iterator &operator++() {
-                const Entry *old = ent;
-                ent = ent->next;
-                if (!ent) {
-                    size_t bucket = tab->get_bucket(old->val);
-                    while (!ent && ++bucket < tab->buckets.size())
-                        ent = tab->buckets[bucket];
-                }
-                return *this;
-            }
-
-            const_iterator operator++(int) {
-                const_iterator tmp = *this;
-                operator++();
-                return tmp;
-            }
-
-
-            bool operator==(const const_iterator& it) const { 
-                return ent == it.ent;
-            }
-
-            bool operator!=(const const_iterator& it) const {
-                return ent != it.ent;
-            }
-        };
-
-    private:
-
-        typedef std::vector<Entry*> Table;
-
-        Table buckets;
-        size_t entries;
-        HashFun hash_fun ;
-        GetKey get_key;
-        KeyEqFun key_eq_fun;
-    
-    public:
-
-    hashtable(size_t init_size) : buckets(init_size,(Entry *)0) {
-            entries = 0;
-        }
-    
-        hashtable(const hashtable& other) {
-            dup(other);
-        }
-
-        hashtable& operator= (const hashtable& other) {
-            if (&other != this)
-                dup(other);
-            return *this;
-        }
-
-        ~hashtable() {
-            clear();
-        }
-
-        size_t size() const { 
-            return entries;
-        }
-
-        bool empty() const { 
-            return size() == 0;
-        }
-
-        void swap(hashtable& other) {
-            buckets.swap(other.buckets);
-            std::swap(entries, other.entries);
-        }
-    
-        iterator begin() {
-            for (size_t i = 0; i < buckets.size(); ++i)
-                if (buckets[i])
-                    return iterator(buckets[i], this);
-            return end();
-        }
-    
-        iterator end() { 
-            return iterator(0, this);
-        }
-
-        const_iterator begin() const {
-            for (size_t i = 0; i < buckets.size(); ++i)
-                if (buckets[i])
-                    return const_iterator(buckets[i], this);
-            return end();
-        }
-    
-        const_iterator end() const { 
-            return const_iterator(0, this);
-        }
-    
-        size_t get_bucket(const Value& val, size_t n) const {
-            return hash_fun(get_key(val)) % n;
-        }
-    
-        size_t get_key_bucket(const Key& key) const {
-            return hash_fun(key) % buckets.size();
-        }
-
-        size_t get_bucket(const Value& val) const {
-            return get_bucket(val,buckets.size());
-        }
-
-        Entry *lookup(const Value& val, bool ins = false)
-        {
-            resize(entries + 1);
-
-            size_t n = get_bucket(val);
-            Entry* from = buckets[n];
-      
-            for (Entry* ent = from; ent; ent = ent->next)
-                if (key_eq_fun(get_key(ent->val), get_key(val)))
-                    return ent;
-      
-            if(!ins) return 0;
-
-            Entry* tmp = new Entry(val);
-            tmp->next = from;
-            buckets[n] = tmp;
-            ++entries;
-            return tmp;
-        }
-
-        Entry *lookup_key(const Key& key) const
-        {
-            size_t n = get_key_bucket(key);
-            Entry* from = buckets[n];
-      
-            for (Entry* ent = from; ent; ent = ent->next)
-                if (key_eq_fun(get_key(ent->val), key))
-                    return ent;
-      
-            return 0;
-        }
-
-        const_iterator find(const Key& key) const {
-            return const_iterator(lookup_key(key),this);
-        }
-
-        iterator find(const Key& key) {
-            return iterator(lookup_key(key),this);
-        }
-
-        std::pair<iterator,bool> insert(const Value& val){
-            size_t old_entries = entries;
-            Entry *ent = lookup(val,true);
-            return std::pair<iterator,bool>(iterator(ent,this),entries > old_entries);
-        }
-    
-        iterator insert(const iterator &it, const Value& val){
-            Entry *ent = lookup(val,true);
-            return iterator(ent,this);
-        }
-
-        size_t erase(const Key& key)
-        {
-            Entry** p = &(buckets[get_key_bucket(key)]);
-            size_t count = 0;
-            while(*p){
-                Entry *q = *p;
-                if (key_eq_fun(get_key(q->val), key)) {
-                    ++count;
-                    *p = q->next;
-                    delete q;
-                }
-                else
-                    p = &(q->next);
-            }
-            entries -= count;
-            return count;
-        }
-
-        void resize(size_t new_size) {
-            const size_t old_n = buckets.size();
-            if (new_size <= old_n) return;
-            const size_t n = next_prime(new_size);
-            if (n <= old_n) return;
-            Table tmp(n, (Entry*)(0));
-            for (size_t i = 0; i < old_n; ++i) {
-                Entry* ent = buckets[i];
-                while (ent) {
-                    size_t new_bucket = get_bucket(ent->val, n);
-                    buckets[i] = ent->next;
-                    ent->next = tmp[new_bucket];
-                    tmp[new_bucket] = ent;
-                    ent = buckets[i];
-                }
-            }
-            buckets.swap(tmp);
-        }
-    
-        void clear()
-        {
-            for (size_t i = 0; i < buckets.size(); ++i) {
-                for (Entry* ent = buckets[i]; ent != 0;) {
-                    Entry* next = ent->next;
-                    delete ent;
-                    ent = next;
-                }
-                buckets[i] = 0;
-            }
-            entries = 0;
-        }
-
-        void dup(const hashtable& other)
-        {
-            clear();
-            buckets.resize(other.buckets.size());
-            for (size_t i = 0; i < other.buckets.size(); ++i) {
-                Entry** to = &buckets[i];
-                for (Entry* from = other.buckets[i]; from; from = from->next)
-                    to = &((*to = new Entry(from->val))->next);
-            }
-            entries = other.entries;
-        }
-    };
-
-    template <typename T> 
-        class equal {
-    public:
-        bool operator()(const T& x, const T &y) const {
-            return x == y;
-        }
-    };
-
-    template <typename T>
-        class identity {
-    public:
-        const T &operator()(const T &x) const {
-            return x;
-        }
-    };
-
-    template <typename T, typename U>
-        class proj1 {
-    public:
-        const T &operator()(const std::pair<T,U> &x) const {
-            return x.first;
-        }
-    };
-
-    template <typename Element, class HashFun = hash<Element>, 
-        class EqFun = equal<Element> >
-        class hash_set
-        : public hashtable<Element,Element,HashFun,identity<Element>,EqFun> {
-
-    public:
-
-    typedef Element value_type;
-
-    hash_set()
-    : hashtable<Element,Element,HashFun,identity<Element>,EqFun>(7) {}
-    };
-
-    template <typename Key, typename Value, class HashFun = hash<Key>, 
-        class EqFun = equal<Key> >
-        class hash_map
-        : public hashtable<std::pair<Key,Value>,Key,HashFun,proj1<Key,Value>,EqFun> {
-
-    public:
-
-    hash_map()
-    : hashtable<std::pair<Key,Value>,Key,HashFun,proj1<Key,Value>,EqFun>(7) {}
-
-    Value &operator[](const Key& key) {
-	std::pair<Key,Value> kvp(key,Value());
-	return 
-	hashtable<std::pair<Key,Value>,Key,HashFun,proj1<Key,Value>,EqFun>::
-        lookup(kvp,true)->val.second;
-    }
-    };
-
-    template <typename D,typename R>
-        class hash<hash_map<D,R> > {
-    public:
-        size_t operator()(const hash_map<D,R> &p) const {
-            hash<D > h1;
-            hash<R > h2;
-            size_t res = 0;
-            
-            for (typename hash_map<D,R>::const_iterator it=p.begin(), en=p.end(); it!=en; ++it)
-                res += (h1(it->first)+h2(it->second));
-            return res;
-        }
-    };
-
-    template <typename D,typename R>
-    inline bool operator ==(const hash_map<D,R> &s, const hash_map<D,R> &t){
-        for (typename hash_map<D,R>::const_iterator it=s.begin(), en=s.end(); it!=en; ++it) {
-            typename hash_map<D,R>::const_iterator it2 = t.find(it->first);
-            if (it2 == t.end() || !(it->second == it2->second)) return false;
-        }
-        for (typename hash_map<D,R>::const_iterator it=t.begin(), en=t.end(); it!=en; ++it) {
-            typename hash_map<D,R>::const_iterator it2 = s.find(it->first);
-            if (it2 == t.end() || !(it->second == it2->second)) return false;
-        }
-        return true;
-    }
-}
-#endif
-"""
-
-hash_cpp = """
-/*++
-Copyright (c) Microsoft Corporation
-
-This string hash function is borrowed from Microsoft Z3
-(https://github.com/Z3Prover/z3). 
-
---*/
-
-
-#define mix(a,b,c)              \\
-{                               \\
-  a -= b; a -= c; a ^= (c>>13); \\
-  b -= c; b -= a; b ^= (a<<8);  \\
-  c -= a; c -= b; c ^= (b>>13); \\
-  a -= b; a -= c; a ^= (c>>12); \\
-  b -= c; b -= a; b ^= (a<<16); \\
-  c -= a; c -= b; c ^= (b>>5);  \\
-  a -= b; a -= c; a ^= (c>>3);  \\
-  b -= c; b -= a; b ^= (a<<10); \\
-  c -= a; c -= b; c ^= (b>>15); \\
-}
-
-#ifndef __fallthrough
-#define __fallthrough
-#endif
-
-namespace hash_space {
-
-// I'm using Bob Jenkin's hash function.
-// http://burtleburtle.net/bob/hash/doobs.html
-unsigned string_hash(const char * str, unsigned length, unsigned init_value) {
-    register unsigned a, b, c, len;
-
-    /* Set up the internal state */
-    len = length;
-    a = b = 0x9e3779b9;  /* the golden ratio; an arbitrary value */
-    c = init_value;      /* the previous hash value */
-
-    /*---------------------------------------- handle most of the key */
-    while (len >= 12) {
-        a += reinterpret_cast<const unsigned *>(str)[0];
-        b += reinterpret_cast<const unsigned *>(str)[1];
-        c += reinterpret_cast<const unsigned *>(str)[2];
-        mix(a,b,c);
-        str += 12; len -= 12;
-    }
-
-    /*------------------------------------- handle the last 11 bytes */
-    c += length;
-    switch(len) {        /* all the case statements fall through */
-    case 11: 
-        c+=((unsigned)str[10]<<24);
-        __fallthrough;
-    case 10: 
-        c+=((unsigned)str[9]<<16);
-        __fallthrough;
-    case 9 : 
-        c+=((unsigned)str[8]<<8);
-        __fallthrough;
-        /* the first byte of c is reserved for the length */
-    case 8 : 
-        b+=((unsigned)str[7]<<24);
-        __fallthrough;
-    case 7 : 
-        b+=((unsigned)str[6]<<16);
-        __fallthrough;
-    case 6 : 
-        b+=((unsigned)str[5]<<8);
-        __fallthrough;
-    case 5 : 
-        b+=str[4];
-        __fallthrough;
-    case 4 : 
-        a+=((unsigned)str[3]<<24);
-        __fallthrough;
-    case 3 : 
-        a+=((unsigned)str[2]<<16);
-        __fallthrough;
-    case 2 : 
-        a+=((unsigned)str[1]<<8);
-        __fallthrough;
-    case 1 : 
-        a+=str[0];
-        __fallthrough;
-        /* case 0: nothing left to add */
-    }
-    mix(a,b,c);
-    /*-------------------------------------------- report the result */
-    return c;
-}
-
-}
-
-"""
