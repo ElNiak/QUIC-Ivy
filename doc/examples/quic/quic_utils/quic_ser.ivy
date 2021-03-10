@@ -49,11 +49,18 @@ object quic_ser = {}
     }*/
 
     //TODO
+<<<<<<< HEAD
     #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     //#include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     
     class `quic_ser` : public ivy_binary_ser_128 {
     //class `quic_ser` : public ivy_binary_ser {
+=======
+    //#include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    #include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    
+    class `quic_ser` : public ivy_binary_ser {
+>>>>>>> bfe3e0a9bf756db0a6a2dc32dfc10d121b3d4499
         enum {quic_s_init,
               quic_s_version,
 	          quic_s_dcil,
