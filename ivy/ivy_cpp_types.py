@@ -376,14 +376,14 @@ class LLBV(XBV):
     def __init__(self,classname,loval,hival,bits):
         """ bits is the number of bits in the bit vector representation """
         add_once_global("""
-    struct LLClass {
-        LLClass() : val(0) {}
-        LLClass(int256_t val) : val(val) {}
-        int256_t val;
-        int256_t __hash() const {return val;}
-    };
-""")
-	    add_once_global("std::ostream& operator<<(std::ostream&s, const LLClass &v) {return s << v.val;}\n")
+        struct LLClass {
+            LLClass() : val(0) {}
+            LLClass(int256_t val) : val(val) {}
+            int256_t val;
+            int256_t __hash() const {return val;}
+        };
+        """)
+        add_once_global("std::ostream& operator<<(std::ostream&s, const LLClass &v) {return s << v.val;}\n")
         add_once_global("bool operator==(const const &x, const const &y) {return x.val == y.val;}\n")
         self.loval = loval
         self.hival = hival
