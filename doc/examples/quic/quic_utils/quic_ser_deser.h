@@ -131,7 +131,7 @@ struct tls_name_struct tls_field_length_bytes[33] = {
     {"max_ack_delay", 1},
     {"initial_source_connection_id", 1},
     {"retry_source_connection_id", 1},
-    {"loss_bits", 2},       //for picoquic TODO test
+    {"loss_bits", 1},       //for picoquic TODO test
     {"grease_quic_bit", 1}, //for picoquic
     //{"enable_time_stamp",1}, //for picoquic TODO test
     {"min_ack_delay", 1},
@@ -202,7 +202,7 @@ struct tls_name_struct tls_tags[31] = {
     {"loss_bits", 0x1057},                  //for picoquic
     {"grease_quic_bit", 0x2ab2},            //for picoquic
     //{"enable_time_stamp",0x7158}, //for picoquic
-    {"min_ack_delay", -4611686014149009894}, //0xFF02DE1A ||  0xc0000000FF02DE1A (13835058059560541722)
+    {"min_ack_delay", -4611686014149009894}, //0xFF02DE1A ||  0xc0000000FF02DE1A (13835058059560541722) OR 8000DE1A
     {"unknown_transport_parameter", -2},
     {0, 0}};
 tls_name_map tls_tags_map;
