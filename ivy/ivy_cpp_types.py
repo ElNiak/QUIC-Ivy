@@ -384,7 +384,7 @@ class LLBV(XBV):
         };
         """)
         add_once_global("std::ostream& operator<<(std::ostream&s, const LLClass &v) {return s << v.val;}\n")
-        add_once_global("bool operator==(const const &x, const const &y) {return x.val == y.val;}\n")
+        add_once_global("bool operator==(const LLClass &x, const LLClass &y) {return x.val == y.val;}\n")
         self.loval = loval
         self.hival = hival
         XBV.__init__(self,classname,bits,baseclass='const',constructors="CLASSNAME(int256_t v) : BASECLASS(v) {}")
