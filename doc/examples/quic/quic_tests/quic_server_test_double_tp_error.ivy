@@ -250,8 +250,9 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
    # transport parameters extension.  An endpoint SHOULD treat receipt of
    # duplicate transport parameters as a connection error of type
    # TRANSPORT_PARAMETER_ERROR.
-
-    tp.transport_parameters := tp.transport_parameters.append(imsdu);
+    var icid2 : initial_source_connection_id; #TODO update v29
+    icid2.scid := 0;
+    tp.transport_parameters := tp.transport_parameters.append(icid2);
 }
 
 
