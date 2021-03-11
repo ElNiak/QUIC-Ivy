@@ -300,35 +300,7 @@ class LongBV(XBV):
         int128_t __hash() const {return val;}
     };
 """)
-	#"std::ostream& operator<<(std::ostream&s, const LongClass &v) {return s << v.val;}\n"
-	printed = """
-	    std::ostream& operator<<(std::ostream&s, const LongClass &v) {
-		std::ostream::sentry ss( s ); 
-		if ( ss ) { 
-		   __int128_t value = v.val; 
-		   //https://stackoverflow.com/questions/25114597/how-to-print-int128-in-g 
-		   __uint128_t tmp = value < 0 ? -value : value; 
-		   char buffer[ 128 ]; 
-		   char* d = std::end( buffer ); 
-		   do 
-		   { 
-		     -- d; 
-		     *d = "0123456789"[ tmp % 10 ]; 
-		     tmp /= 10; 
-		   } while ( tmp != 0 ); 
-		   if ( value < 0 ) { 
-		      -- d; 
-		      *d = '-'; 
-		   } 
-		   int len = std::end( buffer ) - d; 
-		   if ( s.rdbuf()->sputn( d, len ) != len ) { 
-		      s.setstate( std::ios_base::badbit ); 
-		} 
-	       } 
-	       return s; 
-	  }
-	"""
-        add_once_global(printed)
+        add_once_global("std::ostream& operator<<(std::ostream&s, const LongClass &v) {return s << v.val;}\n")
         add_once_global("bool operator==(const LongClass &x, const LongClass &y) {return x.val == y.val;}\n")
         self.loval = loval
         self.hival = hival
@@ -339,65 +311,8 @@ class LongBV(XBV):
         XBV.emit_templates(self)
         add_impl(
 """
-int128_t atoint128_t(std::string const & in)
-{
-    //https://stackoverflow.com/questions/45608424/atoi-for-int128-t-type
-    int128_t res = 0;
-    size_t i = 0;
-    bool sign = false;
-
-    if (in[i] == '-')
-    {
-        ++i;
-        sign = true;
-    }
-
-    if (in[i] == '+')
-    {
-        ++i;
-    }
-
-    for (; i < in.size(); ++i)
-    {
-        const char c = in[i];
-        if (not std::isdigit(c)) 
-            throw std::runtime_error(std::string("Non-numeric character: ") + c);
-        res *= 10;
-        res += c - '0';
-    }
-
-    if (sign)
-    {
-        res *= -1;
-    }
-
-    return res;
-}
-
 std::ostream &operator <<(std::ostream &s, const CLASSNAME &t){
-    //s << t.val;
-    std::ostream::sentry ss( s ); 
-    if ( ss ) { 
-	__int128_t value = t.val; 
-	//https://stackoverflow.com/questions/25114597/how-to-print-int128-in-g 
-	__uint128_t tmp = value < 0 ? -value : value; 
-	char buffer[ 128 ]; 
-	char* d = std::end( buffer ); 
-	do 
-	{ 
-	  -- d; 
-	  *d = "0123456789"[ tmp % 10 ]; 
-	  tmp /= 10; 
-	} while ( tmp != 0 ); 
-	  if ( value < 0 ) { 
-	     -- d; 
-	     *d = '-'; 
-	} 
-	int len = std::end( buffer ) - d; 
-	if ( s.rdbuf()->sputn( d, len ) != len ) { 
-	    s.setstate( std::ios_base::badbit ); 
-	} 
-    } 
+    s << t.val;
     return s;
 }
 
@@ -468,36 +383,7 @@ class LLBV(XBV):
         int256_t __hash() const {return val;}
     };
 """)
-	#"std::ostream& operator<<(std::ostream&s, const LLClass &v) {return s << v.val;}\n"
-	printed = """
-        //TODO remove with Boost lib
-	    std::ostream& operator<<(std::ostream&s, const LLClass &v) {
-		std::ostream::sentry ss( s ); 
-		if ( ss ) { 
-		   int256_t value = v.val; 
-		   //https://stackoverflow.com/questions/25114597/how-to-print-int128-in-g 
-		   uint256_t tmp = value < 0 ? -value : value; 
-		   char buffer[ 256 ]; 
-		   char* d = std::end( buffer ); 
-		   do 
-		   { 
-		     -- d; 
-		     *d = "0123456789"[ tmp % 10 ]; 
-		     tmp /= 10; 
-		   } while ( tmp != 0 ); 
-		   if ( value < 0 ) { 
-		      -- d; 
-		      *d = '-'; 
-		   } 
-		   int len = std::end( buffer ) - d; 
-		   if ( s.rdbuf()->sputn( d, len ) != len ) { 
-		      s.setstate( std::ios_base::badbit ); 
-		} 
-	       } 
-	       return s; 
-	  }
-	"""
-        add_once_global(printed)
+	    add_once_global("std::ostream& operator<<(std::ostream&s, const LLClass &v) {return s << v.val;}\n")
         add_once_global("bool operator==(const const &x, const const &y) {return x.val == y.val;}\n")
         self.loval = loval
         self.hival = hival
@@ -508,65 +394,8 @@ class LLBV(XBV):
         XBV.emit_templates(self)
         add_impl(
 """
-int256_t atoint256_t(std::string const & in)
-{
-    //https://stackoverflow.com/questions/45608424/atoi-for-int128-t-type
-    int256_t res = 0;
-    size_t i = 0;
-    bool sign = false;
-
-    if (in[i] == '-')
-    {
-        ++i;
-        sign = true;
-    }
-
-    if (in[i] == '+')
-    {
-        ++i;
-    }
-
-    for (; i < in.size(); ++i)
-    {
-        const char c = in[i];
-        if (not std::isdigit(c)) 
-            throw std::runtime_error(std::string("Non-numeric character: ") + c);
-        res *= 10;
-        res += c - '0';
-    }
-
-    if (sign)
-    {
-        res *= -1;
-    }
-
-    return res;
-}
-
 std::ostream &operator <<(std::ostream &s, const CLASSNAME &t){
-    //s << t.val;
-    std::ostream::sentry ss( s ); 
-    if ( ss ) { 
-	int256_t value = t.val; 
-	//https://stackoverflow.com/questions/25114597/how-to-print-int128-in-g 
-	uint256_t tmp = value < 0 ? -value : value; 
-	char buffer[ 256 ]; 
-	char* d = std::end( buffer ); 
-	do 
-	{ 
-	  -- d; 
-	  *d = "0123456789"[ tmp % 10 ]; 
-	  tmp /= 10; 
-	} while ( tmp != 0 ); 
-	  if ( value < 0 ) { 
-	     -- d; 
-	     *d = '-'; 
-	} 
-	int len = std::end( buffer ) - d; 
-	if ( s.rdbuf()->sputn( d, len ) != len ) { 
-	    s.setstate( std::ios_base::badbit ); 
-	} 
-    } 
+    s << t.val;
     return s;
 }
 
