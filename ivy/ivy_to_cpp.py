@@ -3444,7 +3444,7 @@ template <>
 void __deser<long long>(ivy_deser_128 &inp, long long &res) {
     int128_t temp;
     inp.get(temp);
-    res = temp.convert_to<long long>;
+    res = temp.convert_to<long long>();
 }
 
 template <>
@@ -3457,14 +3457,14 @@ template <>
 void __deser<unsigned long long>(ivy_deser_128 &inp, unsigned long long &res) {
     int128_t temp;
     inp.get(temp);
-    res = temp.convert_to<unsigned long long>;
+    res = temp.convert_to<unsigned long long>();
 }
 
 template <>
 void __deser<unsigned>(ivy_deser_128 &inp, unsigned &res) {
     int128_t temp;
     inp.get(temp);
-    res = temp.convert_to<unsigned>;
+    res = temp.convert_to<unsigned>();
 }
 
 template <>
@@ -3476,7 +3476,7 @@ template <>
 void __deser<bool>(ivy_deser_128 &inp, bool &res) {
     int128_t thing;
     inp.get(thing);
-    res = thing;
+    res = thing.convert_to<bool>();
 }
 
 template <class T> void __ser(ivy_ser_256 &res, const T &inp);
@@ -3532,21 +3532,21 @@ template <>
 void __deser<int>(ivy_deser_256 &inp, int &res) {
     int256_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<int>();
 }
 
 template <>
 void __deser<long long>(ivy_deser_256 &inp, long long &res) {
     int256_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<long long>();
 }
 
 template <>
 void __deser<int128_t>(ivy_deser_256 &inp, int128_t &res) {
     int256_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<int128_t>();
 }
 
 template <>
@@ -3559,14 +3559,14 @@ template <>
 void __deser<unsigned long long>(ivy_deser_256 &inp, unsigned long long &res) {
     int256_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<unsigned long long>();
 }
 
 template <>
 void __deser<unsigned>(ivy_deser_256 &inp, unsigned &res) {
     int256_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<unsigned>();
 }
 
 template <>
@@ -3578,7 +3578,7 @@ template <>
 void __deser<bool>(ivy_deser_256 &inp, bool &res) {
     int256_t thing;
     inp.get(thing);
-    res = thing;
+    res = thing.convert_to<bool>();
 }
 
 

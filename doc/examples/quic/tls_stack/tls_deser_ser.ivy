@@ -87,7 +87,8 @@ object tls_ser_server = {}
         virtual int open_tag(const std::vector<std::string> &tags) {
             std::cout << std::endl; 
 	        //std::cout << "open_tag : " << tags << std::endl;  
-            int bytes = 1;
+            //int bytes = 1;
+            int128_t bytes = 1;
             if (tls_tag_bytes_map.find(tags[0]) != tls_tag_bytes_map.end())   {
                 bytes = tls_tag_bytes_map[tags[0]];
             }
@@ -252,7 +253,8 @@ object tls_ser_server = {}
     struct `tls_ser` : public ivy_binary_ser_256 {
     //struct `tls_ser` : public ivy_binary_ser {
 
-        int field_bytes;
+        //int field_bytes;
+        int256_t field_bytes;
         //std::vector<uint128_t> field_start;
         //std::vector<uint128_t> field_length_bytes;
         std::vector<uint256_t> field_start;
@@ -323,7 +325,8 @@ object tls_ser_server = {}
         }
 
         virtual void open_tag(int ivy_tag, const std::string &name) {
-            int bytes = 1;
+            //int bytes = 1;
+            int256_t bytes = 1;
             if (tls_tag_bytes_map.find(name) != tls_tag_bytes_map.end())
                 bytes = tls_tag_bytes_map[name];
             //int128_t tag = tls_tags_map[name];	

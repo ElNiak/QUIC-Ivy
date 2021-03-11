@@ -350,7 +350,7 @@ template <>
 void __deser<CLASSNAME>(ivy_deser_256 &inp, CLASSNAME &res) {
     int256_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<CLASSNAME>();
 }
 BASECLASS CLASSNAME::random_x(){
     return RAND;
@@ -425,7 +425,7 @@ template <>
 void __deser<CLASSNAME>(ivy_deser_128 &inp, CLASSNAME &res) {
     int128_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<CLASSNAME>();
 }
 template <>
 void __ser<CLASSNAME>(ivy_ser_256 &res, const CLASSNAME &inp) {
