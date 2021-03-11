@@ -387,7 +387,7 @@ class LLBV(XBV):
         add_once_global("bool operator==(const LLClass &x, const LLClass &y) {return x.val == y.val;}\n")
         self.loval = loval
         self.hival = hival
-        XBV.__init__(self,classname,bits,baseclass='const',constructors="CLASSNAME(int256_t v) : BASECLASS(v) {}")
+        XBV.__init__(self,classname,bits,baseclass='LLClass',constructors="CLASSNAME(int256_t v) : BASECLASS(v) {}")
 
 
     def emit_templates(self):

@@ -3437,14 +3437,14 @@ template <>
 void __deser<int>(ivy_deser_128 &inp, int &res) {
     int128_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<int>();
 }
 
 template <>
 void __deser<long long>(ivy_deser_128 &inp, long long &res) {
     int128_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<long long>;
 }
 
 template <>
@@ -3457,14 +3457,14 @@ template <>
 void __deser<unsigned long long>(ivy_deser_128 &inp, unsigned long long &res) {
     int128_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<unsigned long long>;
 }
 
 template <>
 void __deser<unsigned>(ivy_deser_128 &inp, unsigned &res) {
     int128_t temp;
     inp.get(temp);
-    res = temp;
+    res = temp.convert_to<unsigned>;
 }
 
 template <>
@@ -3526,56 +3526,56 @@ void __ser<__strlit>(ivy_ser_256 &res, const __strlit &inp) {
     res.set(inp);
 }
 
-template <class T> void __deser(ivy_ser_256 &inp, T &res);
+template <class T> void __deser(ivy_deser_256 &inp, T &res);
 
 template <>
-void __deser<int>(ivy_ser_256 &inp, int &res) {
+void __deser<int>(ivy_deser_256 &inp, int &res) {
     int256_t temp;
     inp.get(temp);
     res = temp;
 }
 
 template <>
-void __deser<long long>(ivy_ser_256 &inp, long long &res) {
+void __deser<long long>(ivy_deser_256 &inp, long long &res) {
     int256_t temp;
     inp.get(temp);
     res = temp;
 }
 
 template <>
-void __deser<int128_t>(ivy_ser_256 &inp, int128_t &res) {
+void __deser<int128_t>(ivy_deser_256 &inp, int128_t &res) {
     int256_t temp;
     inp.get(temp);
     res = temp;
 }
 
 template <>
-void __deser<int256_t>(ivy_ser_256 &inp, int256_t &res) {
+void __deser<int256_t>(ivy_deser_256 &inp, int256_t &res) {
     inp.get(res);
 }
 
 
 template <>
-void __deser<unsigned long long>(ivy_ser_256 &inp, unsigned long long &res) {
+void __deser<unsigned long long>(ivy_deser_256 &inp, unsigned long long &res) {
     int256_t temp;
     inp.get(temp);
     res = temp;
 }
 
 template <>
-void __deser<unsigned>(ivy_ser_256 &inp, unsigned &res) {
+void __deser<unsigned>(ivy_deser_256 &inp, unsigned &res) {
     int256_t temp;
     inp.get(temp);
     res = temp;
 }
 
 template <>
-void __deser<__strlit>(ivy_ser_256 &inp, __strlit &res) {
+void __deser<__strlit>(ivy_deser_256 &inp, __strlit &res) {
     inp.get(res);
 }
 
 template <>
-void __deser<bool>(ivy_ser_256 &inp, bool &res) {
+void __deser<bool>(ivy_deser_256 &inp, bool &res) {
     int256_t thing;
     inp.get(thing);
     res = thing;
