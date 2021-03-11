@@ -2395,8 +2395,8 @@ def module_to_cpp_class(classname,basename):
 
     #chris
     #header.append("#include <inttypes.h>\n")
-    header.append("#include <boost/multiprecision/cpp_int.hpp>")
-    header.append("using namespace boost::multiprecision;")
+    header.append("#include <boost/multiprecision/cpp_int.hpp>\n")
+    header.append("using namespace boost::multiprecision;\n")
     #header.append("typedef __int128_t int128_t;\n")
     #header.append("typedef __uint128_t uint128_t;\n")
     #header.append("typedef __int256_t int256_t;\n")
