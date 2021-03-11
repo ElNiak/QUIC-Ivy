@@ -161,7 +161,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
     if _generating {
         require scid = the_cid;
     } else {
-        require is_no_error
+        require f.err_code = 0
     }
 }
 

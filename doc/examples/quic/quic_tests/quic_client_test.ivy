@@ -150,7 +150,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
         require client.ep.addr ~= 0;         
         require scid = the_cid;
     } else {
-        require is_no_error
+        require f.err_code = 0
     }
 }
 
