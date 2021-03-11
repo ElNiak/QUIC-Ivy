@@ -161,7 +161,7 @@ object retry_source_connection_id   = { # hcid picoquic ?
 # TODO implement test
 object loss_bits = {
     variant this of transport_parameter = struct {  # tag = 4183
-        stream_pos_32 : stream_pos
+        unknown : stream_pos
     }
     instantiate trans_params_ops(this)
 }
@@ -190,7 +190,6 @@ object min_ack_delay  = {
     instantiate trans_params_ops(this)
 }
 
-# check if good
 object unknown_transport_parameter = {
     variant this of transport_parameter = struct {  # tag = x
         unknown : stream_pos
