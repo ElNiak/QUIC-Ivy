@@ -470,6 +470,7 @@ class LLBV(XBV):
 """)
 	#"std::ostream& operator<<(std::ostream&s, const LLClass &v) {return s << v.val;}\n"
 	printed = """
+        //TODO remove with Boost lib
 	    std::ostream& operator<<(std::ostream&s, const LLClass &v) {
 		std::ostream::sentry ss( s ); 
 		if ( ss ) { 
@@ -546,9 +547,9 @@ std::ostream &operator <<(std::ostream &s, const CLASSNAME &t){
     //s << t.val;
     std::ostream::sentry ss( s ); 
     if ( ss ) { 
-	__int256_t value = t.val; 
+	int256_t value = t.val; 
 	//https://stackoverflow.com/questions/25114597/how-to-print-int128-in-g 
-	__uint256_t tmp = value < 0 ? -value : value; 
+	uint256_t tmp = value < 0 ? -value : value; 
 	char buffer[ 256 ]; 
 	char* d = std::end( buffer ); 
 	do 
