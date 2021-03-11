@@ -94,7 +94,8 @@ module udp_wrapper(addr,pkt,me,port_base) = {
 	        `pkt` pkt;
 	        try {
 		    	//ivy_binary_deser ds(buf);
-		    	ivy_binary_deser_128 ds(buf);
+		    	//ivy_binary_deser_128 ds(buf);
+				ivy_binary_deser_256 ds(buf);
 		    	__deser(ds,pkt);
 	            if (ds.pos < buf.size()){
 					 std::cout << "udp" << std::endl; 
@@ -113,7 +114,8 @@ module udp_wrapper(addr,pkt,me,port_base) = {
 		struct sockaddr_in dstaddr;
 		get_addr(dst,dstaddr);
 		//ivy_binary_ser sr;
-		ivy_binary_ser_128 sr;
+		//ivy_binary_ser_128 sr;
+		ivy_binary_ser_256 sr;
 	        __ser(sr,pkt);
 		//std::cout << "SENDING\n";
 		if (sendto(sock,&sr.res[0],sr.res.size(),0,(sockaddr *)&dstaddr,sizeof(sockaddr_in)) < 0) 

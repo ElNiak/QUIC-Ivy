@@ -179,15 +179,41 @@ module hash_map(domain,range) = {
 	    void __ser<`t`>(ivy_ser_128 &res, const `t` &inp) {
 	        int sz = inp.size();
 	        res.open_list(sz);
-		for (`t`::const_iterator it = inp.begin(), en = inp.end(); it != en; ++it) {
-		    res.open_list_elem();
+			for (`t`::const_iterator it = inp.begin(), en = inp.end(); it != en; ++it) {
+		    	res.open_list_elem();
 	            __ser(res,it->first);
 	            __ser(res,it->second);
-		    res.close_list_elem();
+		    	res.close_list_elem();
                 }
 	        res.close_list();
 	    }
 
+		template <>
+	    void __deser<`t`>(ivy_deser_256 &inp, `t` &res) {
+	        inp.open_list();
+	        while(inp.open_list_elem()) {
+		    `domain` x;
+	            __deser(inp,x);
+                    `range` y;
+	            __deser(inp,y);
+                    res[x] = y;
+		    inp.close_list_elem();
+                }
+		inp.close_list();
+	    }
+
+	    template <>
+	    void __ser<`t`>(ivy_ser_256 &res, const `t` &inp) {
+	        int sz = inp.size();
+	        res.open_list(sz);
+			for (`t`::const_iterator it = inp.begin(), en = inp.end(); it != en; ++it) {
+		    	res.open_list_elem();
+	            __ser(res,it->first);
+	            __ser(res,it->second);
+		    	res.close_list_elem();
+                }
+	        res.close_list();
+	    }
 
 	>>>
     }

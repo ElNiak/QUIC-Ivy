@@ -16,7 +16,8 @@ object quic_ser = {}
     #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     //#include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     
-    class `quic_ser` : public ivy_binary_ser_128 {
+    //class `quic_ser` : public ivy_binary_ser_128 {
+    class `quic_ser` : public ivy_binary_ser_256 {
     //class `quic_ser` : public ivy_binary_ser {
         enum {quic_s_init,
               quic_s_version,
@@ -77,8 +78,10 @@ object quic_ser = {}
         int scil;
         long frame_type;
         int data_remaining;
-        int128_t ack_blocks_expected;
-        int128_t ack_block_count;
+        //int128_t ack_blocks_expected;
+        //int128_t ack_block_count;
+        int256_t ack_blocks_expected;
+        int256_t ack_block_count;
         //long long ack_blocks_expected;
         //long long ack_block_count;
         int payload_length_pos;
@@ -87,7 +90,8 @@ object quic_ser = {}
     public:
         quic_ser() : state(quic_s_init) {
         }
-        virtual void  set(int128_t res) {
+        //virtual void  set(int128_t res) {
+        virtual void  set(int256_t res) {
         //virtual void  set(long long res) {
             switch (state) {
             case quic_s_init:
@@ -355,8 +359,10 @@ object quic_ser = {}
             }
         }
 
-        void set_var_int(int128_t res) {
-            int128_t val = res & 0x3fffffffffffffff; //TODO modify with 16 bytes mask ?
+        void set_var_int(int256_t res) {
+            int256_t val = res & 0x3fffffffffffffff;
+        //void set_var_int(int128_t res) {
+        //    int128_t val = res & 0x3fffffffffffffff; //TODO modify with 16 bytes mask ?
         //void set_var_int(long long res) {
         //    long long val = res & 0x3fffffffffffffff; 
             int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;
@@ -365,7 +371,8 @@ object quic_ser = {}
             setn(val,bytes);
         }
 
-        void set_pkt_num(int128_t &res) {
+        //void set_pkt_num(int128_t &res) {
+        void set_pkt_num(int256_t &res) {
         //void set_pkt_num(long long &res) {
             // setn(0xc0000000 | (0x3fffffff & res),4);
             // pkt number length is low two bits of first packet byte, plus one 

@@ -15,7 +15,8 @@ object tls_ser_server = {}
     #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
   
 
-    class `tls_deser` : public ivy_binary_deser_128 {
+    //class `tls_deser` : public ivy_binary_deser_128 {
+    class `tls_deser` : public ivy_binary_deser_256 {
     //class `tls_deser` : public ivy_binary_deser {
         int field_bytes;
         std::vector<unsigned> fence;
@@ -23,7 +24,8 @@ object tls_ser_server = {}
 
     public:
 
-        tls_deser(const std::vector<char> &inp) : ivy_binary_deser_128(inp) {
+        //tls_deser(const std::vector<char> &inp) : ivy_binary_deser_128(inp) {
+        tls_deser(const std::vector<char> &inp) : ivy_binary_deser_256(inp) {
         //tls_deser(const std::vector<char> &inp) : ivy_binary_deser(inp) {
             field_bytes = 2;
             in_encrypted_extensions = 0;
@@ -33,7 +35,8 @@ object tls_ser_server = {}
             if (fence.size() > 0 && pos + bytes > fence.back()) {
                 return false;
 	    }
-            return ivy_binary_deser_128::more(bytes);
+            //return ivy_binary_deser_128::more(bytes);
+            return ivy_binary_deser_256::more(bytes);
             //return ivy_binary_deser::more(bytes);
         }
     
@@ -45,7 +48,8 @@ object tls_ser_server = {}
             }
             else if (name == "versions") {
                 field_bytes = 4;
-                int128_t bytes = 0;
+                //int128_t bytes = 0;
+                int256_t bytes = 0;
                 //long long bytes = 0;
                 if (in_encrypted_extensions) {
                     getn(bytes,1);
@@ -54,7 +58,8 @@ object tls_ser_server = {}
             }
             else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
                 int length_field_bytes = tls_field_length_bytes_map[name];
-                int128_t bytes;
+                //int128_t bytes;
+                int256_t bytes;
                 //long long bytes;
                 getn(bytes,length_field_bytes);
                 fence.push_back(pos+bytes);
@@ -86,9 +91,12 @@ object tls_ser_server = {}
             if (tls_tag_bytes_map.find(tags[0]) != tls_tag_bytes_map.end())   {
                 bytes = tls_tag_bytes_map[tags[0]];
             }
-            int128_t tag;
-            int128_t tag_new;
-            uint128_t tag_final;
+            //int128_t tag;
+            //int128_t tag_new;
+            //uint128_t tag_final;
+            int256_t tag;
+            int256_t tag_new;
+            uint256_t tag_final;
             //long long tag;
             //long long tag_new;
             //unsigned long long tag_final;
@@ -117,7 +125,8 @@ object tls_ser_server = {}
                     is_unknow = true;
 
             std::cout <<  "Tag size: " <<  tag_size << std::endl;
-            int128_t value_size = 0;
+            //int128_t value_size = 0;
+            int256_t value_size = 0;
 	        //long long value_size = 0;
             if(((tag_size != bytes || is_unknow || tag == 0x1010 || tag == 0x0f || tag == 0x00 || tag == 0x0d) 
 		        && tags[0] != "tls.unknown_extension")) { //|| tag == 0x0d
@@ -127,8 +136,9 @@ object tls_ser_server = {}
                 bytes = tag_size;
                 getn(tag_new,bytes);
 
-                //unsigned long long tag_intt = (uint128_t) tag_new; 
-                uint128_t tag_intt = (uint128_t) tag_new; 
+                //unsigned long long tag_intt = (unsigned long long) tag_new; 
+                //uint128_t tag_intt = (uint128_t) tag_new; 
+                uint256_t tag_intt = (uint256_t) tag_new; 
                 tag_final = (tag_intt & mask);
                 
                 getn(value_size,1);                
@@ -139,7 +149,8 @@ object tls_ser_server = {}
                     tls_field_bytes_map["scid"] = value_size;
                 }
                 else if(tag == 0x0d) {
-                    int128_t value_size_pcid;	
+                    //int128_t value_size_pcid;	
+                    int256_t value_size_pcid;	
                     //long long value_size_pcid;	
                     pos += 1;  // TP len
                     pos += 4;  // ipv4
@@ -194,21 +205,26 @@ object tls_ser_server = {}
             close_field();
         }
 
-        virtual void get(int128_t &res) {
+        //virtual void get(int128_t &res) {
+        virtual void get(int256_t &res) {
         //virtual void get(long long &res) {
             if (field_bytes == -1) get_var_int(res);
             else getn(res,field_bytes);
         }
 
-        void get_var_int(int128_t &res) {
+        //void get_var_int(int128_t &res) {
         //void get_var_int(long long &res) {
+        void get_var_int(int256_t &res) {
             static int lens[4] = {0,1,3,7};
-            int128_t lobyte;
+            //int128_t lobyte;
+            int256_t lobyte;
             //long long lobyte;
-            ivy_binary_deser_128::getn(lobyte,1);
+            //ivy_binary_deser_128::getn(lobyte,1);
+            ivy_binary_deser_256::getn(lobyte,1);
             //ivy_binary_deser::getn(lobyte,1);
             int bytes = lens[(lobyte & 0xc0) >> 6];
-            ivy_binary_deser_128::getn(res,bytes);
+            ivy_binary_deser_256::getn(res,bytes);
+            //ivy_binary_deser_128::getn(res,bytes);
             //ivy_binary_deser::getn(res,bytes);
             res |= (lobyte & 0x3f) << (bytes << 3);
         }
@@ -232,12 +248,15 @@ object tls_ser_server = {}
         ~tls_deser(){}
     };
 
-    struct `tls_ser` : public ivy_binary_ser_128 {
+    //struct `tls_ser` : public ivy_binary_ser_128 {
+    struct `tls_ser` : public ivy_binary_ser_256 {
     //struct `tls_ser` : public ivy_binary_ser {
 
         int field_bytes;
-        std::vector<uint128_t> field_start;
-        std::vector<uint128_t> field_length_bytes;
+        //std::vector<uint128_t> field_start;
+        //std::vector<uint128_t> field_length_bytes;
+        std::vector<uint256_t> field_start;
+        std::vector<uint256_t> field_length_bytes;
         //std::vector<unsigned long long> field_start;
         //std::vector<unsigned long long> field_length_bytes;
         int in_encrypted_extensions;
@@ -307,8 +326,9 @@ object tls_ser_server = {}
             int bytes = 1;
             if (tls_tag_bytes_map.find(name) != tls_tag_bytes_map.end())
                 bytes = tls_tag_bytes_map[name];
-            int128_t tag = tls_tags_map[name];	
+            //int128_t tag = tls_tags_map[name];	
             //long long tag = tls_tags_map[name];	
+            int256_t tag = tls_tags_map[name];	
             if (tag !=-1) 
                 setn(tag,bytes); // var int ?	
 	        if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
@@ -333,14 +353,17 @@ object tls_ser_server = {}
             close_field();
         }
 
-        void set(int128_t inp) {
+        //void set(int128_t inp) {
+        void set(int256_t inp) {
         //void set(long long inp) {
             if (field_bytes == -1) set_var_int(inp);
             else setn(inp,field_bytes);
         }
 
-        void set_var_int(int128_t res) {
-            int128_t val = res & 0x3fffffffffffffff;
+        //void set_var_int(int128_t res) {
+        //    int128_t val = res & 0x3fffffffffffffff;
+        void set_var_int(int256_t res) {
+            int256_t val = res & 0x3fffffffffffffff;
         //void set_var_int(long long res) {
         //    long long val = res & 0x3fffffffffffffff;
             int bytecode = res <= 0x3f ? 0 : res <= 0x3fff ? 1 : res <= 0x3fffffff ? 2 : 3;

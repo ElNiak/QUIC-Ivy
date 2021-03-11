@@ -388,7 +388,7 @@ module null_type(range_t,null_value) = {
 	template <>
 	void  __ser<`t`>(ivy_ser_128 &res, const `t` &t){
 	    if (t.is_null)
-	        res.set((long long)strtoull("`null_value`",NULL,0));
+	        res.set((long long)strtoull("`null_value`",NULL,0)); //TODO change ?
 	    else
 	        __ser(res,t.contents);
 	}
@@ -404,7 +404,29 @@ module null_type(range_t,null_value) = {
 	    sts << val;
 	    args[0].atom = sts.str();
 	    res.contents = _arg<`range_t`>(args,0,0);	    
-        }
+    }
+
+	template <>
+	void  __ser<`t`>(ivy_ser_256 &res, const `t` &t){
+	    if (t.is_null)
+	        res.set((long long)strtoull("`null_value`",NULL,0));
+	    else
+	        __ser(res,t.contents);
+	}
+
+	template <>
+	void __deser<`t`>(ivy_deser_256 &inp, `t` &res){
+	    long long val;
+	    inp.get(val);
+	    res.is_null = (val == (long long)strtoull("`null_value`",NULL,0));
+	    std::vector<ivy_value> args;
+	    args.resize(1);
+	    std::ostringstream sts;
+	    sts << val;
+	    args[0].atom = sts.str();
+	    res.contents = _arg<`range_t`>(args,0,0);	    
+    }
+
     >>>
 }
 
@@ -664,6 +686,29 @@ module path(domain,range) = {
 
 	    template <>
 	    void __ser<`t`>(ivy_ser_128 &res, const `t` &inp) {
+	        int sz = inp.size();
+	        res.open_list(sz);
+	        for (unsigned i = 0; i < (unsigned)sz; i++) {
+		    res.open_list_elem();
+	            __ser(res,inp[i]);
+		    res.close_list_elem();
+                }
+	        res.close_list();
+	    }
+
+		template <>
+	    void __deser<`t`>(ivy_deser_256 &inp, `t` &res) {
+	        inp.open_list();
+	        while(inp.open_list_elem()) {
+		    res.resize(res.size()+1);
+	            __deser(inp,res.back());
+		    inp.close_list_elem();
+                }
+		inp.close_list();
+	    }
+
+	    template <>
+	    void __ser<`t`>(ivy_ser_256 &res, const `t` &inp) {
 	        int sz = inp.size();
 	        res.open_list(sz);
 	        for (unsigned i = 0; i < (unsigned)sz; i++) {

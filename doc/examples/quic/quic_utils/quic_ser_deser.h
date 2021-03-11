@@ -4,6 +4,8 @@ extern int scid_h;
 extern int dcid_h;
 #include <inttypes.h>
 
+#include <boost/multiprecision/cpp_int.hpp>
+using namespace boost::multiprecision;
 
     /*typedef struct transport_error_struct {
         const char *name;
@@ -40,8 +42,8 @@ extern int dcid_h;
     }*/
 
 
-typedef __int128_t int128_t;
-typedef __uint128_t uint128_t;
+//typedef __int128_t int128_t;
+//typedef __uint128_t uint128_t;
 
 //https://stackoverflow.com/questions/25114597/how-to-print-int128-in-g
 std::ostream &
@@ -76,10 +78,12 @@ operator<<(std::ostream &dest, __int128_t value)
 typedef struct tls_name_struct
 {
     const char *name;
-    int128_t value;
+    //int128_t value;
+    int256_t value;
     //long long value;
 } * tls_name_struct_ptr;
-struct tls_name_map : hash_space::hash_map<std::string, int128_t> { };
+//struct tls_name_map : hash_space::hash_map<std::string, int128_t> { };
+struct tls_name_map : hash_space::hash_map<std::string, int256_t> { };
 //struct tls_name_map : hash_space::hash_map<std::string,long long> {};
 
 std::string quic_params[17] = {
