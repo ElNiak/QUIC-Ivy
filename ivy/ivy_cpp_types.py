@@ -473,9 +473,9 @@ class LLBV(XBV):
 	    std::ostream& operator<<(std::ostream&s, const LLClass &v) {
 		std::ostream::sentry ss( s ); 
 		if ( ss ) { 
-		   __int256_t value = v.val; 
+		   int256_t value = v.val; 
 		   //https://stackoverflow.com/questions/25114597/how-to-print-int128-in-g 
-		   __uint256_t tmp = value < 0 ? -value : value; 
+		   uint256_t tmp = value < 0 ? -value : value; 
 		   char buffer[ 256 ]; 
 		   char* d = std::end( buffer ); 
 		   do 
