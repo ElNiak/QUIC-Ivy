@@ -216,7 +216,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
 
 attribute radix=16       # print in hex
 
-interpret cid -> intbv[1][13][2]
+interpret cid -> longbv[1][13][2]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
