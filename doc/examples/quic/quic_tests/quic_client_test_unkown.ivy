@@ -368,6 +368,14 @@ before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:ci
     }
 }
 
+
+before frame.unknown_frame.handle(f:frame.unknown_frame,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+    }
+}
+
 # Generate max_stream_data frames only for the client.
 
 before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
