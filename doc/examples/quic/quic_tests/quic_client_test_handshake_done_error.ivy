@@ -233,6 +233,14 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 # to the server endpoint.
 #
 
+#   A HANDSHAKE_DONE frame can only be sent by the server.  Servers MUST
+#   NOT send a HANDSHAKE_DONE frame before completing the handshake.  A
+#   server MUST treat receipt of a HANDSHAKE_DONE frame as a connection
+#   error of type PROTOCOL_VIOLATION
+
+export frame.handshake_done.handle
+
+attribute frame.handshake_done.handle.weight = "5"
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
@@ -349,21 +357,13 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
         require client.ep.addr ~= 0;         
         require scid = the_cid;
     } else {
-        require is_frame_encoding_error
+        require is_protocol_violation
     }
 }
 
 # Generate connection_close frames only for the client.
 
 before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
-    if _generating {
-        require client.ep.addr ~= 0;
-        require scid = the_cid;
-    }
-}
-
-
-before frame.unknown_frame.handle(f:frame.unknown_frame,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
@@ -455,13 +455,6 @@ export tls_recv_event
 #export frame.connection_close.handle
 #export frame.max_stream_data.handle
 
-#   An endpoint MUST treat the receipt of a frame of unknown type as a
-#   connection error of type FRAME_ENCODING_ERROR.
-
-export frame.unknown_frame.handle
-attribute frame.unknown_frame.handle.weight = "5"
-
-
 # Final check
 #
 # When the test is complete, the tester calls the special action `_finalize`.
@@ -471,7 +464,7 @@ attribute frame.unknown_frame.handle.weight = "5"
 
 export action _finalize = {
     # chris TODO 
-    require is_frame_encoding_error;
+    require is_protocol_violation;
 }
 
 

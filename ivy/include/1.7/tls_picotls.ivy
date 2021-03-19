@@ -1,5 +1,7 @@
 #lang ivy1.7
 
+# https://github.com/h2o/picotls/blob/master/t/picotls.c
+
 # This is an implementation of the generic TLS interface based on the picotls library.
 # The parameters are:
 #
@@ -564,9 +566,12 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         std::copy(cipher.begin(),cipher.end(),input.begin());
         output.resize(cipher.size() - checksum_length);
         size_t decrypted = ptls_aead_decrypt(aead,
-                                            &output[0], &input[0], input.size(), seq,
+                                            &output[0], 
+                                            &input[0], 
+                                            input.size(), 
+                                            seq,
                                             &bytes[0], bytes.size());
-        res.ok = decrypted < input.size();
+        res.ok = decrypted <= input.size();
         if (res.ok) {
             res.data.resize(output.size());
             std::copy(output.begin(),output.end(),res.data.begin());

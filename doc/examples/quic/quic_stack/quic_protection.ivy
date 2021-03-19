@@ -197,6 +197,7 @@ module quic_protection(tls_id,tls) = {
             h.pkt_num_pos := pos + len;
         }
         else {
+            #h.dcid := bytes_to_cid(pkt.segment(1,9));
             h.dcid := bytes_to_cid(pkt.segment(1,9));
             h.payload_length_pos := 9;
             h.pkt_num_pos := 9;
@@ -393,7 +394,7 @@ object quic_prot_deser = {}
                 unsigned len = get_var_int_len(pnum_pos);
                 unsigned pyld_len = get_var_int(pnum_pos,len);
                 data_remaining = (pnum_pos-pos) + len + pyld_len;
-                std::cout << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
+                //std::cout << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
             }
             else {
                 data_remaining = 0x7fffffff;
