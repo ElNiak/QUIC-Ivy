@@ -504,6 +504,9 @@ function count_newcid_frame(I:cid_seq,O:cid_seq,
                             L:cid_length,D:cid,T:reset_token) : stream_pos
 
 function count_rcid_frame(I:cid_seq) : stream_pos
+
+relation connection_closed 
+
 #TODO faire all retransmission
 relation stop_sending_in_bad_state
 #chris
@@ -534,6 +537,7 @@ after init {
     stop_sending_in_bad_state := false;
     first_ack_freq_received := true;
     last_ack_freq_seq(C:cid) := 0;
+    connection_closed := false;
 #chris
 }
 
@@ -763,7 +767,7 @@ object frame = {
 
 	around handle {
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            #  require ~conn_closed(scid);  # [1]
+            require ~conn_closed(scid);  # [1]
             #chris
             require ~(e = quic_packet_type.zero_rtt);  # [4]
             #chris
@@ -1256,6 +1260,7 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+	    require ~conn_closed(scid); 
             ...
             call enqueue_frame(scid,f,e,false);
         }

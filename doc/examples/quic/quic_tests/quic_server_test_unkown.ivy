@@ -406,6 +406,12 @@ before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,d
     }
 }
 
+before frame.unknown_frame.handle(f:frame.unknown_frame,scid:cid,dcid:cid) {
+    if _generating {
+        require scid = the_cid;
+    }
+}
+
 
 # Generate connection_close frames only for the environment process(es).
 #
