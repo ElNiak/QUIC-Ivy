@@ -203,6 +203,15 @@ before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dci
     }
 }
 
+
+
+before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
+    if _generating {
+        require scid = the_cid;
+    }
+}
+
+
 # Generate max_data frames only for the environment process(es). Here, for
 # non-generated frames, we check that the max_data value doesn't decrease.
 # This is not forbidden, but it seems like a good thing to check.

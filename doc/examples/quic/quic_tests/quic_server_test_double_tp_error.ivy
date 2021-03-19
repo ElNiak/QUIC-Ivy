@@ -256,53 +256,11 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
 }
 
 
-# This causes the log of events to be printed using hex numbers.
 
-attribute radix=16
-
-# This gives the interpretation of some of the basic data types.
-# Some of these interpretations are chosen to make solving more efficient.
-# Notably, the `intbv` type can be used to represent large numbers with
-# small bit vector enodings.
-
-interpret cid -> intbv[1][13][2]
-interpret version -> bv[32]
-interpret pkt_num -> bv[32]
-interpret error_code -> bv[16]
-interpret stream_id -> bv[16]
-attribute frame.idx.cardinality = 1
-attribute frame.ack.range.idx.cardinality = 1
-attribute pkt_num.cardinality = 1
-attribute stream_pos.cardinality = 4
-#attribute ip.addr.override = bv[1]
-#attribute ip.port.override = bv[1]
-
-# The following are some imported actions that can be used to put
-# "debugging" information in the logs. They have no other effect.
-
-import action show_tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid,
-                                  data:stream_data, pos:stream_pos, e:quic_packet_type)
-
-import action show_level_offset_length(e:quic_packet_type,offset:stream_pos,length:stream_pos)
-
-import action clear_packet(rnum:pkt_num,pkt:stream_data)
-
-import action cipher_packet(pkt:stream_data)
-
-import action show_stream(pkt:stream_data)
-
-import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
 #
 # Restrict generation to packets from the designated client endpoints
 # to the server endpoint.
 #
-
-#   Token Length:  A variable-length integer specifying the length of the
-#      Token field, in bytes.  This value is zero if no token is present.
-#      Initial packets sent by the server MUST set the Token Length field
-#      to zero; clients that receive an Initial packet with a non-zero
-#      Token Length field MUST either discard the packet or generate a
-#      connection error of type PROTOCOL_VIOLATION. [1]
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
@@ -522,6 +480,31 @@ export tls_recv_event
 #export frame.connection_close.handle
 #export frame.max_stream_data.handle
 
+# This causes the log of events to be printed using hex numbers.
+
+attribute radix=16
+
+# This gives the interpretation of some of the basic data types.
+# Some of these interpretations are chosen to make solving more efficient.
+# Notably, the `intbv` type can be used to represent large numbers with
+# small bit vector enodings.
+
+interpret cid -> intbv[1][13][2]
+interpret version -> bv[32]
+interpret pkt_num -> bv[32]
+interpret error_code -> bv[16]
+interpret stream_id -> bv[16]
+attribute frame.idx.cardinality = 1
+attribute frame.ack.range.idx.cardinality = 1
+attribute pkt_num.cardinality = 1
+attribute stream_pos.cardinality = 4
+#attribute ip.addr.override = bv[1]
+#attribute ip.port.override = bv[1]
+
+# The following are some imported actions that can be used to put
+# "debugging" information in the logs. They have no other effect.
+
+
 # Final check
 #
 # When the test is complete, the tester calls the special action `_finalize`.
@@ -533,5 +516,19 @@ export action _finalize = {
     # chris TODO 
     require is_transport_parameter_error;
 }
+
+
+import action show_tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid,
+                                  data:stream_data, pos:stream_pos, e:quic_packet_type)
+
+import action show_level_offset_length(e:quic_packet_type,offset:stream_pos,length:stream_pos)
+
+import action clear_packet(rnum:pkt_num,pkt:stream_data)
+
+import action cipher_packet(pkt:stream_data)
+
+import action show_stream(pkt:stream_data)
+
+import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
 
 
