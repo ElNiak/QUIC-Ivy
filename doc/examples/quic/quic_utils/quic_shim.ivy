@@ -67,7 +67,7 @@ include quic_locale
 
 
 after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
-    if _generating { 
+    if _generating & ~conn_closed(pkt.the_cid) { 
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt);
         var tls_id := dst_tls_id(dst);
@@ -148,6 +148,8 @@ import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:str
 # `tls_send_event`. This causes the data to be recorded in the
 # appropriate abstract crypto stream, and later to be transmitted via
 # a generated crypto frame event.
+
+#TODO merge shim for client
 
 implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.lower.level) {
     var e := quic_packet_type.initial if lev = 0
@@ -308,6 +310,7 @@ var initial_keys_set : bool
 var tp_client_set : bool
 function client_initial_scid : cid
 function client_initial_dcid : cid
+function client_initial_dcid_size : stream_pos
 
 after init {
     initial_keys_set := false;
@@ -327,7 +330,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
         var skm := cid_to_bytes(0,1); # scid
         if(~scil = 0) {
-	        skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # dcid
+	        skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
         };
 
         client_initial_dcid := bytes_to_cid(ikm);

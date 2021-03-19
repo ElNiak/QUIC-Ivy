@@ -349,11 +349,11 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
     implement lower.recv(c:cid,data:bytes) {
         <<< impure
-	gnutls_connection *s = `cid_map`[c];
+	    gnutls_connection *s = `cid_map`[c];
         std::vector<char> &input = s->input;
-	for (unsigned i = 0; i < data.size(); i++) {
-	    input.push_back(data[i]);
-	}
+        for (unsigned i = 0; i < data.size(); i++) {
+            input.push_back(data[i]);
+        }
         // Resume handshake if needed
         if (s->handshake_status == GNUTLS_E_AGAIN) {
             gnutls_do_handshake(s);
