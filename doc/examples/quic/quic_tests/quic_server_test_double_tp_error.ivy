@@ -481,6 +481,19 @@ export tls_recv_event
 
 # This causes the log of events to be printed using hex numbers.
 
+# Final check
+#
+# When the test is complete, the tester calls the special action `_finalize`.
+# We use this action to make some heuristic checks, for example that some
+# data was actually received from the server. We can add advice to this
+# action with additional checks.
+
+export action _finalize = {
+    # chris TODO 
+    require is_transport_parameter_error;
+}
+
+
 attribute radix=16
 
 # This gives the interpretation of some of the basic data types.
@@ -516,18 +529,3 @@ import action cipher_packet(pkt:stream_data)
 import action show_stream(pkt:stream_data)
 
 import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
-
-
-# Final check
-#
-# When the test is complete, the tester calls the special action `_finalize`.
-# We use this action to make some heuristic checks, for example that some
-# data was actually received from the server. We can add advice to this
-# action with additional checks.
-
-export action _finalize = {
-    # chris TODO 
-    require is_transport_parameter_error;
-}
-
-
