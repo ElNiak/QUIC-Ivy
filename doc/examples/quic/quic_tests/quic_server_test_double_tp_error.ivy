@@ -478,9 +478,6 @@ export tls_recv_event
 #export frame.connection_close.handle
 #export frame.max_stream_data.handle
 
-
-
-
 # Final check
 #
 # When the test is complete, the tester calls the special action `_finalize`.
