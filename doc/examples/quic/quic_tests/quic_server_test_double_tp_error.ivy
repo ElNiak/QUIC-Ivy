@@ -225,13 +225,12 @@ after init {
 #
 
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
-#    tp.initial_version := 0xff000017;
     var imsdbl : initial_max_stream_data_bidi_local;
     imsdbl.stream_pos_32 := max_stream_data;
     var imd : initial_max_data;
     imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var it : max_idle_timeout;
-    it.seconds_16 := random_microsecs(0,0xFFFFFFFF);
+    it.seconds_16 := random_microsecs(0,0xFFFFFFF);
     var imsdbr : initial_max_stream_data_bidi_remote;
     imsdbr.stream_pos_32 := max_stream_data;
     var imsdu : initial_max_stream_data_uni;
@@ -241,7 +240,6 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(it);
     tp.transport_parameters := tp.transport_parameters.append(imsdbr);
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
-
     var icid : initial_source_connection_id; #TODO update v29
     icid.scid := 0;
     tp.transport_parameters := tp.transport_parameters.append(icid);
@@ -254,6 +252,13 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     icid2.scid := 0;
     tp.transport_parameters := tp.transport_parameters.append(icid2);
 }
+
+
+
+#
+# Restrict generation to packets from the designated client endpoints
+# to the server endpoint.
+#
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
@@ -473,7 +478,20 @@ export tls_recv_event
 #export frame.connection_close.handle
 #export frame.max_stream_data.handle
 
-# This causes the log of events to be printed using hex numbers.
+
+
+
+# Final check
+#
+# When the test is complete, the tester calls the special action `_finalize`.
+# We use this action to make some heuristic checks, for example that some
+# data was actually received from the server. We can add advice to this
+# action with additional checks.
+
+export action _finalize = {
+    # chris TODO 
+    require is_transport_parameter_error;
+}
 
 attribute radix=16
 
@@ -494,11 +512,8 @@ attribute stream_pos.cardinality = 4
 #attribute ip.addr.override = bv[1]
 #attribute ip.port.override = bv[1]
 
-<<<<<<< HEAD
-# The following are some imported actions that can be used to put
-# "debugging" information in the logs. They have no other effect.
 
-=======
+# This causes the log of events to be printed using hex numbers.
 
 # The following are some imported actions that can be used to put
 # "debugging" information in the logs. They have no other effect.
@@ -516,32 +531,5 @@ import action show_stream(pkt:stream_data)
 
 import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
 
->>>>>>> 77bab93b7ba743a81bba24b9bbc54ffb9c3c3ada
-
-# Final check
-#
-# When the test is complete, the tester calls the special action `_finalize`.
-# We use this action to make some heuristic checks, for example that some
-# data was actually received from the server. We can add advice to this
-# action with additional checks.
-
-export action _finalize = {
-    # chris TODO 
-    require is_transport_parameter_error;
-}
-
-
-import action show_tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid,
-                                  data:stream_data, pos:stream_pos, e:quic_packet_type)
-
-import action show_level_offset_length(e:quic_packet_type,offset:stream_pos,length:stream_pos)
-
-import action clear_packet(rnum:pkt_num,pkt:stream_data)
-
-import action cipher_packet(pkt:stream_data)
-
-import action show_stream(pkt:stream_data)
-
-import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
 
 

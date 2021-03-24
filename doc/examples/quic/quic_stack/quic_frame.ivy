@@ -588,7 +588,7 @@ object frame = {
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);  # [4]
             #Chris
             #TODO ECN
-            require ~(e = quic_packet_type.version_negociation) & ~(e = quic_packet_type.retry);
+            #require ~(e = quic_packet_type.version_negociation) & ~(e = quic_packet_type.retry);
             #Chris
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             var idx : frame.ack.range.idx := 0;

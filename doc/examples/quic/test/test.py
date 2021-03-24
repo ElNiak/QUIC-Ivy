@@ -87,6 +87,7 @@ server_tests = [
 client_tests = [
     ['..',
       [
+          ['quic_client_test_stream','test_completed'],
           ['quic_client_test_max','test_completed'],
 	  ['quic_client_test_token_error','test_completed'],
 	  ['quic_client_test_tp_error','test_completed'],

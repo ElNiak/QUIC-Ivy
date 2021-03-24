@@ -318,9 +318,9 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    dcid := cid_to_aid(dcid);
     };
 
-    if pkt.ptype = quic_packet_type.retry {
-        require retry_source_connection_id.is_set(trans_params(scid));
-    };
+    #if pkt.ptype = quic_packet_type.retry {
+    #    require retry_source_connection_id.is_set(trans_params(scid));
+    #};
     
     # The destination cid must represent an existing connection,
     # except in the case of a client initial packet, when the
@@ -434,10 +434,10 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
  
     # TODO: the following should not be here
 
-    if pkt.ptype = quic_packet_type.retry {
-        retry_send(dcid) := true;
-        retry_token(dcid) := pkt.token;
-    };
+    #if pkt.ptype = quic_packet_type.retry {
+    #    retry_send(dcid) := true;
+    #    retry_token(dcid) := pkt.token;
+    #};
 
     if pkt.ptype = quic_packet_type.initial {
         # An initial packet with an unseen destination cid is a connection request.
@@ -445,9 +445,9 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             call tls_client_initial_request(src,dst,dcid);
             conn_requested(src,dst,scid) := true;
         };
-        if retry_send(dcid) {
-            require pkt.token = retry_token(dcid);
-        }
+        #if retry_send(dcid) {
+        #    require pkt.token = retry_token(dcid);
+        #}
     };
 
     conn_seen(scid) := true;  # [1]
