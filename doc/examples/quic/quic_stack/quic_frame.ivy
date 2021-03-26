@@ -766,7 +766,9 @@ object frame = {
         action handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
-            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+	    #if ~scid=0 {
+            	require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+	    #};
             require ~conn_closed(scid);  # [1]
             #chris
             require ~(e = quic_packet_type.zero_rtt);  # [4]
@@ -1279,11 +1281,7 @@ object frame = { ...
 object frame = { ...
     object padding = { ...
         action handle(f:frame.padding,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
-	around handle {
-            #require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
-            #require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            ...
+	after handle {
             call enqueue_frame(scid,f,e,false);
         }
     }

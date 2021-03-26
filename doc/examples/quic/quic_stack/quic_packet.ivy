@@ -377,7 +377,10 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     # The payload must exactly match the queued frames.
 
-    require pkt.payload = queued_frames(scid);
+    #chris: hack for 0-length cid of mvsf
+    #if ~scid=0 {
+         require pkt.payload = queued_frames(scid);
+    #};
 
     # TEMPORARY: don't allow client migration during handshake
 
@@ -442,7 +445,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if pkt.ptype = quic_packet_type.initial {
         # An initial packet with an unseen destination cid is a connection request.
         if ~conn_seen(dcid) {
-            call tls_client_initial_request(src,dst,dcid);
+            call tls_client_initial_request(src,dst,dcid,pkt.pversion);
             conn_requested(src,dst,scid) := true;
         };
         #if retry_send(dcid) {

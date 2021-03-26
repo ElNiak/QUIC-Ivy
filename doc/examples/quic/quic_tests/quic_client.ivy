@@ -4,11 +4,11 @@ include order
 include quic_connection
 include quic_infer
 include file
-include quic_shim
+include quic_shim_client
 include quic_locale
 include random_value
 
-parameter the_cid : cid = 0xd
+parameter the_cid : cid = 0xdd
 parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4443
 parameter max_stream_data : stream_pos = 0x2000
@@ -180,10 +180,12 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsib : initial_max_stream_id_bidi;
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
-
-    var icid : initial_source_connection_id; #update v29
-    icid.scid := 0x0;
-    tp.transport_parameters := tp.transport_parameters.append(icid);
+    
+    #if client_present_scid {
+    	var icid : initial_source_connection_id; #update v29
+    	icid.scid := 0x0;
+    	tp.transport_parameters := tp.transport_parameters.append(icid);
+    #};
     var odci : original_destination_connection_id; #update v29
     odci.dcid := client_initial_dcid;
     tp.transport_parameters := tp.transport_parameters.append(odci);

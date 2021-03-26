@@ -88,7 +88,7 @@ action tls_keys_established_event(scid:cid, e:quic_packet_type)
 # Note: the nonce cid is used by TLS as the initial key material to
 # generate the encryption keys for initial packets.
 
-action tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid)
+action tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version)
 
 #
 # Client initial response event

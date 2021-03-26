@@ -62,7 +62,7 @@ module quic_protection(tls_id,tls) = {
             pkt := pkt.set(pnum_pos-1,new_len.value(1));
         };
 
-        var hdr := pkt.segment(0,pnum_pos);
+        var hdr  := pkt.segment(0,pnum_pos);
         var pnum := pkt.segment(pnum_pos,hdr_len);
         var pyld := pkt.segment(hdr_len,pkt.end);
         var auth := pkt.segment(0,hdr_len);

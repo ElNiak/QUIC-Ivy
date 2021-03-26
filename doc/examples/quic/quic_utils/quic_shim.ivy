@@ -240,55 +240,59 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 # should really be computed in the protection layer and passed to
 # TLS here in the shim.
 
-after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid) {
-    var ikm := cid_to_bytes(nonce,cid_size(nonce));
-    var salt : stream_data := stream_data.empty;
+after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version) {
+        var ikm := cid_to_bytes(nonce,cid_size(nonce));
+        var salt : stream_data := stream_data.empty;
 
         #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
+	if pversion = 0xfaceb002 | pversion = 0xff00001b {
 
-        #salt := salt.append(0xc3);
-        #salt := salt.append(0xee);
-        #salt := salt.append(0xf7);
-        #salt := salt.append(0x12);
-        #salt := salt.append(0xc7);
-        #salt := salt.append(0x2e);
-        #salt := salt.append(0xbb);
-        #salt := salt.append(0x5a);
-        #salt := salt.append(0x11);
-        #salt := salt.append(0xa7);
-        #salt := salt.append(0xd2);
-        #salt := salt.append(0x43);
-        #salt := salt.append(0x2b);
-        #salt := salt.append(0xb4);
-        #salt := salt.append(0x63);
-        #salt := salt.append(0x65);
-        #salt := salt.append(0xbe);
-        #salt := salt.append(0xf9);
-        #salt := salt.append(0xf5);
-        #salt := salt.append(0x02);
+		salt := salt.append(0xc3);
+		salt := salt.append(0xee);
+		salt := salt.append(0xf7);
+		salt := salt.append(0x12);
+		salt := salt.append(0xc7);
+		salt := salt.append(0x2e);
+		salt := salt.append(0xbb);
+		salt := salt.append(0x5a);
+		salt := salt.append(0x11);
+		salt := salt.append(0xa7);
+		salt := salt.append(0xd2);
+		salt := salt.append(0x43);
+		salt := salt.append(0x2b);
+		salt := salt.append(0xb4);
+		salt := salt.append(0x63);
+		salt := salt.append(0x65);
+		salt := salt.append(0xbe);
+		salt := salt.append(0xf9);
+		salt := salt.append(0xf5);
+		salt := salt.append(0x02);
+
+	};
 
         #0xaf bf ec 28 99 93 d2 4c 9e 97 86 f1 9c 61 11 e0 43 90 a8 99 QUIC-29
-
-        salt := salt.append(0xaf);
-        salt := salt.append(0xbf);
-        salt := salt.append(0xec);
-        salt := salt.append(0x28);
-        salt := salt.append(0x99);
-        salt := salt.append(0x93);
-        salt := salt.append(0xd2);
-        salt := salt.append(0x4c);
-        salt := salt.append(0x9e);
-        salt := salt.append(0x97);
-        salt := salt.append(0x86);
-        salt := salt.append(0xf1);
-        salt := salt.append(0x9c);
-        salt := salt.append(0x61);
-        salt := salt.append(0x11);
-        salt := salt.append(0xe0);
-        salt := salt.append(0x43);
-        salt := salt.append(0x90);
-        salt := salt.append(0xa8);
-        salt := salt.append(0x99);
+	if pversion = 0xff00001d   {
+		salt := salt.append(0xaf);
+		salt := salt.append(0xbf);
+		salt := salt.append(0xec);
+		salt := salt.append(0x28);
+		salt := salt.append(0x99);
+		salt := salt.append(0x93);
+		salt := salt.append(0xd2);
+		salt := salt.append(0x4c);
+		salt := salt.append(0x9e);
+		salt := salt.append(0x97);
+		salt := salt.append(0x86);
+		salt := salt.append(0xf1);
+		salt := salt.append(0x9c);
+		salt := salt.append(0x61);
+		salt := salt.append(0x11);
+		salt := salt.append(0xe0);
+		salt := salt.append(0x43);
+		salt := salt.append(0x90);
+		salt := salt.append(0xa8);
+		salt := salt.append(0x99);
+	};
 
     call tls_api.upper.set_initial_keys(0,salt,ikm);
 }
@@ -358,7 +362,6 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         var salt : stream_data := stream_data.empty;
         
         #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
-
 	if client_initial_version = 0xfaceb002 | client_initial_version = 0xff00001b {
 
 		salt := salt.append(0xc3);
@@ -503,8 +506,8 @@ action cid_size(c:cid) returns(res:cid_length) = {
     res = 0;
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "client") == 0) {
-         if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-            //std::cout << "TEST_SCIL " << env_p3 << std::endl;
+         if(const char* env_p3 = std::getenv("TEST_DCIL")) {
+            //std::cout << "TEST_DCIL " << env_p3 << std::endl;
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
