@@ -118,7 +118,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call packet_event(src,dst,pkt);       # also an inferred event
             if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
                 # for client test
-		call app_server_open_event_show(dst,src,pkt);
+		call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
                 call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
             }
         } else {
@@ -131,7 +131,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
 # For logging purposes. This logs the decoded packets received from the network, before
 # event inference. 
 
-import action app_server_open_event_show(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
+import action app_server_open_event_show(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet,cid1 : cid, cid2: cid)
 import action recv_packet(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
 
 # This received packets that are undecryptable

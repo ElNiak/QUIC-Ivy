@@ -28,6 +28,14 @@ parameter initial_max_streams_bidi : stream_id = 2
 # We use this type as a host id. There are two client host ids so we
 # can model migration.
 
+
+function version_used : version
+
+after init {
+    the_cid := 0x1;
+    version_used := 0xff00001d;
+}
+
 object endpoint_id = {
     type this = {client, server}
 }
@@ -183,7 +191,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     
     #if client_present_scid {
     	var icid : initial_source_connection_id; #update v29
-    	icid.scid := 0x0;
+    	icid.scid := 0x1;
     	tp.transport_parameters := tp.transport_parameters.append(icid);
     #};
     var odci : original_destination_connection_id; #update v29
@@ -194,7 +202,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
 attribute radix=16       # print in hex
 
 #loval,highval,nbit
-interpret cid -> longbv[1][13][2]
+interpret cid -> longbv[1][13][3]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
