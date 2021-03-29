@@ -361,7 +361,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         call tls_api.upper.create(0,true,extns);  
         # 'true' means this instance of tls is a server
         tp_client_set := true;
-	    client_initial_version := ver;
+	client_initial_version := ver;
     };
 
     if ~initial_keys_set {
@@ -533,8 +533,8 @@ action cid_size_pos(c:cid) returns(res:stream_pos) = {
     res = 0;
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "client") == 0) {
-         if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-            //std::cout << "TEST_SCIL " << env_p3 << std::endl;
+         if(const char* env_p3 = std::getenv("TEST_DCIL")) {
+            //std::cout << "TEST_DCIL " << env_p3 << std::endl;
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
