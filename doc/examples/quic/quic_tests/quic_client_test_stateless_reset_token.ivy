@@ -195,7 +195,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
     var icid : initial_source_connection_id; #update v29
-    icid.scid := 0x0;
+    icid.scid := 0x1;
     tp.transport_parameters := tp.transport_parameters.append(icid);
     var odci : original_destination_connection_id; #update v29
     odci.dcid := client_initial_dcid;
@@ -209,7 +209,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
 
 attribute radix=16       # print in hex
 
-interpret cid -> longbv[1][13][2]
+interpret cid -> longbv[1][13][3]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
