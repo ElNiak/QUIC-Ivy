@@ -242,23 +242,21 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 # to the server endpoint.
 #
 
-#   Token Length:  A variable-length integer specifying the length of the
-#      Token field, in bytes.  This value is zero if no token is present.
-#      Initial packets sent by the server MUST set the Token Length field
-#      to zero; clients that receive an Initial packet with a non-zero
-#      Token Length field MUST either discard the packet or generate a
-#      connection error of type PROTOCOL_VIOLATION. [1]
-
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
+        #require pkt.long -> pkt.dst_cid = 5 & pkt.src_cid = 5;
+        #require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
         require pkt.token.end = 0; # [1]
-    };
-    require pkt.long -> pkt.pversion = 0xff00001d  #version 29
+        require connected(pkt.src_cid);
+    	require pkt.long -> pkt.pversion = client_initial_version;  #version 29
+    } 
+    else {
+	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
+    }
 }
-
 # The protocol specification describes all the events occurring the
 # system at all protocol layers. When constructing the test mirror,
 # however, we need to generate only events that are outputs of the

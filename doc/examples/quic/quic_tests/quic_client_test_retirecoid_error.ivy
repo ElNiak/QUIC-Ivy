@@ -17,9 +17,15 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        require pkt.token.end = 0; 
-    };
-    require pkt.long -> pkt.pversion = 0xff00001d  #version 29
+        #require pkt.long -> pkt.dst_cid = 5 & pkt.src_cid = 5;
+        #require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
+        require pkt.token.end = 0; # [1]
+        require connected(pkt.src_cid);
+    	require pkt.long -> pkt.pversion = client_initial_version;  #version 29
+    } 
+    else {
+	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
+    }
 }
 
 
