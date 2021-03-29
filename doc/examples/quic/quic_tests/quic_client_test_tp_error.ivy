@@ -28,8 +28,16 @@ parameter initial_max_streams_bidi : stream_id = 2
 # We use this type as a host id. There are two client host ids so we
 # can model migration.
 
+
 object endpoint_id = {
     type this = {client, server}
+}
+
+function version_used : version
+
+after init {
+    the_cid := 0x1;
+    version_used := 0xff00001d;
 }
 
 # Map test endpoint ids to the ip endpoints
@@ -244,16 +252,23 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        #require pkt.long -> pkt.dst_cid = 5 & pkt.src_cid = 5;
-        #require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
+        # require pkt.long -> pkt.dst_cid = 5 & pkt.src_cid = 5;
+        # require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
         require pkt.token.end = 0; # [1]
         require connected(pkt.src_cid);
-    	require pkt.long -> pkt.pversion = client_initial_version;  #version 29
+    	require pkt.long -> pkt.pversion = version_used;  #version 29
+	    call show_version(version_used);
     } 
     else {
 	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
+	    if pkt.long {
+	    	version_used := pkt.pversion;
+	    };
+	    call show_version(version_used);
     }
 }
+
+import action show_version(v:version)
 
 # The protocol specification describes all the events occurring the
 # system at all protocol layers. When constructing the test mirror,

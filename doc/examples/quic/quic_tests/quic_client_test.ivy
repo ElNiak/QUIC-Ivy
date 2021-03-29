@@ -33,7 +33,6 @@ include quic_client
 # - All IP addresses are IPv4 and are given as single 32-bit numbers,
 #   rather than using the dot notation.
 
-
 # Assume that initial packets are sent only to the server under test
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
@@ -41,16 +40,23 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        #require pkt.long -> pkt.dst_cid = 5 & pkt.src_cid = 5;
-        #require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
+        # require pkt.long -> pkt.dst_cid = 5 & pkt.src_cid = 5;
+        # require pkt.hdr_token_length = 0 & pkt.hdr_token.end = 0; 
         require pkt.token.end = 0; # [1]
         require connected(pkt.src_cid);
-    	require pkt.long -> pkt.pversion = client_initial_version;  #version 29
+    	require pkt.long -> pkt.pversion = version_used;  #version 29
+	    call show_version(version_used);
     } 
     else {
 	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
+	    if pkt.long {
+	    	version_used := pkt.pversion;
+	    };
+	    call show_version(version_used);
     }
 }
+
+import action show_version(v:version)
     
 
 # The protocol specification describes all the events occurring the system
@@ -253,4 +259,6 @@ export tls_recv_event
 export action _finalize = {
     require conn_total_data(the_cid) > 0;
 }
+
+
 
