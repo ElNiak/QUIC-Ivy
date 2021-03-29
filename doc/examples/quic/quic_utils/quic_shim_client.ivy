@@ -533,8 +533,8 @@ action cid_size_pos(c:cid) returns(res:stream_pos) = {
     res = 0;
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "client") == 0) {
-         if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-            //std::cout << "TEST_SCIL " << env_p3 << std::endl;
+         if(const char* env_p3 = std::getenv("TEST_DCIL")) {
+            //std::cout << "TEST_DCIL " << env_p3 << std::endl;
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
