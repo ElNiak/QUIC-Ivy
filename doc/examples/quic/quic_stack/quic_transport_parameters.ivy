@@ -69,8 +69,8 @@ object preferred_address = {
         # TODO: fill this in
         ip_addr : ip.addr,
         ip_port : ip.port,
-        ip6_addr1: ipv6.addr1,
-	    ip6_addr2: ipv6.addr2,
+        ip6_addr: ipv6.addr,
+	    #ip6_addr2: ipv6.addr2,
         ip6_port: ipv6.port,
 	    pcid_len: stream_pos,
         pcid : cid,

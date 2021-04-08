@@ -451,7 +451,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     conn_seen(scid) := true;  # [1]
 
     # Update the ack credits. A non-ack packet sent to a destination
-    # increases the destination's ack creait. An ack packet decreases
+    # increases the destination's ack credit. An ack packet decreases
     # the sender's ack credit.
 
 #Hamid
