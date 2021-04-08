@@ -47,6 +47,10 @@ include quic_fsm_receiving
 # to the server endpoint.
 #
 
+# An endpoint MUST NOT initiate
+#   connection migration before the handshake is confirmed, as defined in
+#   section 4.1.2 of [QUIC-TLS].
+
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         require src = client.ep | src = client_alt;

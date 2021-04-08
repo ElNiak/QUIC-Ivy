@@ -165,7 +165,6 @@ action packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {}
 #
 # - If aid D created a new connection ID with sequence number S, then seqnum_to_cid(D, S) yield the new connection id.
 
-
 relation conn_seen(C:cid)
 relation conn_closed(C:cid)
 relation conn_draining(C:cid)
@@ -191,7 +190,6 @@ relation conn_requested(S:ip.endpoint,D:ip.endpoint,C:cid)
 function hi_non_probing(C:cid) : pkt_num
 relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
-
 #chris
 # We start with the initial cid
 function num_conn(C:cid) : stream_pos
@@ -319,7 +317,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     };
 
     #if pkt.ptype = quic_packet_type.retry {
-    #    require retry_source_connection_id.is_set(trans_params(scid));
+    #require retry_source_connection_id.is_set(trans_params(scid));
     #};
     
     # The destination cid must represent an existing connection,
@@ -377,10 +375,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     # The payload must exactly match the queued frames.
 
-    #chris: hack for 0-length cid of mvsf
-    #if ~scid=0 {
-         require pkt.payload = queued_frames(scid);
-    #};
+    require pkt.payload = queued_frames(scid);
 
     # TEMPORARY: don't allow client migration during handshake
 
@@ -634,14 +629,14 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
     #require max_idle_timeout.is_set(trans_params(scid));  # [3] TODO
     #require initial_max_stream_data_bidi_remote.is_set(trans_params(scid));  # [1]
     #require initial_max_stream_data_uni.is_set(trans_params(scid));  # [1]
-    if _generating { 
+    if ~ _generating { 
         # for tests where we check that the implementation behave well if not present 
         require initial_source_connection_id.is_set(trans_params(scid));  # [5]
     };
     if is_client_hello {
         require ~stateless_reset_token.is_set(trans_params(scid));  # [4]
     } else {
-        if _generating { 
+        if ~ _generating { 
             require original_destination_connection_id.is_set(trans_params(scid));  # [6]
         };
     };
