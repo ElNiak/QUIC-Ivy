@@ -1415,7 +1415,7 @@ object frame = { ...
             #Hamid
             # the connection id seqnum_to_cid is being retired, append it to an array and iterate over the array in packet
             #Hamid
-	        call enqueue_frame(scid,f,e,true);
+	        call enqueue_frame(scid,f,e,false);
         }
     }
 }
@@ -1470,7 +1470,7 @@ object frame = { ...
             require path_challenge_pending(scid,f.data);
             ...
             path_challenge_pending(scid,f.data) := false;
-            call enqueue_frame(scid,f,e,false);
+            call enqueue_frame(scid,f,e,true);
         }
     }
 }
@@ -1560,7 +1560,7 @@ action enqueue_frame(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
         queued_close(scid) := true;
     };
 #Hamid
-    if ~(f isa frame.ack) & ~(f isa frame.connection_close) & ~(f isa frame.application_close){
+    if ~(f isa frame.ack) & ~(f isa frame.connection_close) & ~(f isa frame.padding){
 	    queued_ack_eliciting(scid) := true;
     };
 #Hamid
