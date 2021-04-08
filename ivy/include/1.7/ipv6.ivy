@@ -22,7 +22,7 @@ object ipv6 = {
 
     implementation {
         
-        interpret addr -> longbv[1][13][3] #bv[62] # 64 c++ warning
+        interpret addr -> longbv[1][128][3] #bv[62] # 64 c++ warning
         #interpret addr2 -> bv[62]
         interpret port -> bv[16]
 
