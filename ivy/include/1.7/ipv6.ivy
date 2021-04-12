@@ -7,7 +7,6 @@
 object ipv6 = {
     #use 2 types or only one ?
     type addr
-    #type addr2
     type port
     type protocol = {udp6,tcp6}
 
@@ -15,15 +14,13 @@ object ipv6 = {
         type this = struct {
             protocol : ipv6.protocol,
             addr : ipv6.addr,
-            #addr2 : ipv6.addr2,
             port : ipv6.port
         }
     }
 
     implementation {
         
-        interpret addr -> longbv[1][13][3] #bv[62] # 64 c++ warning
-        #interpret addr2 -> bv[62]
+        interpret addr -> longbv[1][128][3] #bv[62] # 64 c++ warning
         interpret port -> bv[16]
 
     }
