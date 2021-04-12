@@ -70,11 +70,11 @@ object preferred_address = {
         ip_addr : ip.addr,
         ip_port : ip.port,
         ip6_addr: ipv6.addr,
-	    #ip6_addr2: ipv6.addr2,
+	#ip6_addr2: ipv6.addr2,
         ip6_port: ipv6.port,
-	    pcid_len: stream_pos,
+	pcid_len: stream_pos,
         pcid : cid,
-        data_8 : stream_data 
+        pref_token : ipv6.addr #tricks we use cid because of the 16bytes, we should interpert new type with 16 bytes size , stream_Data take more than 16 bytes
     }
     instantiate trans_params_ops(this)
 }
@@ -88,7 +88,7 @@ object max_packet_size = {
 
 object stateless_reset_token = {
     variant this of transport_parameter = struct {  # tag = 6
-        data_8 : stream_data
+        data_8 : ipv6.addr
     }
     instantiate trans_params_ops(this)
 }

@@ -12,8 +12,8 @@ object tls_ser_server = {}
 <<< impl
     //https://tools.ietf.org/html/draft-thomson-quic-bit-grease-00
     //https://tools.ietf.org/id/draft-huitema-quic-ts-03.html
-    //#include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
-    #include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    //#include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
   
 
     class `tls_deser` : public ivy_binary_deser_128 {
@@ -97,7 +97,7 @@ object tls_ser_server = {}
             getn(tag,bytes);
             std::cout << "tag v1: " << tag << std::endl;  
 
-	        u_int tag_int = (u_int) tag;  //TODO change could be dangerous
+	    u_int tag_int = (u_int) tag;  //TODO change could be dangerous
             int tag_size = (tag_int >> 6) & ((1 << 2) -1);
             if(tag_size == 0) {
                 tag_size = 1;
@@ -140,19 +140,10 @@ object tls_ser_server = {}
                     tls_field_bytes_map["scid"] = value_size;
                 }
                 else if(tag == 0x0d) {
-                    int128_t value_size_pcid;	
-                    //long long value_size_pcid;	
-                    pos += 1;  // TP len
-                    pos += 4;  // ipv4
-                    pos += 2;  // port
-                    pos += 16; // ipv6
-                    pos += 2;  // port
-                    getn(value_size_pcid,1);   
-                    pos -= (4+2+16+2);    
-                    pos -= 1;
-                    //std::cout << "pcid: " << value_size_pcid << std::endl;     
-                    //std::cout << "pref_add: " << (value_size_pcid+4+2+16+2+1+16) << std::endl;   
-                    tls_field_bytes_map["pcid"] = value_size_pcid;
+		    int128_t pcil = value_size - 4 - 2 -16 - 2 - 1 - 16;
+                    std::cout << "pcil: " << pcil << std::endl;     
+                    //std::cout << "pref_add: " << (pcil+4+2+16+2+1+16) << std::endl;   
+                    tls_field_bytes_map["pcid"] = pcil;
                 }
                 else if(tag == 0x1010) {
                     tls_field_bytes_map["dcid"] = value_size;

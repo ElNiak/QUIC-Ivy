@@ -99,7 +99,8 @@ std::string quic_params[17] = {
     "initial_max_stream_data_uni",
     "max_ack_delay",
     "initial_source_connection_id",
-    "loss_bits"};
+    "loss_bits"
+};
 
 struct tls_name_struct tls_field_length_bytes[33] = {
     {"fragment", 2},
@@ -158,13 +159,14 @@ struct tls_name_struct tls_field_bytes[31] = {
     {"seconds_16", -1},
     {"stream_pos_16", -1},
     {"exponent_8", -1},
-    {"data_8", 1},
+    {"data_8", 16},
     {"dcid", 8},
     {"scid", 8},
-    {"pcid", 8},
+    {"pcid", 4},
     {"ip_addr", 4},
     {"ip_port", 2},
     {"ip6_addr", 16},
+    //{"ip6_addr2", 8},
     {"ip6_port", 2},
     {"pref_token", 16},
     {"pcid_len", 1},
