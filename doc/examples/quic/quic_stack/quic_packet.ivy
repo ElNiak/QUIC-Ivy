@@ -195,6 +195,8 @@ relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
 function num_conn(C:cid) : stream_pos
 relation retry_send(C:cid)
 function retry_token(C:cid) : stream_data
+
+relation migration_done
 #chris
 
 
@@ -227,6 +229,7 @@ after init {
     #Hamid
     #chris
     num_conn(C) := 1; 
+    migration_done := false;
     #chris
 }
 
@@ -314,6 +317,11 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     var scid := pkt.src_cid;
     if cid_mapped(dcid) {
 	    dcid := cid_to_aid(dcid);
+    };
+
+    if src = client_alt | dst = client_alt {
+	migration_done := true;
+	call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
 
     #if pkt.ptype = quic_packet_type.retry {

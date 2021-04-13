@@ -112,7 +112,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var res := prot.decrypt(server.tls_id,rnum,ppkt);
         if res.ok {
             var pkt := pkt_serdes.from_bytes(res.data);
-            pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data,0));
+            pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
             call recv_packet(src,dst,pkt);
             call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
             call packet_event(src,dst,pkt);       # also an inferred event

@@ -37,6 +37,44 @@ implementation {
     }
 }
 
+
+action random_stream_id(min:stream_id,max:stream_id) returns (res:stream_id)
+
+action greater_stream_id(min:stream_id) returns (res:stream_id)
+
+action lower_stream_id(max:stream_id) returns (res:stream_id)
+
+implementation {
+    implement random_stream_id(min:stream_id,max:stream_id) {
+       <<<
+       srand((unsigned) time(0)); //fixed or random seed ?
+       res = 0;
+       res = ::rand()% (max-min+1) + min;
+       std::cerr << "between random: " << res << "\n";
+       >>>
+    }
+
+    implement greater_stream_id(min:stream_id) {
+       <<<
+       srand((unsigned) time(0)); //fixed or random seed ?
+       res = 0;
+       res = ::rand()%32767 + (min+1);
+       std::cerr << "greater random: " << res << "\n";
+       >>>
+    }
+
+    implement lower_stream_id(max:stream_id) {
+       <<<
+       res = 0;
+       srand((unsigned) time(0)); //fixed or random seed ?
+       res = ::rand()%(max-1) + 0;
+       std::cerr << "lower random: " << res << "\n";
+       >>>
+    }
+}
+
+
+
 action random_stream_data(min:stream_pos,max:stream_pos,len:stream_pos) returns (res:stream_data)
 
 implementation {

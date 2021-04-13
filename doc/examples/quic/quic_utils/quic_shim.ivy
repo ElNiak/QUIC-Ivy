@@ -69,7 +69,7 @@ include quic_locale
 after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating & ~conn_closed(pkt.the_cid) { 
         var spkt := pkt_serdes.to_bytes(pkt);
-        var rnum := reference_pkt_num(spkt);
+        var rnum := reference_pkt_num(spkt,false);
         var tls_id := dst_tls_id(dst);
         var ppkt := prot.encrypt(tls_id,rnum,spkt);
         var pkts := prot.arr.empty;
@@ -106,11 +106,11 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             # 1000 0000 == version_negociation
             call tls_client_version_response(src,dst,ppkt)
         };
-        var rnum := reference_pkt_num(ppkt);
+        var rnum := reference_pkt_num(ppkt,true);
         var res := prot.decrypt(tls_id,rnum,ppkt);
         if res.ok {
             var pkt := pkt_serdes.from_bytes(res.data);
-            pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data,0));
+            pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
             call recv_packet(src,dst,pkt);
             call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
             call packet_event(src,dst,pkt);       # also an inferred event
@@ -240,8 +240,12 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 # should really be computed in the protection layer and passed to
 # TLS here in the shim.
 
+
+function client_initial_scil : stream_pos
+
 after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version) {
-        var ikm := cid_to_bytes(nonce,cid_size(nonce));
+        var ikm := cid_to_bytes(nonce,cid_size(nonce)); 
+	client_initial_scil := cid_size_pos(nonce);
         var salt : stream_data := stream_data.empty;
 
         #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
@@ -317,6 +321,8 @@ function client_initial_dcid : cid
 function client_initial_dcid_size : stream_pos
 function client_initial_version : version
 
+
+
 after init {
     initial_keys_set := false;
     tp_client_set := false;
@@ -343,7 +349,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         client_initial_scid := bytes_to_cid(skm); # skm
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
-	    call export_length_cid_extension(dcil,scil);
+	call export_length_cid_extension(dcil,scil);
         call tls_api.upper.create(0,true,extns);  
         # 'true' means this instance of tls is a server
         tp_client_set := true;
@@ -477,8 +483,8 @@ action packet_scid(h:prot.header_info) returns (scid:cid) = {
 # As a workaround, we use `last_pkt_num(scid,e)` where `e` is the
 # encryption level. We infer the encryption level from the packet type.
 
-action reference_pkt_num(spkt:stream_data) returns (pnum:pkt_num) = {
-    var h := prot.get_header_info(spkt);
+action reference_pkt_num(spkt:stream_data,decrypt:bool) returns (pnum:pkt_num) = {
+    var h := prot.get_header_info(spkt,decrypt);
     var e := packet_encryption_level(h);
     var scid := packet_scid(h);
     pnum := last_pkt_num(scid,e);
@@ -501,6 +507,9 @@ action cid_to_bytes(c:cid,len:cid_length) returns(res:stream_data) = {
     >>>
 }
 
+# Tricks should remodify packet to add dcil/scil length field as in past but we would need
+# modify too much code = "unsafe"
+# TODO
 action cid_size(c:cid) returns(res:cid_length) = {
     <<<
     res = 0;
@@ -518,6 +527,25 @@ action cid_size(c:cid) returns(res:cid_length) = {
     //std::cerr <<  "cid_size size: " <<  res << std::endl;
     >>>
 }
+
+action cid_size_pos(c:cid) returns(res:stream_pos) = {
+    <<<
+    res = 0;
+    if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
+      if(strcmp(env_p2, "server") == 0) {
+         if(const char* env_p3 = std::getenv("TEST_SCIL")) {
+            //std::cout << "TEST_SCIL " << env_p3 << std::endl;
+	        res = atoi(env_p3);
+         } else 
+	   res = 8;
+      } else 
+	  res = 8;
+    } else 
+      res = 8;
+    //std::cerr <<  "cid_size size: " <<  res << std::endl;
+    >>>
+}
+
 
 action hi_byte_pos(x:stream_pos) returns (res:byte) = {
     <<< res = (x >> 8) & 0xff; >>>
