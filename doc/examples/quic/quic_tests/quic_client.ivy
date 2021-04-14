@@ -37,8 +37,17 @@ after init {
 }
 
 object endpoint_id = {
-    type this = {client, server}
+    type this = {client, client_alt, server}
 }
+
+# An ip endpoint for the client to migrate to.
+
+var client_alt : ip.endpoint
+
+after init {
+    client_alt := endpoint_id_addr(endpoint_id.client_alt)
+}
+
 
 # Map test endpoint ids to the ip endpoints
 

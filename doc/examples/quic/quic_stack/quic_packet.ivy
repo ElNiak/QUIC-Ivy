@@ -321,7 +321,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     if src = client_alt | dst = client_alt {
 	migration_done := true;
-	call net.close(endpoint_id.client,sock);	# destroy connection ?
+	#call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
 
     #if pkt.ptype = quic_packet_type.retry {
@@ -637,7 +637,7 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
     #require max_idle_timeout.is_set(trans_params(scid));  # [3] TODO
     #require initial_max_stream_data_bidi_remote.is_set(trans_params(scid));  # [1]
     #require initial_max_stream_data_uni.is_set(trans_params(scid));  # [1]
-    if ~ _generating { 
+    if ~ _generating & client_present_scid { 
         # for tests where we check that the implementation behave well if not present 
         require initial_source_connection_id.is_set(trans_params(scid));  # [5]
     };

@@ -67,7 +67,7 @@ include quic_locale
 
 
 after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
-    if _generating & ~conn_closed(pkt.the_cid) { 
+    if _generating {  # & ~conn_closed(pkt.the_cid)
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt,false);
         var tls_id := dst_tls_id(dst);
@@ -320,12 +320,13 @@ function client_initial_scid : cid
 function client_initial_dcid : cid
 function client_initial_dcid_size : stream_pos
 function client_initial_version : version
-
+relation client_present_scid
 
 
 after init {
     initial_keys_set := false;
     tp_client_set := false;
+    client_present_scid := false;
 }
 
 after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
@@ -342,6 +343,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
         var skm := cid_to_bytes(0,1); # scid
         if(~scil = 0) {
+		client_present_scid := true;	
 	        skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
         };
 

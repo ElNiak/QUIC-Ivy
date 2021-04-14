@@ -70,7 +70,7 @@ after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
    # if src = server.ep  {
     if _generating & ~conn_closed(pkt.the_cid) { 
         var spkt := pkt_serdes.to_bytes(pkt);
-        var rnum := reference_pkt_num(spkt);
+        var rnum := reference_pkt_num(spkt,false);
         call clear_packet(rnum,spkt);
         var ppkt := prot.encrypt(server.tls_id,rnum,spkt);
         call cipher_packet(ppkt);
@@ -108,7 +108,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             # 1000 0000 == version_negociation
             call tls_client_version_response(src,dst,ppkt)
         };
-        var rnum := reference_pkt_num(ppkt);
+        var rnum := reference_pkt_num(ppkt,true);
         var res := prot.decrypt(server.tls_id,rnum,ppkt);
         if res.ok {
             var pkt := pkt_serdes.from_bytes(res.data);
@@ -246,6 +246,8 @@ around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, e:qu
 # TODO: this assumes the cid length is 8 bytes. Also, the ikm and salt
 # should really be computed in the protection layer and passed to
 # TLS here in the shim.
+
+function client_initial_scil : stream_pos
 
 after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version) {
     	var ikm := cid_to_bytes(nonce,cid_size(nonce));
@@ -486,8 +488,8 @@ action packet_scid(h:prot.header_info) returns (scid:cid) = {
 # As a workaround, we use `last_pkt_num(scid,e)` where `e` is the
 # encryption level. We infer the encryption level from the packet type.
 
-action reference_pkt_num(spkt:stream_data) returns (pnum:pkt_num) = {
-    var h := prot.get_header_info(spkt);
+action reference_pkt_num(spkt:stream_data,decrypt:bool) returns (pnum:pkt_num) = {
+    var h := prot.get_header_info(spkt,decrypt);
     var e := packet_encryption_level(h);
     var scid := packet_scid(h);
     pnum := last_pkt_num(scid,e);
