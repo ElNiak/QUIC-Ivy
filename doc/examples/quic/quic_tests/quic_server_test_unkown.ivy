@@ -75,6 +75,10 @@ parameter max_stream_data : stream_pos = 0x2000
 # We use this type as a host id. There are two client host ids so we
 # can model migration.
 
+after init {
+    the_cid := 0x1;
+}
+
 object endpoint_id = {
     type this = {client, client_alt, server}
 }
@@ -242,8 +246,12 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
 
     var icid : initial_source_connection_id; #TODO update v29
-    icid.scid := 0;
+    icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
+
+    var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
+    max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
+    tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
 }
 
 
@@ -256,7 +264,7 @@ attribute radix=16
 # Notably, the `intbv` type can be used to represent large numbers with
 # small bit vector enodings.
 
-interpret cid -> intbv[1][13][2]
+interpret cid -> longbv[1][13][2]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]

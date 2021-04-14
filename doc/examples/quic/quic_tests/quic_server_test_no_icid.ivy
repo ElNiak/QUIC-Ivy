@@ -27,6 +27,11 @@ parameter max_stream_data : stream_pos = 0x2000
 # We use this type as a host id. There are two client host ids so we
 # can model migration.
 
+after init {
+    the_cid := 0x1;
+}
+
+
 object endpoint_id = {
     type this = {client, client_alt, server}
 }
@@ -211,7 +216,7 @@ attribute radix=16
 # Notably, the `intbv` type can be used to represent large numbers with
 # small bit vector enodings.
 
-interpret cid -> intbv[1][13][2]
+interpret cid -> longbv[1][13][2]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
@@ -243,9 +248,24 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 # to the server endpoint.
 #
 
+var allowed_multiple_migration : bool
+
+after init {
+	allowed_multiple_migration := false
+}
+
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-        require src = client.ep | src = client_alt;
+	var tp := trans_params(the_cid);
+	if ~disable_active_migration.is_set(tp) | allowed_multiple_migration {
+		if ~migration_done { #only one migration
+        		require src = client.ep | src = client_alt;
+		} else {
+			require src = client_alt;
+		}
+	} else {
+		require src = client.ep;
+	};
         require dst = server.ep;
         require pkt.token.end = 0; 
     };
