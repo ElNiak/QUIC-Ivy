@@ -1519,7 +1519,7 @@ object frame = { ...
 
 
             var tp := trans_params(dcid);
-            var min : exponent_8 := 0;
+            var min : microsecs := 0;
             if min_ack_delay.is_set(tp) {
                 min := min_ack_delay.value(trans_params(dcid)).exponent_8
             };
