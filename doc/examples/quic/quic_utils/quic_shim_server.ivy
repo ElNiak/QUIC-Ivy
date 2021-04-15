@@ -2,10 +2,9 @@
 
 include quic_shim
 
-# TODO import show_stream for debug
+# The QUIC test shim
+# ------------------
 
-# The QUIC test shim for client
-# -----------------------------
 
 # Packet event shim
 # -----------------
@@ -35,48 +34,14 @@ include quic_shim
 # mapped to an open socket. This map is provided by `endpoint_to_socket`.
 #
 
-
 after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
-   # if src = server.ep  {
-    if _generating & ~conn_closed(pkt.the_cid) { 
+    if _generating {  # & ~conn_closed(pkt.the_cid)
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt,false);
-        call clear_packet(rnum,spkt);
-        var ppkt := prot.encrypt(server.tls_id,rnum,spkt);
-        call cipher_packet(ppkt);
+        var tls_id := dst_tls_id(dst);
+        var ppkt := prot.encrypt(tls_id,rnum,spkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
-        call net.send(endpoint_id.server,sock,dst,pkts);
+        call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
     }
 }
-
-# TLS receive event handling
-#
-# When TLS data is received, at the server, we route it to the server's instance of TLS.
-#
-# Also, we require that all of the received data (from stream_pos up
-# to stream_length) is transferred to TLS, otherwise, the data will be
-# dribbled one byte at a time, which gets boring.
-#
-
-
-around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, e:quic_packet_type, lo : stream_pos, hi : stream_pos ) {
-    require src = client.ep & dst = server.ep;
-    require hi = crypto_length(scid,e);
-    require e = quic_packet_type.handshake -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
-    require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
-    require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.handshake) = crypto_length(scid,quic_packet_type.handshake);
-    require dcid = the_cid;
-    ...
-    var tls_id := server.tls_id;
-    var data := stream_data.empty;
-   # Fill in the message bytes
-    var idx := lo;
-    while idx < hi {
-	data := data.append(crypto_data(scid,e).value(idx));
-	idx := idx.next
-    };
-    #call tls_api.lower.recv(tls_id,data,0)
-}
-
-

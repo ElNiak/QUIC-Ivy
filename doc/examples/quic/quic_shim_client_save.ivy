@@ -37,6 +37,49 @@ instance prot : quic_protection(tls_api.id,tls_api.upper)
 
 include quic_locale
 
+# Packet event shim
+# -----------------
+#
+# When a packet even is generated, we encode the packet contents and
+# route it to the network. The encoding involves serializing the packet
+# to its byte-level representation, and then applying protection.
+#
+# TODO: We do not actually generate protection layer events. Instead,
+# whenever a generated packet event occurs, we deterministically
+# serialize and encrypt the packet for transmission. This is not quite sound,
+# since in fact there are a few choices to be made in the encoding (such
+# as the number of bytes in the sequence number encoding) and these choices
+# should in principle be randomized. We have not done this, however, since we
+# are more interested in the higher-layer aspects of the protocol.
+#
+# TODO: We don't coalesce multiple packets into a datagram. To do
+# this, we could enqueue packets (as frames are enqueued) and then
+# randomly choose the moment to encode them.
+#
+# Note: To encode the packet, we need a reference sequence number,
+# which is the sequence number of the most recently transmitted packet
+# on the same connection. This information is obtained from the protocol
+# state by the procedure `reference_pkt_num`.
+#
+# Note: We assume the each endpoint the tester can transmit on has been
+# mapped to an open socket. This map is provided by `endpoint_to_socket`.
+#
+
+
+after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
+   # if src = server.ep  {
+    if _generating & ~conn_closed(pkt.the_cid) { 
+        var spkt := pkt_serdes.to_bytes(pkt);
+        var rnum := reference_pkt_num(spkt,false);
+        call clear_packet(rnum,spkt);
+        var ppkt := prot.encrypt(server.tls_id,rnum,spkt);
+        call cipher_packet(ppkt);
+        var pkts := prot.arr.empty;
+        pkts := pkts.append(ppkt);
+        call net.send(endpoint_id.server,sock,dst,pkts);
+    }
+}
+
 # UDP receive event shim
 # ----------------------
 #
@@ -51,7 +94,7 @@ include quic_locale
 
 
 implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.arr) {
-    var dst := socket_endpoint(host,s);  # because net API doesn't tell us the dst
+    var dst := server.ep;  # because net API doesn't tell us the dst
     var idx := pkts.begin;
     while idx < pkts.end {
         var ppkt := pkts.value(idx);
@@ -66,7 +109,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call tls_client_version_response(src,dst,ppkt)
         };
         var rnum := reference_pkt_num(ppkt,true);
-        var res := prot.decrypt(tls_id,rnum,ppkt);
+        var res := prot.decrypt(server.tls_id,rnum,ppkt);
         if res.ok {
             var pkt := pkt_serdes.from_bytes(res.data);
             pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
@@ -75,7 +118,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call packet_event(src,dst,pkt);       # also an inferred event
             if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
                 # for client test
-                call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
+		        call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
                 call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
             }
         } else {
@@ -110,15 +153,16 @@ import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:str
 # appropriate abstract crypto stream, and later to be transmitted via
 # a generated crypto frame event.
 
-#TODO merge shim for client
-
 implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.lower.level) {
     var e := quic_packet_type.initial if lev = 0
              else (quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt);
     var scid := tls_id_to_cid(tls_id);
-    call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
-                        0, bytes,crypto_data_end(scid,e),e);
+    if tls_id = server.tls_id {
+        call tls_send_event(server.ep, client.ep, the_cid,
+                        0, bytes,crypto_data_end(the_cid,e),e);
+    }
 }
+
 
 # The following is just for debugging purposes.
 
@@ -135,7 +179,9 @@ after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data 
 
 implement tls_api.upper.keys_established(tls_id:tls_api.id,lev:tls_api.upper.level) {
     var e := quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt;
-    call tls_keys_established_event(tls_id_to_cid(tls_id),e); #tls_id = server.tls_id  for client ?
+    if tls_id = server.tls_id {
+         call tls_keys_established_event(the_cid,e); #tls_id = server.tls_id  for client ?
+    }
 }
 
 # TLS handshake data event shim
@@ -154,9 +200,38 @@ implement tls_api.upper.keys_established(tls_id:tls_api.id,lev:tls_api.upper.lev
 # were any crypto frames.
 
 after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream_data) {
-    if dst_is_generated(dst) {
-        call tls_api.lower.recv(dst_tls_id(dst),data,0); # TODO: fill in the encryption level
+    if dst = server.ep  {
+        call tls_api.lower.recv(server.tls_id,data,0); # TODO: fill in the encryption level
     }
+}
+
+# TLS receive event handling
+#
+# When TLS data is received, at the server, we route it to the server's instance of TLS.
+#
+# Also, we require that all of the received data (from stream_pos up
+# to stream_length) is transferred to TLS, otherwise, the data will be
+# dribbled one byte at a time, which gets boring.
+#
+
+
+around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, e:quic_packet_type, lo : stream_pos, hi : stream_pos ) {
+    require src = client.ep & dst = server.ep;
+    require hi = crypto_length(scid,e);
+    require e = quic_packet_type.handshake -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
+    require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
+    require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.handshake) = crypto_length(scid,quic_packet_type.handshake);
+    require dcid = the_cid;
+    ...
+    var tls_id := server.tls_id;
+    var data := stream_data.empty;
+   # Fill in the message bytes
+    var idx := lo;
+    while idx < hi {
+	data := data.append(crypto_data(scid,e).value(idx));
+	idx := idx.next
+    };
+    #call tls_api.lower.recv(tls_id,data,0)
 }
 
 # TLS client initial request shim
@@ -172,16 +247,16 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 # should really be computed in the protection layer and passed to
 # TLS here in the shim.
 
-
 function client_initial_scil : stream_pos
 
 after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version) {
-    var ikm := cid_to_bytes(nonce,cid_size(nonce)); 
-	client_initial_scil := cid_size_pos(nonce);
-    var salt : stream_data := stream_data.empty;
+    	var ikm := cid_to_bytes(nonce,cid_size(nonce));
+    	#client_initial_dcid_length := cid_size_pos(nonce);
+    	var salt : stream_data := stream_data.empty;
 
-    #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
+        #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
 	if pversion = 0xfaceb002 | pversion = 0xff00001b {
+
 		salt := salt.append(0xc3);
 		salt := salt.append(0xee);
 		salt := salt.append(0xf7);
@@ -202,9 +277,10 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pver
 		salt := salt.append(0xf9);
 		salt := salt.append(0xf5);
 		salt := salt.append(0x02);
+
 	};
 
-    #0xaf bf ec 28 99 93 d2 4c 9e 97 86 f1 9c 61 11 e0 43 90 a8 99 QUIC-29
+        #0xaf bf ec 28 99 93 d2 4c 9e 97 86 f1 9c 61 11 e0 43 90 a8 99 QUIC-29
 	if pversion = 0xff00001d   {
 		salt := salt.append(0xaf);
 		salt := salt.append(0xbf);
@@ -228,6 +304,8 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pver
 		salt := salt.append(0x99);
 	};
 
+	call ikm_show(ikm);
+	call ikm_show(salt);
     call tls_api.upper.set_initial_keys(0,salt,ikm);
 }
 
@@ -246,14 +324,10 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pver
 
 var initial_keys_set : bool
 var tp_client_set : bool
-
 function client_initial_scid : cid
-function client_initial_dcid : cid
-function client_initial_dcid_size : stream_pos
-function client_initial_version : version
-
 relation client_present_scid
-
+function client_initial_dcid : cid
+function client_initial_version : version
 
 after init {
     initial_keys_set := false;
@@ -267,6 +341,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 	var ver := bytes_to_version(spkt.segment(1,5));
         var lens := spkt.value(5);
         var dcil : stream_pos := bfe[0][7](spkt.value(5));
+	    #client_initial_dcid_length := dcil;
         var ikm := cid_to_bytes(0,1); # dcid
 	    if(~dcil = 0) {
 	        ikm := spkt.segment(6,6+dcil); # dcid
@@ -274,8 +349,9 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         var lenss := spkt.value(6+dcil);
         var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
         var skm := cid_to_bytes(0,1); # scid
+	    #client_initial_scid_length := scil;
         if(~scil = 0) {
-		    client_present_scid := true;	
+		client_present_scid := true;	
 	        skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
         };
 
@@ -287,11 +363,8 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         call tls_api.upper.create(0,true,extns);  
         # 'true' means this instance of tls is a server
         tp_client_set := true;
-	    client_initial_version := ver;
+	client_initial_version := ver;
     };
-
-
-    call show_version(client_initial_version);
 
     if ~initial_keys_set {
         #TODO check value
@@ -301,60 +374,60 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
         var salt : stream_data := stream_data.empty;
         
-        #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
-	    if client_initial_version = 0xfaceb002 | client_initial_version = 0xff00001b {
-            salt := salt.append(0xc3);
-            salt := salt.append(0xee);
-            salt := salt.append(0xf7);
-            salt := salt.append(0x12);
-            salt := salt.append(0xc7);
-            salt := salt.append(0x2e);
-            salt := salt.append(0xbb);
-            salt := salt.append(0x5a);
-            salt := salt.append(0x11);
-            salt := salt.append(0xa7);
-            salt := salt.append(0xd2);
-            salt := salt.append(0x43);
-            salt := salt.append(0x2b);
-            salt := salt.append(0xb4);
-            salt := salt.append(0x63);
-            salt := salt.append(0x65);
-            salt := salt.append(0xbe);
-            salt := salt.append(0xf9);
-            salt := salt.append(0xf5);
-            salt := salt.append(0x02);
-        };
-
+        if client_initial_version = 0xfaceb002 | client_initial_version = 0xff00001b {
+		salt := salt.append(0xc3);
+		salt := salt.append(0xee);
+		salt := salt.append(0xf7);
+		salt := salt.append(0x12);
+		salt := salt.append(0xc7);
+		salt := salt.append(0x2e);
+		salt := salt.append(0xbb);
+		salt := salt.append(0x5a);
+		salt := salt.append(0x11);
+		salt := salt.append(0xa7);
+		salt := salt.append(0xd2);
+		salt := salt.append(0x43);
+		salt := salt.append(0x2b);
+		salt := salt.append(0xb4);
+		salt := salt.append(0x63);
+		salt := salt.append(0x65);
+		salt := salt.append(0xbe);
+		salt := salt.append(0xf9);
+		salt := salt.append(0xf5);
+		salt := salt.append(0x02);
+	} else if client_initial_version = 0xff00001d   {
         #0xaf bf ec 28 99 93 d2 4c 9e 97 86 f1 9c 61 11 e0 43 90 a8 99 QUIC-29
-        if client_initial_version = 0xff00001d   {
-            salt := salt.append(0xaf);
-            salt := salt.append(0xbf);
-            salt := salt.append(0xec);
-            salt := salt.append(0x28);
-            salt := salt.append(0x99);
-            salt := salt.append(0x93);
-            salt := salt.append(0xd2);
-            salt := salt.append(0x4c);
-            salt := salt.append(0x9e);
-            salt := salt.append(0x97);
-            salt := salt.append(0x86);
-            salt := salt.append(0xf1);
-            salt := salt.append(0x9c);
-            salt := salt.append(0x61);
-            salt := salt.append(0x11);
-            salt := salt.append(0xe0);
-            salt := salt.append(0x43);
-            salt := salt.append(0x90);
-            salt := salt.append(0xa8);
-            salt := salt.append(0x99);
-        };
+		salt := salt.append(0xaf);
+		salt := salt.append(0xbf);
+		salt := salt.append(0xec);
+		salt := salt.append(0x28);
+		salt := salt.append(0x99);
+		salt := salt.append(0x93);
+		salt := salt.append(0xd2);
+		salt := salt.append(0x4c);
+		salt := salt.append(0x9e);
+		salt := salt.append(0x97);
+		salt := salt.append(0x86);
+		salt := salt.append(0xf1);
+		salt := salt.append(0x9c);
+		salt := salt.append(0x61);
+		salt := salt.append(0x11);
+		salt := salt.append(0xe0);
+		salt := salt.append(0x43);
+		salt := salt.append(0x90);
+		salt := salt.append(0xa8);
+		salt := salt.append(0x99);
+	};
+
+	#call ikm_show(ikm);
+	#call ikm_show(salt);
 
         call tls_api.upper.set_initial_keys(0,salt,ikm);
         initial_keys_set := true;
     }
 }
 
-import action show_version(ver:version)
+import action ikm_show(ikm: stream_data)
 
 # TLS client Version Negotiation response shim
 # ============================================
@@ -379,6 +452,8 @@ import action show_version(ver:version)
 after tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
  # Not finished TODO
 }
+
+
 
 
 # Procedures
@@ -437,9 +512,6 @@ action cid_to_bytes(c:cid,len:cid_length) returns(res:stream_data) = {
     >>>
 }
 
-# Tricks should remodify packet to add dcil/scil length field as in past but we would need
-# modify too much code = "unsafe"
-# TODO
 action cid_size(c:cid) returns(res:cid_length) = {
     <<<
     res = 0;
@@ -462,9 +534,9 @@ action cid_size_pos(c:cid) returns(res:stream_pos) = {
     <<<
     res = 0;
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
-      if(strcmp(env_p2, "server") == 0) {
-         if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-            //std::cout << "TEST_SCIL " << env_p3 << std::endl;
+      if(strcmp(env_p2, "client") == 0) {
+         if(const char* env_p3 = std::getenv("TEST_DCIL")) {
+            //std::cout << "TEST_DCIL " << env_p3 << std::endl;
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
@@ -475,7 +547,6 @@ action cid_size_pos(c:cid) returns(res:stream_pos) = {
     //std::cerr <<  "cid_size size: " <<  res << std::endl;
     >>>
 }
-
 
 action hi_byte_pos(x:stream_pos) returns (res:byte) = {
     <<< res = (x >> 8) & 0xff; >>>
@@ -521,3 +592,4 @@ action export_length_cid_extension(dcil:stream_pos,scil:stream_pos) = {
 
     >>>
 }
+
