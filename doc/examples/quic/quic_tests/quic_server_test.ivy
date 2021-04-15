@@ -5,6 +5,7 @@ include quic_connection
 include quic_infer
 include file
 include quic_shim
+include quic_shim_server
 include quic_locale
 include quic_server
 include quic_fsm_sending
