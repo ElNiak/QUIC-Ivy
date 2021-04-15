@@ -3,7 +3,7 @@
 include order
 include quic_infer
 include file
-include quic_shim
+include quic_shim_server
 include quic_locale
 include random_value
 
