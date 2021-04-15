@@ -5,6 +5,7 @@ include quic_connection
 include quic_infer
 include file
 include quic_shim
+include random_value
 include quic_locale
 
 parameter the_cid : cid = 0xd
@@ -217,7 +218,7 @@ attribute radix=16
 # Notably, the `intbv` type can be used to represent large numbers with
 # small bit vector enodings.
 
-interpret cid -> longbv[1][13][20]
+interpret cid -> longbv[1][13][30]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
