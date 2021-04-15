@@ -1522,7 +1522,7 @@ object frame = { ...
             var min : exponent_8 := 0;
             if min_ack_delay.is_set(tp) {
                 min := min_ack_delay.value(trans_params(dcid)).exponent_8
-            }
+            };
             require f.packet_tolerence > 0;
             require f.update_max_ack_delay > min; 
             require f.ignore_order = 1 | f.ignore_order = 0;
