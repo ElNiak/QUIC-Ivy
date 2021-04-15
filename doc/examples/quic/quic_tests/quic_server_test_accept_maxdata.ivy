@@ -2,15 +2,12 @@
 
 
 include order
-include quic_connection
 include quic_infer
 include file
 include quic_shim
 include quic_shim_server
 include quic_locale
 include quic_server
-include quic_fsm_sending
-include quic_fsm_receiving
 
 # This is a simple tester for quic servers. The tester plays the role of a
 # single client, which may use multiple UDP ports.
