@@ -297,7 +297,7 @@ before frame.streams_blocked.handle(f:frame.streams_blocked,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
-        f.id := 0x0100000000000000; #TODO > not implemented 0x0100000000000000
+        f.id := 0x01ffffffffffffff; #TODO > not implemented 0x0100000000000000
     }
 }
 
