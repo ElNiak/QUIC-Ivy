@@ -809,7 +809,8 @@ object frame = {
 # this stream and the receiver may ignore any data previously transmitted.
 #
 # Requirements:
-#
+
+# - Stream id must has been created to be reset [8].
 # - Stream id must not exceed maximim stream id for the stream kind [4].
 # - QUESTION: Can a previously reset stream be reset?
 # - The final stream position may not be lesser than that of any previous
@@ -841,6 +842,7 @@ object frame = { ...
                         -> stream_length(dcid,f.id) = f.final_offset;
             stream_reset(dcid,f.id) := true;  # [2]
             stream_length(dcid,f.id) := f.final_offset;  #[3]
+            require stream_seen(dcid,f.id);  # [8]
             require stream_id_allowed(dcid,f.id);  # [4]
 	    ...
             if ~_generating {
