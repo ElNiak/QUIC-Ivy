@@ -76,8 +76,8 @@ parameter max_stream_data : stream_pos = 0x2000
 
 # Mandatory for longbv else truncated
 after init {
-    the_cid := 0x0;
-    server_cid := 0x1;
+    the_cid := 0x1;
+    server_cid := 0x2;
 }
 
 object endpoint_id = {
@@ -265,7 +265,7 @@ attribute radix=16
 # Notably, the `intbv` type can be used to represent large numbers with
 # small bit vector enodings.
 
-interpret cid -> longbv[1][13][2]
+interpret cid -> longbv[1][13][20]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
