@@ -107,37 +107,37 @@ object quic_ser = {}
             }
             break;    
             case quic_s_dcid:
-            {​​​​​​​​
+            {
                 //std::cerr << "ser res dcid 1 " << res << std::endl;
-                if (long_format) {​​​​​​​​
-                    if((res != 0 && res != 1) || scid_h == 0)
-                        setn(scid_h,1);
-                    else
-                        setn(8,1);
-                }​​​​​​​​
-                if((res != 0 && res != 1) || scid_h == 0)
-                    setn(res,scid_h); //scid_h
-                else
-                    setn(res,8);
+                if (long_format) {
+		    if((res != 0 && res != 1) || scid_h == 0)
+                    	setn(scid_h,1);
+		    else 
+			setn(8,1);
+                }
+		if((res != 0 && res != 1) || scid_h == 0)
+			setn(res,scid_h); //scid_h
+		else 
+			setn(res,8); 
                 //std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
-            }​​​​​​​​
+            }
             break;
             case quic_s_scid:
-            {​​​​​​​​
-                //std::cerr << "ser res scid_h 1 " << res << std::endl;
-                if (long_format) {​​​​​​​​
-                    if((res == 0 || res == 1) && scid_h != 0){​​​​​​​​
-                        setn(8,1);
-                        setn(res,8);
-                    }​​​​​​​​ else {​​​​​​​​
-                        setn(dcid_h,1);
-                        setn(res,dcid_h);
-                    }​​​​​​​​
-                }​​​​​​​​
-                //std::cerr << "ser res scid_h 1 " << res << std::endl;
+            {
+		//std::cerr << "ser res scid_h 1 " << res << std::endl;
+                if (long_format) {
+		    if((res == 0 || res == 1) && scid_h != 0){
+                    	setn(8,1);
+		    	setn(res,8);
+		    } else {
+                    	setn(dcid_h,1);
+		    	setn(res,dcid_h);
+		    }
+                }
+		//std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token_length;
-            }​​​​​​​​
+            }
             break;
             case quic_s_pkt_num:
             {
