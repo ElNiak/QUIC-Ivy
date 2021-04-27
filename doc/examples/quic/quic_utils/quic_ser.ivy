@@ -105,9 +105,7 @@ object quic_ser = {}
                     setn(res,4);
                 state = quic_s_dcid;
             }
-            break;
-           [11:11] Christophe Crochet
-    
+            break;    
             case quic_s_dcid:
             {​​​​​​​​
                 //std::cerr << "ser res dcid 1 " << res << std::endl;
