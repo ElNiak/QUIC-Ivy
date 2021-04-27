@@ -1264,8 +1264,9 @@ object frame = { ...
         action handle(f:frame.unknown_frame,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);            
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            #volontary at any time or not ?
+            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);            
             #require e ~= quic_packet_type.initial & e ~= quic_packet_type.handshake;
             #require e ~= quic_packet_type.retry & e ~= quic_packet_type.version_negociation;
             require ~conn_closed(scid); 
