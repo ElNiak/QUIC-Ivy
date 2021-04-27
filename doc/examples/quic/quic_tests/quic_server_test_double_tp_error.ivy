@@ -282,7 +282,7 @@ after init {
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
 	var tp := trans_params(the_cid);
-	if ~disable_active_migration.is_set(tp) | allowed_multiple_migration {
+	if ~disable_active_migration.is_set(tp) {
 		if ~migration_done { #only one migration
         		require src = client.ep | src = client_alt;
 		} else {
@@ -515,7 +515,7 @@ export tls_recv_event
 
 export action _finalize = {
     # chris TODO 
-    require is_transport_parameter_error |  ~handshake_done_send;
+    require is_transport_parameter_error | ~handshake_done_send;
 }
 
 attribute radix=16

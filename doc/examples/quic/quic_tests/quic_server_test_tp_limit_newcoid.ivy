@@ -275,7 +275,7 @@ after init {
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
 	var tp := trans_params(the_cid);
-	if ~disable_active_migration.is_set(tp) | allowed_multiple_migration {
+	if ~disable_active_migration.is_set(tp) {
 		if ~migration_done | allowed_multiple_migration { #only one migration
         		require src = client.ep | src = client_alt;
 		} else {
@@ -460,7 +460,7 @@ after init {
 around client_send_event {
     require s = current_stream;
     var tp := trans_params(the_cid);
-    if ~disable_active_migration.is_set(tp) | allowed_multiple_migration {
+    if ~disable_active_migration.is_set(tp)  {
 	 if ~migration_done | allowed_multiple_migration  { #only one migration
         	 require src = client.ep | src = client_alt;
 	 } else {
