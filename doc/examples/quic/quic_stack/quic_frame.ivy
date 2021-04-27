@@ -875,6 +875,9 @@ object frame = { ...
 #
 # Requirements:
 #
+# - Receiving a STOP_SENDING frame for a
+#   locally-initiated stream that has not yet been created MUST be
+#   treated as a connection error of type STREAM_STATE_ERROR.. [8] (FSM)
 # - Stream id must not exceed maximim stream id for the stream kind [4].
 # - QUESTION: Can a previously reset stream be reset?
 # - The connection must not have been closed by the source endpoint [5].
@@ -895,6 +898,7 @@ object frame = { ...
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [5]
             require connected(scid) & connected_to(scid) = dcid;
+            require stream_seen(dcid,f.id);  # [8]
             require stream_id_allowed(dcid,f.id);  # [4]
 	    ...
             if ~_generating {
