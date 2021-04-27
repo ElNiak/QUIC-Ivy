@@ -22,14 +22,14 @@ include quic_server
 var allowed_multiple_migration : bool
 
 after init {
-	allowed_multiple_migration := false
+	allowed_multiple_migration := true
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
 	var tp := trans_params(the_cid);
 	if ~disable_active_migration.is_set(tp) | allowed_multiple_migration {
-		if ~migration_done { #only one migration
+		if ~migration_done | allowed_multiple_migration { #only one migration
         		require src = client.ep | src = client_alt;
 		} else {
 			require src = client_alt;
@@ -214,7 +214,16 @@ after init {
 
 around client_send_event {
     require s = current_stream;
-    require (src = client.ep | src = client_alt);
+    var tp := trans_params(the_cid);
+    if ~disable_active_migration.is_set(tp) | allowed_multiple_migration {
+	 if ~migration_done | allowed_multiple_migration  { #only one migration
+        	 require src = client.ep | src = client_alt;
+	 } else {
+		 require src = client_alt;
+	 }
+    } else {
+	 require src = client.ep;
+    };
     require dst = server.ep;
     require connected(the_cid) & dcid = connected_to(the_cid);
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);

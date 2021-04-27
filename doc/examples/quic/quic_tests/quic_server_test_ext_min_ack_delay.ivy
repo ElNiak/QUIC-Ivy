@@ -27,8 +27,10 @@ parameter max_stream_data : stream_pos = 0x2000
 # can model migration.
 
 
+# Mandatory for longbv else truncated
 after init {
-    the_cid := 0x1;
+    the_cid := 0x0;
+    server_cid := 0x1;
 }
 
 object endpoint_id = {
@@ -202,7 +204,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
 
     var icid : initial_source_connection_id; #TODO update v29
-    icid.scid := 1;
+    icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
 
     var min_d : min_ack_delay;
@@ -255,14 +257,14 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 var allowed_multiple_migration : bool
 
 after init {
-	allowed_multiple_migration := false
+	allowed_multiple_migration := true
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
 	var tp := trans_params(the_cid);
 	if ~disable_active_migration.is_set(tp) | allowed_multiple_migration {
-		if ~migration_done { #only one migration
+		if ~migration_done | allowed_multiple_migration { #only one migration
         		require src = client.ep | src = client_alt;
 		} else {
 			require src = client_alt;
@@ -465,7 +467,16 @@ after init {
 
 around client_send_event {
     require s = current_stream;
-    require (src = client.ep | src = client_alt);
+    var tp := trans_params(the_cid);
+    if ~disable_active_migration.is_set(tp) | allowed_multiple_migration {
+	 if ~migration_done | allowed_multiple_migration  { #only one migration
+        	 require src = client.ep | src = client_alt;
+	 } else {
+		 require src = client_alt;
+	 }
+    } else {
+	 require src = client.ep;
+    };
     require dst = server.ep;
     require connected(the_cid) & dcid = connected_to(the_cid);
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);

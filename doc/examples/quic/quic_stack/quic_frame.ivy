@@ -584,9 +584,9 @@ object frame = {
 
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-	    if _generating  {
-		require ~(e = quic_packet_type.initial) & ~(e = quic_packet_type.handshake); #& ~(e = quic_packet_type.handshake)
-	    };
+            if _generating  {
+            require ~(e = quic_packet_type.initial) & ~(e = quic_packet_type.handshake); #& ~(e = quic_packet_type.handshake)
+            };
 
             require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);  # [4]
@@ -1264,7 +1264,7 @@ object frame = { ...
         action handle(f:frame.unknown_frame,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
+            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);            
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             #require e ~= quic_packet_type.initial & e ~= quic_packet_type.handshake;
             #require e ~= quic_packet_type.retry & e ~= quic_packet_type.version_negociation;
@@ -1286,7 +1286,7 @@ object frame = { ...
     object padding = { ...
         action handle(f:frame.padding,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	after handle {
-            call enqueue_frame(scid,f,e,false);
+            call enqueue_frame(scid,f,e,true);
         }
     }
 }
