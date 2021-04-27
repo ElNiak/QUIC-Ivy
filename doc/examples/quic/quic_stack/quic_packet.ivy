@@ -322,7 +322,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     };
 
     if src = client_alt | dst = client_alt {
-	migration_done := true;
+	    migration_done := true;
 	#call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
 
@@ -374,8 +374,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # Removed for MVFST that start with big PKT_NUM
     if  _generating {
         require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
+        require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
     };
-
     require ~sent_pkt(scid,pkt.ptype,pkt.seq_num);  # [4]
     sent_pkt(scid,pkt.ptype,pkt.seq_num) := true;  # [1]
 
