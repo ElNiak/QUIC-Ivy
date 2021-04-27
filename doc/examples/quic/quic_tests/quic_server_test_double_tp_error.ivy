@@ -515,7 +515,7 @@ export tls_recv_event
 
 export action _finalize = {
     # chris TODO 
-    require is_transport_parameter_error;
+    require is_transport_parameter_error |  ~handshake_done_send;
 }
 
 attribute radix=16

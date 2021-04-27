@@ -507,6 +507,8 @@ function count_rcid_frame(I:cid_seq) : stream_pos
 
 relation connection_closed 
 
+relation handshake_done_send
+
 #TODO faire all retransmission
 relation stop_sending_in_bad_state
 #chris
@@ -538,6 +540,7 @@ after init {
     first_ack_freq_received := true;
     last_ack_freq_seq(C:cid) := 0;
     connection_closed := false;
+    handshake_done_send := false;
 #chris
 }
 
@@ -1304,8 +1307,9 @@ object frame = { ...
         action handle(f:frame.handshake_done,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
+            #require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require e ~= quic_packet_type.initial;
+            handshake_done_send := true;
             # require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             ...
             call enqueue_frame(scid,f,e,false);

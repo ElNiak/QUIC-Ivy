@@ -270,7 +270,7 @@ export tls_recv_event
 
 export action _finalize = {
     # chris TODO 
-    require is_invalid_token;
+    require is_invalid_token  |  ~handshake_done_send;
 }
 
 
