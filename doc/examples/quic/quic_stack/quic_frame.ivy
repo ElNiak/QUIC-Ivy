@@ -810,7 +810,7 @@ object frame = {
 #
 # Requirements:
 
-# - Stream id must has been created to be reset [8].
+# - Stream id must has been created to be reset [8]. (FSM)
 # - Stream id must not exceed maximim stream id for the stream kind [4].
 # - QUESTION: Can a previously reset stream be reset?
 # - The final stream position may not be lesser than that of any previous
