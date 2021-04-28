@@ -1575,7 +1575,7 @@ action enqueue_frame(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
     if ~probing {
         queued_non_probing(scid) := true;
     };
-    if ~(f isa frame.ack) {
+    if ~(f isa frame.ack) & ~(f isa frame.padding) {
         queued_non_ack(scid) := true;
     };
     if (f isa frame.connection_close) | (f isa frame.application_close) {
