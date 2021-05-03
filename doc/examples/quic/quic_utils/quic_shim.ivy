@@ -49,6 +49,13 @@ include quic_locale
 # This is not necessarily a protocol error, as an undecryptable
 # packet may be a stateless reset.
 
+function last_packet_type : quic_packet_type
+function last_packet_length : stream_pos
+
+after init {
+    last_packet_type := quic_packet_type.initial;
+    last_packet_length := 1200;
+}
 
 implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.arr) {
     var dst := socket_endpoint(host,s);  # because net API doesn't tell us the dst
@@ -65,21 +72,28 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             # 1000 0000 == version_negociation
             call tls_client_version_response(src,dst,ppkt)
         };
+        # Check if packet is only padding
+        var is_pad := is_padding_packet(ppkt); # For quic-go and quand client
+        var is_rand_pad := is_random_padding_packet(ppkt);
         var rnum := reference_pkt_num(ppkt,true);
-        var res := prot.decrypt(tls_id,rnum,ppkt);
-        if res.ok {
-            var pkt := pkt_serdes.from_bytes(res.data);
-            pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
-            call recv_packet(src,dst,pkt);
-            call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
-            call packet_event(src,dst,pkt);       # also an inferred event
-            if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
-                # for client test
-                call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
-                call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
-            }
-        } else {
-            call undecryptable_packet_event(src,dst,ppkt);
+        if is_pad { #is_pad | is_rand_pad
+            call padding_packet_event(src,dst,ppkt);
+        } else { 
+            var res := prot.decrypt(tls_id,rnum,ppkt);
+            if res.ok {
+                var pkt := pkt_serdes.from_bytes(res.data);
+                pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
+                call recv_packet(src,dst,pkt);
+                call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
+                call packet_event(src,dst,pkt);       # also an inferred event
+                if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
+                    # for client test
+                    call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
+                    call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
+                }
+            } else {
+                call undecryptable_packet_event(src,dst,ppkt);
+            };
         };
         idx := idx.next;
     }
@@ -90,6 +104,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
 
 import action app_server_open_event_show(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet,cid1 : cid, cid2: cid)
 import action recv_packet(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
+import action padding_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
 
 # This received packets that are undecryptable
 
@@ -392,6 +407,12 @@ action packet_encryption_level(h:prot.header_info) returns (e:quic_packet_type) 
                   else quic_packet_type.handshake);
 }
 
+action packet_encryption_level_up(h:prot.header_info) returns (e:quic_packet_type) = {
+    e := quic_packet_type.zero_rtt if ~h.hdr_long
+            else (quic_packet_type.initial if bvand(h.hdr_type,0x30) = 0x00
+                  else quic_packet_type.handshake);
+}
+
 # To get the reference packet number for a packet, we need to know the source connection
 # id, which is not present in short packets. Here we get it from history.
 
@@ -415,8 +436,28 @@ action packet_scid(h:prot.header_info) returns (scid:cid) = {
 action reference_pkt_num(spkt:stream_data,decrypt:bool) returns (pnum:pkt_num) = {
     var h := prot.get_header_info(spkt,decrypt);
     var e := packet_encryption_level(h);
+    last_packet_type   := packet_encryption_level_up(h);
+    last_packet_length := h.payload_length;
     var scid := packet_scid(h);
     pnum := last_pkt_num(scid,e);
+}
+
+action is_padding_packet(spkt:stream_data) returns (is_padding:bool) = {
+    <<<
+    is_padding = true;
+    for (unsigned i = 0; i < spkt.size(); i++)
+	is_padding = is_padding && (spkt[i] == 0);
+    >>>
+}
+
+action is_random_padding_packet(spkt:stream_data) returns (is_padding:bool) = {
+    var h := prot.get_header_info(spkt,true);
+    var e := packet_encryption_level_up(h);
+    if last_packet_type = quic_packet_type.initial & last_packet_length < 1200 {
+	    is_padding := true;	
+    } else {
+	    is_padding := false;	
+    };
 }
 
 # To send and receive packets, we need to serialize and deserialize them.

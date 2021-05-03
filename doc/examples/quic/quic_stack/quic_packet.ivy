@@ -197,7 +197,7 @@ relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
 function num_conn(C:cid) : stream_pos
 relation retry_send(C:cid)
 function retry_token(C:cid) : stream_data
-
+relation tls_handshake_finished
 relation migration_done
 #chris
 
@@ -232,6 +232,7 @@ after init {
     #chris
     num_conn(C) := 1; 
     migration_done := false;
+    tls_handshake_finished := false;
     #chris
 }
 
@@ -564,6 +565,9 @@ action handle_tls_handshake(
 #        call map_cids(src,scid,dcid);    # [1]
 #        call map_cids(dst,dcid,scid);
         call handle_tls_extensions(src,dst,scid,sh.extensions,false);
+    }
+    else if some(fh:tls.finished) hs *> fh {
+        tls_handshake_finished := true;
     }
     else if some(ee:tls.encrypted_extensions) hs *> ee {
         call handle_tls_extensions(src,dst,scid,ee.extensions,false);

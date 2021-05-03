@@ -189,7 +189,13 @@ object tls = {
         }
     }
 
-
+    object finished = {
+        variant this of handshake = struct {
+            mtype : message_type,
+            unknown_message_bytes : stream_data
+        }
+    }
+    
     # ### Records
 
     # A record encapsulates TLS messages. It is prefixed by a one-byte

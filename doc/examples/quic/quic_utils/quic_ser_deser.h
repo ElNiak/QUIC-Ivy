@@ -2,6 +2,8 @@
 #define __quic_ser_deser_h__
 extern int scid_h;
 extern int dcid_h;
+//extern bool handshake_finished;
+//extern bool handshake_done_send;
 #include <inttypes.h>
 
 
@@ -103,12 +105,13 @@ std::string quic_params[17] = {
     "loss_bits"
 };
 
-struct tls_name_struct tls_field_length_bytes[33] = {
+struct tls_name_struct tls_field_length_bytes[34] = {
     {"fragment", 2},
     {"content", 2},
     {"tls.client_hello", 3},
     {"tls.server_hello", 3},
     {"tls.encrypted_extensions", 3},
+    {"tls.finished", 3},
     {"unknown_message_bytes", 3},
     {"session_id", 1},
     {"cipher_suites", 2},
@@ -174,7 +177,7 @@ struct tls_name_struct tls_field_bytes[31] = {
     {0, 0}};
 tls_name_map tls_field_bytes_map;
 //TODO check old version
-struct tls_name_struct tls_tags[31] = {
+struct tls_name_struct tls_tags[32] = {
     {"tls.handshake_record", 22},
     {"tls.application_data_record", 23},
     {"tls.change_cipher_spec", 20},
@@ -182,6 +185,7 @@ struct tls_name_struct tls_tags[31] = {
     {"tls.server_hello", 2},
     {"tls.encrypted_extensions", 0x08},
     {"tls.unknown_message", -1},
+    {"tls.finished", 20},
     {"tls.unknown_extension", -1},
     {"quic_transport_parameters", 0xffa5},
     {"initial_max_stream_data_bidi_local", 0x05},

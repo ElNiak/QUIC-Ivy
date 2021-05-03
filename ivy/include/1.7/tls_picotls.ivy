@@ -481,10 +481,21 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ptls_t *session;
         session = ptls_new(ctx,is_server ? 1 : 0);
         ptls_set_server_name(session, "servername", strlen("servername"));
+
+
+        if(const char* env_p = std::getenv("TEST_IMPL")) { 
+            std::cout << "TEST_IMPL " << env_p << std::endl;
+            if(strncmp(env_p,"quic-go",10) == 0 || strncmp(env_p,"quiche",10) == 0) //TODO ask why sometime ALPN
+		    if (is_server) 
+		        ptls_set_negotiated_protocol(session, 
+					    (const char*) handshake_properties->client.negotiated_protocols.list[0].base, 
+					    handshake_properties->client.negotiated_protocols.list[0].len);
+        }
+
         picotls_connection *s = new picotls_connection(c,session,*`cb`,handshake_properties,is_server);
         *ptls_get_data_ptr(session) = s;        
 
-	`cid_map`[c] = s;
+	    `cid_map`[c] = s;
 	
         // Start the handshake if we are the client. The in_epoch is zero for "initial".
 
