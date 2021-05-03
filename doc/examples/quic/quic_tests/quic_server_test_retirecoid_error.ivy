@@ -25,8 +25,8 @@ parameter max_stream_data : stream_pos = 0x2000
 
 # Mandatory for longbv else truncated
 after init {
-    the_cid := 0x0;
-    server_cid := 0x1;
+    the_cid := 0x1;
+    server_cid := 0x2;
 }
 
 # We use this type as a host id. There are two client host ids so we

@@ -510,7 +510,7 @@ object quic_ser = {}
         }
         void close_list() {
             if (state == quic_s_payload) {
-                if ((hdr_type & 0x30) == 0x00)
+                if (long_format && (hdr_type & 0x30) == 0x00)
                     while (res.size() < 1200)
                         res.push_back(0);  // pad initial packet to 1200 bytes
 		/*else if ((hdr_type & 0x30) == 0x20){
