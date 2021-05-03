@@ -1315,8 +1315,8 @@ object frame = { ...
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             #require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);  # [3]
-            #require e ~= quic_packet_type.initial;
-	        #require e ~= quic_packet_type.handshake;
+            require e ~= quic_packet_type.initial;
+	        require e ~= quic_packet_type.handshake;
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             if _generating {
                 handshake_done_send := true;
