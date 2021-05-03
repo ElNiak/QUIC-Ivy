@@ -252,6 +252,7 @@ export frame.ack.handle
 export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
+export frame.handshake_done.handle
 export packet_event
 export client_send_event
 export tls_recv_event
