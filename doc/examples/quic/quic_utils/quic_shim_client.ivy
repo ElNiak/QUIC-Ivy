@@ -38,7 +38,7 @@ include quic_shim
 
 after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
    # if src = server.ep  {
-    if _generating & ~conn_closed(pkt.the_cid) { 
+    if dst_is_generated(src) & ~conn_closed(pkt.the_cid) { # _generating & ~conn_closed(pkt.the_cid) { 
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt,false);
         call clear_packet(rnum,spkt);
