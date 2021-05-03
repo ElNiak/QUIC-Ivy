@@ -1097,7 +1097,7 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            require stream_seen(f.id);
+            require stream_seen(scid,f.id);
             if ~max_stream_data_set(scid,f.id) | f.pos > max_stream_data_val(scid,f.id) {
                 max_stream_data_set(scid,f.id) := true;
                 max_stream_data_val(scid,f.id) := f.pos;  # [2]
