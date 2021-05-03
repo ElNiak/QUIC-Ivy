@@ -132,6 +132,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     #define QUIC_LABEL_INITIAL_CLIENT "client in"
     #define QUIC_LABEL_INITIAL_SERVER "server in"
 
+    //SSL: ptls_get_client_random(), quic_update_traffic_key_callback
     // The following mess is to get the traffic keys from picotls
 
     void *aead_from_secret(ptls_cipher_suite_t * cipher, int is_enc, const void *secret)
@@ -164,14 +165,41 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         }
     }
 
+
     int quic_update_traffic_key_callback(ptls_update_traffic_key_t * self, ptls_t *tls, int is_enc, size_t epoch, const void *secret)
     {
+	static const char *log_labels[2][4] = {
+            {NULL, "CLIENT_EARLY_TRAFFIC_SECRET", "CLIENT_HANDSHAKE_TRAFFIC_SECRET", "CLIENT_TRAFFIC_SECRET_0"},
+            {NULL, NULL, "SERVER_HANDSHAKE_TRAFFIC_SECRET", "SERVER_TRAFFIC_SECRET_0"}};
+	const char * keylogfile = getenv("SSLKEYLOGFILE");
+	FILE *fp;
+        if(keylogfile != NULL) {
+		fp = fopen(keylogfile,"a");
+		const char *secret_label = log_labels[ptls_is_server(tls) == is_enc][epoch];
+		fprintf(fp, "%s ", secret_label);
+
+		ptls_iovec_t crandom = ptls_get_client_random(tls);
+		for (int i = 0 ; i < crandom.len ; i++) {
+		    fprintf(fp, "%02hhx", crandom.base[i]);
+		}
+		fprintf(fp, " ");
+	}
         picotls_connection* cnx = (picotls_connection*)*ptls_get_data_ptr(tls);
         ptls_cipher_suite_t * cipher = ptls_get_cipher(tls);
+       
+	if(keylogfile != NULL) {
+		for (int i = 0 ; i < cipher->hash->digest_size ; i++) {
+		    fprintf(fp, "%02hhx", ((uint8_t *) secret)[i]);
+		}
+		fprintf(fp, "\n");
+	}
         quic_set_key_from_secret(cipher, is_enc, &cnx->crypto_context[epoch], secret);
         if (cnx->crypto_context[epoch].aead_encrypt && cnx->crypto_context[epoch].aead_decrypt) {
             cnx->cb.use(cnx->id,epoch);
         }
+	if(keylogfile != NULL) {
+		fclose(fp);
+	}
         return 0;
     }
 
@@ -218,6 +246,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             prk, QUIC_LABEL_INITIAL_SERVER, ptls_iovec_init(NULL, 0),NULL);
             // QUIC_LABEL_QUIC_BASE);
         bail(ret,"tls: failed to set up initial server secret\n");
+	
         quic_set_key_from_secret(&cipher, session->is_server, &session->crypto_context[0], server_secret);
         quic_set_key_from_secret(&cipher, !session->is_server, &session->crypto_context[0], client_secret);
 	    return ret;
@@ -248,6 +277,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
     // Here we process handshake data on a TLS connection. The in_epoch is a picotls
     // epoch. For the initial client handshake, input is null.
+
 
     int picotls_do_handshake(picotls_connection *s, size_t in_epoch, void *input, size_t inlen ) {
         size_t epoch_offsets[5] = { 0, 0, 0, 0, 0 };
@@ -454,7 +484,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         picotls_connection *s = new picotls_connection(c,session,*`cb`,handshake_properties,is_server);
         *ptls_get_data_ptr(session) = s;        
 
-	    `cid_map`[c] = s;
+	`cid_map`[c] = s;
 	
         // Start the handshake if we are the client. The in_epoch is zero for "initial".
 
@@ -491,7 +521,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     implement iv_size(c:cid,l:level) returns (sz:index) {
         <<< impure
         
-	    picotls_connection *s = `cid_map`[c];
+	picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_enc);
         if (!pn_enc)
             pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);

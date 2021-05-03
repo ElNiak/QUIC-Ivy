@@ -373,7 +373,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
     # Removed for MVFST that start with big PKT_NUM
     if  _generating {
-        require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
+         require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
+    	 require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
     };
 
     require ~sent_pkt(scid,pkt.ptype,pkt.seq_num);  # [4]
@@ -392,13 +393,14 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     require conn_seen(scid) & pkt.long & is_client(scid) -> conn_requested(src,dst,scid);
 
     # Packet must be sent to the endpoint from which the highest numbered
-    # packet has been received.
-
-    require conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
+    # packet has been received. ~queued_challenge(dcid) & 
+    call show_probing(dcid ,hi_non_probing(dcid));
+    require  conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
 
     # TEMPORARY: do not apply ack-only rule to generated packets
     # This can be removed when we have a frame queue per encryption level
 
+    call show_ack_credit(scid, ack_credit(scid), queued_ack_eliciting(scid), queued_non_ack(scid), pkt.seq_num);
     require ~_generating & ~queued_non_ack(scid) -> ack_credit(scid) > 0;  # [5]
 
     #Hamid - This is wrong, because if there is no ack credits, it prevents from sending a packet 
@@ -525,6 +527,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     queued_ack_eliciting(scid) := false;
 #Hamid
 }
+
+
 
 # Procedures
 # ==========    
@@ -671,5 +675,9 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
 # import action show_offset_length(offset:stream_pos,length:stream_pos)
 
 import action show_pstats(scid:cid,e:quic_packet_type,pnum:pkt_num)
+
+import action show_ack_credit(c:cid , p: pkt_num, eli: bool, non_ack: bool, pp: pkt_num)
+
+import action show_probing(c:cid , pp: pkt_num)
 
 # import action show_tls_keys_established_event(scid:cid, e:quic_packet_type)

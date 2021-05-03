@@ -172,12 +172,11 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 # should really be computed in the protection layer and passed to
 # TLS here in the shim.
 
-
 function client_initial_scil : stream_pos
 
 after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version) {
     var ikm := cid_to_bytes(nonce,cid_size(nonce)); 
-	client_initial_scil := cid_size_pos(nonce);
+    client_initial_scil := cid_size_pos(nonce);
     var salt : stream_data := stream_data.empty;
 
     #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27

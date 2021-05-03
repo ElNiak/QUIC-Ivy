@@ -404,7 +404,7 @@ object frame = {
 #   other than path challenge, new connection id and padding.
 #
 # - The relation `queued_non_ack(C)` indicates that one or more of the queued
-#   frames at aid `C` is not an ACK frame.
+#   frames at aid `C` is not an ACK frame with padding.
 #
 # - The relation `queued_close(C)` indicates that one or more of the queued
 #   frames at aid `C` is a CONNECTION_CLOSE or APPLICATION_CLOSE frame.
@@ -473,6 +473,7 @@ function queued_frames(C:cid) : frame.arr
 function queued_level(C:cid) : quic_packet_type
 relation queued_non_probing(C:cid)
 relation queued_non_ack(C:cid)
+relation queued_challenge(C:cid)
 relation queued_close(C:cid)
 function num_queued_frames(C:cid) : frame.idx
 relation path_challenge_pending(C:cid,D:stream_data)
@@ -588,7 +589,7 @@ object frame = {
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             if _generating  {
-            require ~(e = quic_packet_type.initial) & ~(e = quic_packet_type.handshake); #& ~(e = quic_packet_type.handshake)
+            	require ~(e = quic_packet_type.initial); # & ~(e = quic_packet_type.handshake); #& ~(e = quic_packet_type.handshake)
             };
 
             require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
@@ -623,7 +624,7 @@ object frame = {
                     acked_pkt(dcid,e,jdx) := true;
                     jdx := jdx + 1
                 };
-    #                acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2]
+    #           acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2]
                 idx := idx.next;
             };
             if _generating {
@@ -842,7 +843,7 @@ object frame = { ...
                         -> stream_length(dcid,f.id) = f.final_offset;
             stream_reset(dcid,f.id) := true;  # [2]
             stream_length(dcid,f.id) := f.final_offset;  #[3]
-            require stream_seen(dcid,f.id);  # [8]
+            #require stream_seen(dcid,f.id);  # [8]
             require stream_id_allowed(dcid,f.id);  # [4]
 	    ...
             if ~_generating {
@@ -1422,7 +1423,7 @@ object frame = { ...
             # TODO specify that you cannot retire the connection id of the current packet
             #
 	        ... 
-	        cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
+	    cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
             count_rcid_frame(f.seq_num) := count_rcid_frame(f.seq_num) + 1;
             if  count_rcid_frame(f.seq_num) = 1 {
                 num_conn(dcid) := num_conn(dcid) - 1;
@@ -1575,8 +1576,11 @@ action enqueue_frame(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
     if ~probing {
         queued_non_probing(scid) := true;
     };
-    if ~(f isa frame.ack) {
+    if ~(f isa frame.ack) & ~(f isa frame.padding){
         queued_non_ack(scid) := true;
+    };
+    if  f isa frame.path_challenge {
+        queued_challenge(scid) := true;
     };
     if (f isa frame.connection_close) | (f isa frame.application_close) {
         queued_close(scid) := true;
