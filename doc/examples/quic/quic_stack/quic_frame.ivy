@@ -1316,17 +1316,17 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);  # [3]
             require e ~= quic_packet_type.initial;
-	    require e ~= quic_packet_type.handshake;
+	        require e ~= quic_packet_type.handshake;
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
            
-	    require tls_handshake_finished;
-	    #if _generating {
-		#require ~handshake_done_send;
-            #};
-            ...
-	    if _generating & ~handshake_done_send {
-                handshake_done_send := true;
-	    };
+            require tls_handshake_finished;
+            #if _generating {
+            #require ~handshake_done_send;
+                #};
+                ...
+            if _generating & ~handshake_done_send {
+                    handshake_done_send := true;
+            };
             call enqueue_frame(scid,f,e,false);
         }
     }

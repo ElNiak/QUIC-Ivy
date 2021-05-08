@@ -258,6 +258,20 @@ export frame.handshake_done.handle
 
 attribute frame.handshake_done.handle.weight = "5"
 
+# "Not working" due to requirements in quic_Frame, should move them here directly to 
+# control
+
+before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+	    #require ~handshake_done_send;
+	    #require tls_handshake_finished; # & ~handshake_done_send;
+	    #require ;
+	    #handshake_done_send := true; #Tricks, we should wait ack and restransmit
+    }
+}
+
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         require client.ep.addr ~= 0;  # must have a client address to send to
