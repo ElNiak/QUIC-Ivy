@@ -49,7 +49,7 @@ before frame.streams_blocked.handle(f:frame.streams_blocked,scid:cid,dcid:cid) {
         require client.ep.addr ~= 0;
         require scid = the_cid;
         #Not working due to long long exceeded
-        require f.id > 0x1000000000000000;
+        f.id := 0x01ffffffffffffff; #TODO > not implemented 0x0100000000000000
     }
 }
 
