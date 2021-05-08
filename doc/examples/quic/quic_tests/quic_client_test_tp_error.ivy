@@ -118,14 +118,14 @@ action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
 # TODO: this shouldn't be needed.
 
 action tls_id_to_src(tls_id:tls_api.id) returns (src:ip.endpoint) = {
-    src := client.ep if tls_id = client.tls_id else server.ep;
+    src := server.ep if tls_id = client.tls_id else client.ep;
 }
 
 # Get the destination IP endpoint associated to a TLS instance
 # TODO: this shouldn't be needed.
 
 action tls_id_to_dst(tls_id:tls_api.id) returns (dst:ip.endpoint) = {
-    dst := server.ep if tls_id = client.tls_id else client.ep;
+    dst := client.ep if tls_id = client.tls_id else server.ep;
 }
 
 # Get cid associated to a TLS instance
