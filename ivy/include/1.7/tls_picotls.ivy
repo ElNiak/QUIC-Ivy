@@ -485,7 +485,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
         if(const char* env_p = std::getenv("TEST_IMPL")) { 
             std::cout << "TEST_IMPL " << env_p << std::endl;
-            if(strncmp(env_p,"quic-go",10) == 0 || strncmp(env_p,"quiche",10) == 0) //TODO ask why sometime ALPN
+            if(strncmp(env_p,"quic-go",10) == 0 || strncmp(env_p,"quiche",10) == 0 || strncmp(env_p,"aioquic",10) == 0) //TODO ask why sometime ALPN
 		    if (is_server) 
 		        ptls_set_negotiated_protocol(session, 
 					    (const char*) handshake_properties->client.negotiated_protocols.list[0].base, 
@@ -531,7 +531,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
     implement iv_size(c:cid,l:level) returns (sz:index) {
         <<< impure
-        
+                //std::cerr << "iv_size start " << "\n";
 	picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_enc);
         if (!pn_enc)
@@ -541,35 +541,39 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             sz = 0;
         }
         else sz = pn_enc->algo->iv_size;
-        //std::cerr << "sz == " << sz << "\n";
+        //std::cerr << "iv_size end " << "\n";
         >>>
     }
 
     implement encrypt_cipher(c:cid,l:level,clear:bytes,iv:bytes,recv:bool) returns (cipher:bytes) {
         <<< impure
-
-	    picotls_connection *s = `cid_map`[c];
+        //std::cerr << "encrypt_cipher start " << "\n";
+        /*std::cerr << "encrypt_cipher c " << c << "\n";
+        std::cerr << "encrypt_cipher iv " << iv << "\n";*/
+	picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc;
         if (recv) pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);
         else pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_enc);
-        encrypt_symm(pn_enc,clear,iv,cipher);
-
+        //std::cerr << "encrypt_cipher pn_enc " << pn_enc << "\n";
+	if(pn_enc != 0)
+        	encrypt_symm(pn_enc,clear,iv,cipher);
+        //std::cerr << "encrypt_cipher end " << "\n";
         >>>
     }
 
     implement decrypt_cipher(c:cid,l:level,cipher:bytes,iv:bytes) returns (clear:bytes) {
         <<< impure
-
+                //std::cerr << "decrypt_cipher start " << "\n";
 	    picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);
         encrypt_symm(pn_enc,cipher,iv,clear);
-
+                //std::cerr << "decrypt_cipher end " << "\n";
         >>>
     }
 
     implement encrypt_aead(c:cid,l:level,clear:bytes,seq:seq_num,ad:bytes) returns (cipher:bytes) {
         <<< impure
-
+                //std::cerr << "encrypt_aead start " << "\n";
 	    picotls_connection *s = `cid_map`[c];
         ptls_aead_context_t *aead = (ptls_aead_context_t *)(s->crypto_context[l].aead_encrypt);
         uint32_t checksum_length = aead->algo->tag_size;
@@ -585,38 +589,48 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
           &bytes[0], bytes.size());
         cipher.resize(output.size());
         std::copy(output.begin(),output.end(),cipher.begin());
-        
+                //std::cerr << "encrypt_aead finish " << "\n";
         >>>
     }
 
     implement decrypt_aead(c:cid,l:level,cipher:bytes,seq:seq_num,ad:bytes)
     returns (res:decrypt_result) {
         <<< impure
-
-	    picotls_connection *s = `cid_map`[c];
+        //std::cerr << "decrypt_aead start " << "\n";
+        //std::cerr << "decrypt_aead ad " << ad.size() <<  "\n";
+	picotls_connection *s = `cid_map`[c];
         ptls_aead_context_t *aead = (ptls_aead_context_t *)(s->crypto_context[l].aead_decrypt);
-        uint32_t checksum_length = aead->algo->tag_size;
-        std::vector<uint8_t> bytes;
-        bytes.resize(ad.size());
-        std::copy(ad.begin(),ad.end(),bytes.begin());
-
         //std::cerr << "aead == " << aead << "\n";
+	if(aead != 0) {
+		uint32_t checksum_length = aead->algo->tag_size;
+		//std::cerr << "checksum_length == " << checksum_length << "\n";
+		std::vector<uint8_t> bytes;
+		bytes.resize(ad.size());
+		std::copy(ad.begin(),ad.end(),bytes.begin());
 
-        std::vector<uint8_t> input, output;
-        input.resize(cipher.size());
-        std::copy(cipher.begin(),cipher.end(),input.begin());
-        output.resize(cipher.size() - checksum_length);
-        size_t decrypted = ptls_aead_decrypt(aead,
-                                            &output[0], 
-                                            &input[0], 
-                                            input.size(), 
-                                            seq,
-                                            &bytes[0], bytes.size());
-        res.ok = decrypted <= input.size();
-        if (res.ok) {
-            res.data.resize(output.size());
-            std::copy(output.begin(),output.end(),res.data.begin());
-        }
+
+		//std::cerr << "seq == " << seq << "\n";
+		//std::cerr << "bytes.size() == " << bytes.size() << "\n";
+
+		std::vector<uint8_t> input, output;
+		input.resize(cipher.size());
+		std::copy(cipher.begin(),cipher.end(),input.begin());
+		output.resize(cipher.size() - checksum_length);
+		size_t decrypted = ptls_aead_decrypt(aead,
+		                                    &output[0], 
+		                                    &input[0], 
+		                                    input.size(), 
+		                                    seq,
+		                                    &bytes[0], bytes.size());
+		res.ok = decrypted <= input.size();
+		if (res.ok) {
+		    res.data.resize(output.size());
+		    std::copy(output.begin(),output.end(),res.data.begin());
+		}
+        } else {
+	        res.ok = false;
+	}
+        //std::cerr << "decrypt_aead finish " << "\n";
         >>>
     }
 

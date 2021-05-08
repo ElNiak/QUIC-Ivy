@@ -194,12 +194,21 @@ before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dci
     }
 }
 
+before frame.ping.handle(f:frame.ping,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+    }
+}
+
+
 before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
-	    require tls_handshake_finished;
-	    #require ~handshake_done_send;
+	#require ~handshake_done_send;
+	#require tls_handshake_finished; # & ~handshake_done_send;
+	    #require ;
 	    #handshake_done_send := true; #Tricks, we should wait ack and restransmit
     }
 }
@@ -253,6 +262,7 @@ export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
 export frame.handshake_done.handle
+#attribute frame.handshake_done.handle.weight = "0.02"
 export packet_event
 export client_send_event
 export tls_recv_event
@@ -260,6 +270,9 @@ export tls_recv_event
 #export frame.max_stream_id.handle
 #export frame.connection_close.handle
 #export frame.max_stream_data.handle
+
+export frame.ping.handle
+attribute frame.ping.handle.weight = "0.02"
 
 # Final check
 #
