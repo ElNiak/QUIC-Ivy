@@ -269,8 +269,6 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     }
 }
 
-import action show_version(v:version)
-
 before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;

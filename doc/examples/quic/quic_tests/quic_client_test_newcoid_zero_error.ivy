@@ -35,8 +35,6 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     }
 }
 
-import action show_version(v:version)
-
 
 #  An endpoint MUST NOT send this frame if it currently requires that
 #   its peer send packets with a zero-length Destination Connection ID.

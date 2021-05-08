@@ -263,8 +263,6 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     }
 }
 
-import action show_version(v:version)
-
 # The protocol specification describes all the events occurring the
 # system at all protocol layers. When constructing the test mirror,
 # however, we need to generate only events that are outputs of the

@@ -35,8 +35,6 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     }
 }
 
-import action show_version(v:version)
-
 
 #    Maximum Streams:  A variable-length integer indicating the maximum
 #       number of streams allowed at the time the frame was sent.  This

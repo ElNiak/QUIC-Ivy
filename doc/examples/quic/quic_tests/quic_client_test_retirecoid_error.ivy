@@ -34,8 +34,6 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     }
 }
 
-import action show_version(v:version)
-
 
 #  An endpoint cannot send this frame if it was provided with a zero-
 #   length connection ID by its peer.  An endpoint that provides a zero-
