@@ -216,14 +216,15 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     #   type TRANSPORT_PARAMETER_ERROR.
 
     var pref_add : preferred_address;
-    pref_add.data_8 := random_stream_data(1,0xFFFFFFF,8);
     pref_add.ip_addr := 0x7f000001;
     pref_add.ip_port := 4443;
-    pref_add.ip6_addr1 := 0x7f0000017f000001;
-    pref_add.ip6_addr2 := 0x7f0000017f000002;
+    # pref_add.ip6_addr1 := 0x7f0000017f000001;
+    # pref_add.ip6_addr2 := 0x7f0000017f000002;
+    pref_add.ip6_addr := 0x7f0000017f000002;
     pref_add.ip6_port := 4443;
     pref_add.pcid_len := 0;
     pref_add.pcid := 0;
+    pref_add.pref_token := 0x7f0000017f000001;
     tp.transport_parameters := tp.transport_parameters.append(pref_add);
 }
 
