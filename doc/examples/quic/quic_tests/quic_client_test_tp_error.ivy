@@ -310,6 +310,17 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
     }
 }
 
+before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+	    #require ~handshake_done_send;
+	    #require tls_handshake_finished; # & ~handshake_done_send;
+	    #require ;
+	    #handshake_done_send := true; #Tricks, we should wait ack and restransmit
+    }
+}
+
 # We have something similar for crypto frames
 #
 # TEMPORARY: we require the server to send crypto frames in order of encryption level from initial to
@@ -464,6 +475,7 @@ export frame.ack.handle
 export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
+export frame.handshake_done.handle
 export packet_event
 export client_send_event
 export tls_recv_event

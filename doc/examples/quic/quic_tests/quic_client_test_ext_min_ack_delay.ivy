@@ -271,6 +271,16 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
 import action show_version(v:version)
 
+before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+	    #require ~handshake_done_send;
+	    #require tls_handshake_finished; # & ~handshake_done_send;
+	    #require ;
+	    #handshake_done_send := true; #Tricks, we should wait ack and restransmit
+    }
+}
 
 # The protocol specification describes all the events occurring the
 # system at all protocol layers. When constructing the test mirror,
@@ -483,6 +493,7 @@ around client_send_event {
 export frame.ack.handle
 # export frame.ack_frequency.handle
 export frame.stream.handle
+export frame.handshake_done.handle
 export frame.crypto.handle
 export frame.path_response.handle
 export packet_event

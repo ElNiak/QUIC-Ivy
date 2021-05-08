@@ -218,9 +218,6 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(pref_add);
 }
 
-#########################
-# TODO
-#########################
 
 attribute radix=16       # print in hex
 
@@ -321,6 +318,17 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
         require f.offset = stream_length(dcid,f.id);
         require f.length = (stream_app_data_end(dcid,f.id)) - f.offset;
         # require ~f.fin;  # TODO: should allow fin after handshake is complete, or never?
+    }
+}
+
+before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+	    #require ~handshake_done_send;
+	    #require tls_handshake_finished; # & ~handshake_done_send;
+	    #require ;
+	    #handshake_done_send := true; #Tricks, we should wait ack and restransmit
     }
 }
 
@@ -478,6 +486,7 @@ export frame.ack.handle
 export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
+export frame.handshake_done.handle
 export packet_event
 export client_send_event
 export tls_recv_event
