@@ -30,7 +30,7 @@ parameter initial_max_streams_bidi : stream_id = 2
 # can model migration.
 
 object endpoint_id = {
-    type this = {client, server}
+    type this = {client, server, client_alt}
 }
 
 function version_used : version

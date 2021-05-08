@@ -31,7 +31,7 @@ parameter initial_max_streams_bidi : stream_id = 2
 
 
 object endpoint_id = {
-    type this = {client, server}
+    type this = {client, server, client_alt}
 }
 
 function version_used : version

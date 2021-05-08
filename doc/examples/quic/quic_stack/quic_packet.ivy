@@ -324,7 +324,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     if src = client_alt | dst = client_alt {
 	    migration_done := true;
-	#call net.close(endpoint_id.client,sock);	# destroy connection ?
+	    #call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
 
     #if pkt.ptype = quic_packet_type.retry {
