@@ -33,6 +33,14 @@ object endpoint_id = {
     type this = {client, server, client_alt}
 }
 
+# An ip endpoint for the client to migrate to.
+
+var client_alt : ip.endpoint
+
+after init {
+    client_alt := endpoint_id_addr(endpoint_id.client_alt)
+}
+
 function version_used : version
 
 after init {
