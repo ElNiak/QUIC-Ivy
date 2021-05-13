@@ -168,38 +168,36 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
     int quic_update_traffic_key_callback(ptls_update_traffic_key_t * self, ptls_t *tls, int is_enc, size_t epoch, const void *secret)
     {
-	static const char *log_labels[2][4] = {
+	    static const char *log_labels[2][4] = {
             {NULL, "CLIENT_EARLY_TRAFFIC_SECRET", "CLIENT_HANDSHAKE_TRAFFIC_SECRET", "CLIENT_TRAFFIC_SECRET_0"},
             {NULL, NULL, "SERVER_HANDSHAKE_TRAFFIC_SECRET", "SERVER_TRAFFIC_SECRET_0"}};
-	const char * keylogfile = getenv("SSLKEYLOGFILE");
-	FILE *fp;
+	    const char * keylogfile = getenv("SSLKEYLOGFILE");
+	    FILE *fp;
         if(keylogfile != NULL) {
-		fp = fopen(keylogfile,"a");
-		const char *secret_label = log_labels[ptls_is_server(tls) == is_enc][epoch];
-		fprintf(fp, "%s ", secret_label);
-
-		ptls_iovec_t crandom = ptls_get_client_random(tls);
-		for (int i = 0 ; i < crandom.len ; i++) {
-		    fprintf(fp, "%02hhx", crandom.base[i]);
-		}
-		fprintf(fp, " ");
-	}
+            fp = fopen(keylogfile,"a");
+            const char *secret_label = log_labels[ptls_is_server(tls) == is_enc][epoch];
+            fprintf(fp, "%s ", secret_label);
+            ptls_iovec_t crandom = ptls_get_client_random(tls);
+            for (int i = 0 ; i < crandom.len ; i++) {
+                fprintf(fp, "%02hhx", crandom.base[i]);
+            }
+            fprintf(fp, " ");
+	    }
         picotls_connection* cnx = (picotls_connection*)*ptls_get_data_ptr(tls);
         ptls_cipher_suite_t * cipher = ptls_get_cipher(tls);
-       
-	if(keylogfile != NULL) {
-		for (int i = 0 ; i < cipher->hash->digest_size ; i++) {
-		    fprintf(fp, "%02hhx", ((uint8_t *) secret)[i]);
-		}
-		fprintf(fp, "\n");
-	}
+        if(keylogfile != NULL) {
+            for (int i = 0 ; i < cipher->hash->digest_size ; i++) {
+                fprintf(fp, "%02hhx", ((uint8_t *) secret)[i]);
+            }
+            fprintf(fp, "\n");
+        }
         quic_set_key_from_secret(cipher, is_enc, &cnx->crypto_context[epoch], secret);
         if (cnx->crypto_context[epoch].aead_encrypt && cnx->crypto_context[epoch].aead_decrypt) {
             cnx->cb.use(cnx->id,epoch);
         }
-	if(keylogfile != NULL) {
-		fclose(fp);
-	}
+        if(keylogfile != NULL) {
+            fclose(fp);
+        }
         return 0;
     }
 
@@ -485,11 +483,13 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
         if(const char* env_p = std::getenv("TEST_IMPL")) { 
             std::cout << "TEST_IMPL " << env_p << std::endl;
-            if(strncmp(env_p,"quic-go",10) == 0 || strncmp(env_p,"quiche",10) == 0 || strncmp(env_p,"aioquic",10) == 0) //TODO ask why sometime ALPN
-		    if (is_server) 
-		        ptls_set_negotiated_protocol(session, 
-					    (const char*) handshake_properties->client.negotiated_protocols.list[0].base, 
-					    handshake_properties->client.negotiated_protocols.list[0].len);
+            if(strncmp(env_p,"quic-go",10) == 0 
+                || strncmp(env_p,"quiche",10) == 0 
+                    || strncmp(env_p,"aioquic",10) == 0) //TODO ask why sometime ALPN
+                if (is_server) 
+                    ptls_set_negotiated_protocol(session, 
+                            (const char*) handshake_properties->client.negotiated_protocols.list[0].base, 
+                            handshake_properties->client.negotiated_protocols.list[0].len);
         }
 
         picotls_connection *s = new picotls_connection(c,session,*`cb`,handshake_properties,is_server);

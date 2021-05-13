@@ -28,8 +28,8 @@ parameter max_stream_data : stream_pos = 0x2000
 
 # Mandatory for longbv else truncated
 after init {
-    the_cid := 0x1;
-    server_cid := 0x2;
+    the_cid := 0x0;
+    server_cid := 0x1;
 }
 
 object endpoint_id = {
