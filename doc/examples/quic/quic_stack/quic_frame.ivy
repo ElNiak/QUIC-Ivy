@@ -951,6 +951,9 @@ object frame = { ...
 # QUESTION: must the stream id's be less than the max or less than or equal?
 # Picoquic seems to think less than, but the is not clear in the draft.
 
+var some_max_streams := false;
+var ms := 0;
+
 object frame = { ...
     object max_streams = { ...
         action handle(f:frame.max_streams,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
@@ -967,6 +970,12 @@ object frame = { ...
                 max_stream_set(dcid,kind) := true;
                 max_stream(dcid,kind) := f.id; #  [1]
             }
+
+             if _generating {
+                require some_max_streams;
+                require f.id = ms;
+            }
+
 	        ...
             call enqueue_frame(scid,f,e,false);
         }
@@ -1203,6 +1212,9 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            some_max_streams := true;
+            ms := f.id; #TODO not finished, should distinguish uni and bidi
+
 	    ...
             call enqueue_frame(scid,f,e,false);
         }
