@@ -307,7 +307,7 @@ after init {
 #   transport parameter is included with a zero-length value.
 
 around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
-    
+    #call show_connected(connected(the_cid), connected_to(the_cid));
     require pkt.token.end ~= 0 -> (pkt.ptype = quic_packet_type.initial);
 
     # TEMPORARY: Do not allow zero_rtt packets
@@ -516,6 +516,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     #    require ~_generating & ~(pkt.token.end = 0) -> is_invalid_token;
     #};
 
+    #call show_connected(connected(the_cid), connected_to(the_cid));
+
     # The queued frames are deleted
     
     queued_frames(scid) := frame.arr.empty;
@@ -648,14 +650,14 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
     #require initial_max_stream_data_uni.is_set(trans_params(scid));  # [1]
     if ~ _generating  { 
         # for tests where we check that the implementation behave well if not present 
-        if client_present_scid {
+        if client_present_scid & ~(scid = 1) {
             require initial_source_connection_id.is_set(trans_params(scid));  # [5]
         };
     };
     if is_client_hello {
         require ~stateless_reset_token.is_set(trans_params(scid));  # [4]
     } else {
-        if ~ _generating { 
+        if ~ _generating & ~(scid = 1) { 
             require original_destination_connection_id.is_set(trans_params(scid));  # [6]
         };
     };
@@ -684,5 +686,7 @@ import action show_pstats(scid:cid,e:quic_packet_type,pnum:pkt_num)
 import action show_ack_credit(c:cid , p: pkt_num, eli: bool, non_ack: bool, pp: pkt_num)
 
 import action show_probing(c:cid , pp: pkt_num)
+
+#action show_enc_level(e:quic_packet_type)
 
 # import action show_tls_keys_established_event(scid:cid, e:quic_packet_type)

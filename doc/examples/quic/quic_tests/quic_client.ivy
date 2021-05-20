@@ -13,7 +13,7 @@ parameter the_cid : cid = 0xdd
 parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4443
 parameter max_stream_data : stream_pos = 0x2000
-parameter initial_max_streams_bidi : stream_id = 2
+parameter initial_max_streams_bidi : stream_id = 10
 
 # Network setup
 # -------------
@@ -33,7 +33,7 @@ parameter initial_max_streams_bidi : stream_id = 2
 function version_used : version
 
 after init {
-    the_cid := 0x1;
+    the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
     version_used := 0xff00001d;
 }
 
@@ -200,9 +200,9 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(imsib);
     
     #if client_present_scid {
-    	var icid : initial_source_connection_id; #update v29
-    	icid.scid := 0x1;
-    	tp.transport_parameters := tp.transport_parameters.append(icid);
+    var icid : initial_source_connection_id; #update v29
+    icid.scid := the_cid;
+    tp.transport_parameters := tp.transport_parameters.append(icid);
     #};
     var odci : original_destination_connection_id; #update v29
     odci.dcid := client_initial_dcid;

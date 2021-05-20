@@ -93,8 +93,8 @@ parameter max_stream_data : stream_pos = 0x2000
 
 # Mandatory for longbv else truncated
 after init {
-    the_cid := 0x1;
-    server_cid := 0x2;
+    the_cid := 0x0;
+    server_cid := 0x1;
 }
 
 # We use this type as a host id. There are two client host ids so we
@@ -265,12 +265,13 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(it);
     tp.transport_parameters := tp.transport_parameters.append(imsdbr);
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
+
     var icid : initial_source_connection_id; #TODO update v29
     icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
 
     var no_migration : disable_active_migration; #TODO update v29
-    tp.transport_parameters := tp.transport_parameters.append(no_migration);
+    #tp.transport_parameters := tp.transport_parameters.append(no_migration);
 
     var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
     max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
@@ -312,5 +313,7 @@ import action clear_packet(rnum:pkt_num,pkt:stream_data)
 import action cipher_packet(pkt:stream_data)
 
 import action show_stream(pkt:stream_data)
+
+import action show_connected(c1:bool, c2:cid)
 
 import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
