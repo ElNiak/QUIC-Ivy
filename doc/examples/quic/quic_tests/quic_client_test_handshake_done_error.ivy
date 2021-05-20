@@ -266,7 +266,7 @@ before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
         require client.ep.addr ~= 0;
         require scid = the_cid;
 	    #require ~handshake_done_send;
-	    #require tls_handshake_finished; # & ~handshake_done_send;
+	    require ~tls_handshake_finished; # & ~handshake_done_send;
 	    #require ;
 	    #handshake_done_send := true; #Tricks, we should wait ack and restransmit
     }

@@ -721,11 +721,8 @@ object frame = {
             # ~stream_reset(dcid,f.id); # [7]
 
             require conn_seen(scid);  # [9]
-
-	    #Quinnn error
-	    #if ~_generating {
-            require ((offset) + (f.length)) <= stream_max_data(dcid,f.id);  # [2]
-	    #};
+            #quinn bug: +-deadlock
+            #require ((offset) + (f.length)) <= stream_max_data(dcid,f.id);  # [2]
 
             require stream_reset(dcid,f.id) ->
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
@@ -962,6 +959,9 @@ object frame = { ...
 # QUESTION: must the stream id's be less than the max or less than or equal?
 # Picoquic seems to think less than, but the is not clear in the draft.
 
+# var some_max_streams : bool;
+#  var ms;
+
 object frame = { ...
     object max_streams = { ...
         action handle(f:frame.max_streams,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
@@ -978,7 +978,17 @@ object frame = { ...
                 max_stream_set(dcid,kind) := true;
                 max_stream(dcid,kind) := f.id; #  [1]
             }
+<<<<<<< HEAD
 	    ...
+=======
+
+            #   if _generating {
+            #      require some_max_streams;
+            #      require f.id = ms;
+            #  }
+
+	        ...
+>>>>>>> 28289b707ad4bd9646c794f488bc05bc94541d3e
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -1214,6 +1224,9 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            #  some_max_streams := true;
+            #  ms := f.id; #TODO not finished, should distinguish uni and bidi
+
 	    ...
             call enqueue_frame(scid,f,e,false);
         }
