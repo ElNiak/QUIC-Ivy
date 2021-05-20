@@ -978,9 +978,6 @@ object frame = { ...
                 max_stream_set(dcid,kind) := true;
                 max_stream(dcid,kind) := f.id; #  [1]
             }
-<<<<<<< HEAD
-	    ...
-=======
 
             #   if _generating {
             #      require some_max_streams;
@@ -988,7 +985,7 @@ object frame = { ...
             #  }
 
 	        ...
->>>>>>> 28289b707ad4bd9646c794f488bc05bc94541d3e
+
             call enqueue_frame(scid,f,e,false);
         }
     }
