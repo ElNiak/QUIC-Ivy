@@ -499,7 +499,7 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 
 export action _finalize = {
     # chris TODO 
-    require is_transport_parameter_error;
+    require is_transport_parameter_error | ~handshake_done_send;
 }
 
 
