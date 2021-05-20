@@ -13,7 +13,7 @@ parameter the_cid : cid = 0xd
 parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4443
 parameter max_stream_data : stream_pos = 0x2000
-parameter initial_max_streams_bidi : stream_id = 2
+parameter initial_max_streams_bidi : stream_id = 10
 
 # Network setup
 # -------------
@@ -199,7 +199,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
     var icid : initial_source_connection_id; #update v29
-    icid.scid := 0x1;
+    icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
     var odci : original_destination_connection_id; #update v29
     odci.dcid := client_initial_dcid;
@@ -225,6 +225,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     pref_add.pcid_len := 0;
     pref_add.pcid := 0;
     pref_add.pref_token := 0x7f0000017f000001;
+    call export_pcil(0);
     tp.transport_parameters := tp.transport_parameters.append(pref_add);
 }
 
@@ -517,4 +518,15 @@ export action _finalize = {
     require is_transport_parameter_error;
 }
 
+action export_pcil(dcil:stream_pos) = {
+    <<<
+
+	char str_d[20];
+	sprintf(str_d,"%llu",dcil);
+	if(setenv("TEST_PCIL",str_d,true) != 0) 
+		fprintf(stderr, "setenv failed\n");
+
+
+    >>>
+}
 

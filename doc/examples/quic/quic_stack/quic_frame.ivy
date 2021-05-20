@@ -589,7 +589,7 @@ object frame = {
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             if _generating  {
-            	require ~(e = quic_packet_type.initial); # & ~(e = quic_packet_type.handshake); #& ~(e = quic_packet_type.handshake)
+            	require ~(e = quic_packet_type.initial) & ~(e = quic_packet_type.handshake); #& ~(e = quic_packet_type.handshake)
             };
 
             require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
@@ -700,9 +700,16 @@ object frame = {
             require ~conn_closed(scid);  # [8]
 
             var offset := f.offset if f.off else 0;
-	        require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
+
+  	    call show_offset(offset);
+	    call show_offset(f.length);
+	    call show_offset(((offset) + (f.length)));
+	    call show_offset(stream_max_data(dcid,f.id));
+	    call show_offset(stream_app_data_end(dcid,f.id));
+
+	    require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
             #call show_offset_length(offset,f.length); #todo import 
-	        require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
+	    require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
 
             require f.fin <-> (stream_app_data_finished(dcid,f.id)
                                & offset+f.length = stream_app_data_end(dcid,f.id));
@@ -714,8 +721,9 @@ object frame = {
             # ~stream_reset(dcid,f.id); # [7]
 
             require conn_seen(scid);  # [9]
-            #quinn bug
+            #quinn bug: +-deadlock
             #require ((offset) + (f.length)) <= stream_max_data(dcid,f.id);  # [2]
+
             require stream_reset(dcid,f.id) ->
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
             require stream_id_allowed(dcid,f.id);  # [6]
@@ -970,6 +978,9 @@ object frame = { ...
                 max_stream_set(dcid,kind) := true;
                 max_stream(dcid,kind) := f.id; #  [1]
             }
+<<<<<<< HEAD
+	    ...
+=======
 
             #   if _generating {
             #      require some_max_streams;
@@ -977,6 +988,7 @@ object frame = { ...
             #  }
 
 	        ...
+>>>>>>> 28289b707ad4bd9646c794f488bc05bc94541d3e
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -1408,7 +1420,7 @@ object frame = { ...
                 max_seq_num(scid) := f.seq_num;
             };
             #Hamid 
-	        call enqueue_frame(scid,f,e,true);
+	    call enqueue_frame(scid,f,e,true);
         }
     }
 }
@@ -1452,7 +1464,7 @@ object frame = { ...
             #Hamid
             # the connection id seqnum_to_cid is being retired, append it to an array and iterate over the array in packet
             #Hamid
-	        call enqueue_frame(scid,f,e,false);
+	    call enqueue_frame(scid,f,e,false);
         }
     }
 }
@@ -1550,7 +1562,6 @@ object frame = { ...
 
             ...
 
-
             var tp := trans_params(dcid);
             var min : microsecs := 0;
             if min_ack_delay.is_set(tp) {
@@ -1608,7 +1619,7 @@ action enqueue_frame(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
     };
 #Hamid
     if ~(f isa frame.ack) & ~(f isa frame.connection_close) & ~(f isa frame.padding){
-	    queued_ack_eliciting(scid) := true;
+	queued_ack_eliciting(scid) := true;
     };
 #Hamid
 }
@@ -1736,3 +1747,5 @@ action acti_coid_check(scid:cid,count:stream_pos) returns (ok:bool) = {
 
 import action show_stream_retransmission(i:stream_id,o:stream_pos,
                                           l:stream_pos,d:stream_data,c:stream_pos)
+
+import action show_offset(o:stream_pos)

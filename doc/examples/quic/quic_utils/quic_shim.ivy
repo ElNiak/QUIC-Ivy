@@ -73,12 +73,13 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call tls_client_version_response(src,dst,ppkt)
         };
         # Check if packet is only padding
-        var is_pad := is_padding_packet(ppkt); # For quic-go and quand client
-        var is_rand_pad := is_random_padding_packet(ppkt);
+        #var is_pad := is_padding_packet(ppkt); # For quic-go and quand client
+        #var is_rand_pad := is_random_padding_packet(ppkt);
         var rnum := reference_pkt_num(ppkt,true);
-        if is_pad { #is_pad | is_rand_pad
-            call padding_packet_event(src,dst,ppkt);
-        } else { 
+        #if is_pad { #is_pad | is_rand_pad
+        #    call padding_packet_event(src,dst,ppkt);
+#        } 
+	#else { 
             var res := prot.decrypt(tls_id,rnum,ppkt);
             if res.ok {
                 var pkt := pkt_serdes.from_bytes(res.data);
@@ -94,7 +95,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             } else {
                 call undecryptable_packet_event(src,dst,ppkt);
             };
-        };
+        #};
         idx := idx.next;
     }
 }

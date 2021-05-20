@@ -102,7 +102,8 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
         require f.length > 0;
         require f.offset = stream_length(dcid,f.id);
         require f.length = (stream_app_data_end(dcid,f.id)) - f.offset;
-    }
+    };
+
 }
 
 # We have something similar for crypto frames
@@ -217,6 +218,7 @@ before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dci
 before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
+        require f.pos = 4000;
     }
     else {
         require ~(max_data_set(scid) & max_data_val(scid) > f.pos);
@@ -253,8 +255,9 @@ around client_send_event {
 		 require src = client_alt;
 	 }
     } else {
-	 require src = client.ep;
+	require src = client.ep;
     };
+
     require dst = server.ep;
     require connected(the_cid) & dcid = connected_to(the_cid);
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);
@@ -291,6 +294,7 @@ export tls_recv_event
 #export frame.max_stream_id.handle
 #export frame.connection_close.handle
 #export frame.max_stream_data.handle
+#export frame.max_data.handle
 
 # Final check
 #
