@@ -57,7 +57,7 @@ clients = [
 
 
     ['mvfst',[scdir + '/mvfst/_build/build/quic/samples/','./echo -mode=client -host="127.0.0.1" -port=4443 -pr=true -v=10 -stop_logging_if_full_disk ']], # echo "HELOOOOO" > 
-    ['lsquic',[scdir+ '/lsquic/bin/','./http_client -Q hq-29 -s 127.0.0.1:4443 -r 2 -t -l event=debug,engine=debug -p /index.html  -H 127.0.0.1 -o version=FF00001D -C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem']], #-C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -W -g -j -i 1000  -n 1 -r 1 -a -4  -r 20 index.html index.html index.html index.html index.html index.html index.html
+    ['lsquic',[scdir+ '/lsquic/bin/','./http_client -Q hq-29 -s 127.0.0.1:4443 -w 6 -r 6 -t -l event=debug,engine=debug -p /1.html /2.html /3.html /4.html /5.html /6.html  -H 127.0.0.1 -o version=FF00001D']], #-C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -W -g -j -i 1000  -n 1 -r 1 -a -4  -r 20 index.html index.html index.html index.html index.html index.html index.html
     ['quinn',[scdir+ '/quinn/','cargo run -vv --example client https://localhost:4443/index.html --keylog']], # --ca /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem
 ]
 
