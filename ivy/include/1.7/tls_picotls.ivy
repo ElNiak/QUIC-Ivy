@@ -485,7 +485,8 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             std::cout << "TEST_IMPL " << env_p << std::endl;
             if(strncmp(env_p,"quic-go",10) == 0 
                 || strncmp(env_p,"quiche",10) == 0 
-                    || strncmp(env_p,"aioquic",10) == 0) //TODO ask why sometime ALPN
+                   || strncmp(env_p,"lsquic",10) == 0 
+                      || strncmp(env_p,"aioquic",10) == 0) //TODO ask why sometime ALPN needed
                 if (is_server) 
                     ptls_set_negotiated_protocol(session, 
                             (const char*) handshake_properties->client.negotiated_protocols.list[0].base, 
