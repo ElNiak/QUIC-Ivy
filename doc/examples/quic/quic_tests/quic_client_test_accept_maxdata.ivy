@@ -7,6 +7,7 @@ export frame.max_stream_data.handle
 export frame.max_data.handle
 #export frame.stream_blocked.handle
 export frame.rst_stream.handle
+
 attribute frame.rst_stream.handle.weight = "0.02"
 attribute frame.max_data.handle.weight = "5"
 

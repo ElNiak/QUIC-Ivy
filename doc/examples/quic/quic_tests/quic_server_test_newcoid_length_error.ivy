@@ -4,7 +4,6 @@ include order
 include quic_infer
 include file
 include quic_shim_server
-include random_value
 include quic_locale
 
 parameter the_cid : cid = 0xd
@@ -23,14 +22,14 @@ parameter max_stream_data : stream_pos = 0x2000
 # establish which interface and which ports the tester will use. 
 #
 
+# We use this type as a host id. There are two client host ids so we
+# can model migration.
+
 # Mandatory for longbv else truncated
 after init {
     the_cid := 0x0;
     server_cid := 0x1;
 }
-
-# We use this type as a host id. There are two client host ids so we
-# can model migration.
 
 object endpoint_id = {
     type this = {client, client_alt, server}
@@ -181,15 +180,17 @@ after init {
 # parameters should be selected randomly by some event.
 #
 
+include random_value
+
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsdbl : initial_max_stream_data_bidi_local;
-    imsdbl.stream_pos_32 := max_stream_data;
+    imsdbl.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var imd : initial_max_data;
     imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var it : max_idle_timeout;
     it.seconds_16 := random_microsecs(0,0xFFFFFFF);
     var imsdbr : initial_max_stream_data_bidi_remote;
-    imsdbr.stream_pos_32 := max_stream_data;
+    imsdbr.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var imsdu : initial_max_stream_data_uni;
     imsdu.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
@@ -197,6 +198,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(it);
     tp.transport_parameters := tp.transport_parameters.append(imsdbr);
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
+
     var icid : initial_source_connection_id; #TODO update v29
     icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
@@ -219,7 +221,7 @@ attribute radix=16
 # Notably, the `intbv` type can be used to represent large numbers with
 # small bit vector enodings.
 
-interpret cid -> longbv[1][13][30]
+interpret cid -> longbv[1][13][20]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
@@ -246,18 +248,23 @@ import action cipher_packet(pkt:stream_data)
 import action show_stream(pkt:stream_data)
 
 import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
+#
+# Restrict generation to packets from the designated client endpoints
+# to the server endpoint.
+#
+
 
 
 var allowed_multiple_migration : bool
 
 after init {
-	allowed_multiple_migration := true
+	allowed_multiple_migration := false
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
 	var tp := trans_params(the_cid);
-	if ~disable_active_migration.is_set(tp)  {
+	if ~disable_active_migration.is_set(tp) {
 		if ~migration_done | allowed_multiple_migration { #only one migration
         		require src = client.ep | src = client_alt;
 		} else {
@@ -270,6 +277,20 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require pkt.token.end = 0; 
     };
     require pkt.long -> pkt.pversion = 0xff00001d  #version 29
+}
+
+#     Length:  An 8-bit unsigned integer containing the length of the
+#      connection ID.  Values less than 1 and greater than 20 are invalid
+#      and MUST be treated as a connection error of type
+#       FRAME_ENCODING_ERROR
+
+before frame.new_connection_id.handle(f:frame.new_connection_id,scid:cid,dcid:cid) {
+    if _generating {
+        require client.ep.addr ~= 0;
+        require scid = the_cid;
+        require f.length < 1 | f.length > 20;
+        require f.retire_prior_to <= f.seq_num; #[4]
+    }
 }
 
 # The protocol specification describes all the events occurring the
@@ -353,19 +374,19 @@ before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     }
 }
 
-
-#   Once a sender indicates a Retire Prior To value, smaller values sent
-#   in subsequent NEW_CONNECTION_ID frames have no effect.  A receiver
-#   MUST ignore any Retire Prior To fields that do not increase the
-#   largest received Retire Prior To value
-
 before frame.new_connection_id.handle(f:frame.new_connection_id,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-	require f.length >= 0x1 & f.length <= 0x14; #[1]
-        #require f.retire_prior_to <= f.seq_num; #[4]
     }
 }
+
+
+before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,dcid:cid) {
+    if _generating {
+        require scid = the_cid;
+    }
+}
+
 
 # Generate connection_close frames only for the environment process(es).
 #
@@ -376,7 +397,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
     if _generating {
         require scid = the_cid;
     } else {
-        require is_no_error | is_protocol_violation
+        require is_frame_encoding_error
     }
 }
 
@@ -444,7 +465,7 @@ after init {
 around client_send_event {
     require s = current_stream;
     var tp := trans_params(the_cid);
-    if ~disable_active_migration.is_set(tp)  {
+    if ~disable_active_migration.is_set(tp) {
 	 if ~migration_done | allowed_multiple_migration  { #only one migration
         	 require src = client.ep | src = client_alt;
 	 } else {
@@ -485,7 +506,6 @@ export client_send_event
 export tls_recv_event
 
 export frame.new_connection_id.handle
-
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
 #export frame.max_stream_id.handle
@@ -501,7 +521,7 @@ export frame.new_connection_id.handle
 
 export action _finalize = {
     # chris TODO 
-    require conn_total_data(the_cid) > 0;
+    require is_frame_encoding_error
 }
 
 

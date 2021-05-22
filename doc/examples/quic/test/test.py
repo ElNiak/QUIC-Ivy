@@ -57,7 +57,7 @@ clients = [
 
 
     ['mvfst',[scdir + '/mvfst/_build/build/quic/samples/','./echo -mode=client -host="127.0.0.1" -port=4443 -pr=true -v=10 -stop_logging_if_full_disk ']], # echo "HELOOOOO" > 
-    ['lsquic',[scdir+ '/lsquic/bin/','./http_client -Q hq-29 -s 127.0.0.1:4443 -r 2 -t -l event=debug,engine=debug -p /index.html  -H 127.0.0.1 -o version=FF00001D -C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem']], #-C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -W -g -j -i 1000  -n 1 -r 1 -a -4  -r 20 index.html index.html index.html index.html index.html index.html index.html
+    ['lsquic',[scdir+ '/lsquic/bin/','./http_client -Q hq-29 -s 127.0.0.1:4443 -w 6 -r 6 -t -l event=debug,engine=debug -p /1.html /2.html /3.html /4.html /5.html /6.html  -H 127.0.0.1 -o version=FF00001D']], #-C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -W -g -j -i 1000  -n 1 -r 1 -a -4  -r 20 index.html index.html index.html index.html index.html index.html index.html
     ['quinn',[scdir+ '/quinn/','cargo run -vv --example client https://localhost:4443/index.html --keylog']], # --ca /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem
 ]
 
@@ -66,12 +66,12 @@ clients = [
 server_tests = [
     ['..',
       [
-          ['quic_server_test_stream','test_completed'],
+      ['quic_server_test_stream','test_completed'],
 	  ['quic_server_test_handshake_done_error','test_completed'],
-          ['quic_server_test_reset_stream','test_completed'],
-          ['quic_server_test_connection_close','test_completed'],
-          ['quic_server_test_stop_sending','test_completed'],
-          ['quic_server_test_max','test_completed'],
+      ['quic_server_test_reset_stream','test_completed'],
+      ['quic_server_test_connection_close','test_completed'],
+      ['quic_server_test_stop_sending','test_completed'],
+      ['quic_server_test_max','test_completed'],
 	  ['quic_server_test_token_error','test_completed'],
 	  ['quic_server_test_tp_error','test_completed'],
 	  ['quic_server_test_double_tp_error','test_completed'],
@@ -85,6 +85,16 @@ server_tests = [
 	  ['quic_server_test_ext_min_ack_delay','test_completed'],
 	  ['quic_server_test_tp_limit_newcoid','test_completed'],
 	  ['quic_server_test_unkown','test_completed'],
+      ['quic_server_test_stream_limit','test_completed'],
+      ['quic_server_test_crypto_limit','test_completed'],
+      ['quic_server_test_newconnectionid_error','test_completed'],
+      ['quic_server_test_newcoid_rtp_error','test_completed'],
+      ['quic_server_test_newcoid_length_error','test_completed'],
+      ['quic_server_test_new_token_error','test_completed'],
+      ['quic_server_test_stop_sending_error','test_completed'],
+      ['quic_server_test_unkown_tp','test_completed'],
+      ['quic_server_test_max_limit_error','test_completed'],
+      ['quic_server_test_max_error','test_completed'],
       ]
     ],
 ]
@@ -93,8 +103,8 @@ server_tests = [
 client_tests = [
     ['..',
       [
-          ['quic_client_test_stream','test_completed'],
-          ['quic_client_test_max','test_completed'],
+      ['quic_client_test_stream','test_completed'],
+      ['quic_client_test_max','test_completed'],
 	  ['quic_client_test_token_error','test_completed'],
 	  ['quic_client_test_tp_error','test_completed'],
 	  ['quic_client_test_double_tp_error','test_completed'],
@@ -109,6 +119,9 @@ client_tests = [
 	  ['quic_client_test_ext_min_ack_delay','test_completed'],
 	  ['quic_client_test_stateless_reset_token','test_completed'],
 	  ['quic_client_test_handshake_done_error','test_completed'],
+
+      ['quic_client_test_unkown_tp','test_completed'],
+      ['quic_client_test_max_limit_error','test_completed'],
       ]
     ],
 ]

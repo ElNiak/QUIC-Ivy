@@ -854,6 +854,9 @@ object frame = { ...
             stream_length(dcid,f.id) := f.final_offset;  #[3]
             #require stream_seen(dcid,f.id);  # [8]
             require stream_id_allowed(dcid,f.id);  # [4]
+            # if ~_generating & stop_sending_in_bad_state {
+            #     stop_sending_in_bad_state := true;
+            # };
 	    ...
             if ~_generating {
                 call handle_transport_error(f.err_code);
@@ -896,6 +899,9 @@ object frame = { ...
 # Effects:
 #
 #   (None)
+#   An endpoint that receives a STOP_SENDING frame
+#   MUST send a RESET_STREAM frame if the stream is in the Ready or Send
+#   state
 #
 
 object frame = { ...
@@ -1390,7 +1396,10 @@ object frame = { ...
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); #Will change with implementing TODO
             #chris
             #require f.length >= 0x1 & f.length <= 0x14; #[1]
-            require f.retire_prior_to <= f.seq_num; #[4]
+
+            if ~_generating { # For error test, carefull, should be specified in generating so
+                require f.retire_prior_to <= f.seq_num; #[4]
+            };
             require f.seq_num < max_rtp_num(scid) -> send_retire_cid(dcid); #[6] 
             #chris
             ...
@@ -1441,7 +1450,7 @@ object frame = { ...
 object frame = { ...
     object retire_connection_id = { ...
         action handle(f:frame.retire_connection_id,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
-	around handle {
+	    around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             # Will change with implementing TODO
@@ -1453,7 +1462,7 @@ object frame = { ...
             # TODO specify that you cannot retire the connection id of the current packet
             #
 	        ... 
-	    cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
+	        cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
             count_rcid_frame(f.seq_num) := count_rcid_frame(f.seq_num) + 1;
             if  count_rcid_frame(f.seq_num) = 1 {
                 num_conn(dcid) := num_conn(dcid) - 1;
@@ -1461,7 +1470,7 @@ object frame = { ...
             #Hamid
             # the connection id seqnum_to_cid is being retired, append it to an array and iterate over the array in packet
             #Hamid
-	    call enqueue_frame(scid,f,e,false);
+	        call enqueue_frame(scid,f,e,false);
         }
     }
 }
@@ -1534,7 +1543,9 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            require ~is_client(scid);
+            if ~_generating {
+                require ~is_client(scid);
+            };
             ...
             call enqueue_frame(scid,f,e,false);
         }

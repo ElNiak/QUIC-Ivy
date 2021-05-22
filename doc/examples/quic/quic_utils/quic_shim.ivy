@@ -294,6 +294,13 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 	        skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
         };
 
+        #  When an Initial packet is sent by a client that has not previously
+        #    received an Initial or Retry packet from the server, the client
+        #    populates the Destination Connection ID field with an unpredictable
+        #    value.  This Destination Connection ID MUST be at least 8 bytes in
+        #    length
+        require dcil >= 8;
+
         client_initial_dcid := bytes_to_cid(ikm);
         client_initial_scid := bytes_to_cid(skm); # skm
         var extns := tls_extensions.empty;
@@ -558,6 +565,11 @@ action export_length_cid_extension(dcil:stream_pos,scil:stream_pos) = {
 	char str[20];
 	sprintf(str,"%llu",scil);
 	if(setenv("TEST_SCIL",str,true) != 0) 
+		fprintf(stderr, "setenv failed\n");
+
+    char str_p[20];
+	sprintf(str_p,"%llu",scil);
+	if(setenv("TEST_PCIL",str_p,true) != 0) 
 		fprintf(stderr, "setenv failed\n");
 
     >>>

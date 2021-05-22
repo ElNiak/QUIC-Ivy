@@ -36,6 +36,23 @@ include quic_client
 
 # Assume that initial packets are sent only to the server under test
 
+# When an Initial packet is sent by a client that has not previously
+#   received an Initial or Retry packet from the server, the client
+#   populates the Destination Connection ID field with an unpredictable
+#   value.  This Destination Connection ID MUST be at least 8 bytes [in shim] in
+#   length.  Until a packet is received from the server, the client MUST
+#   use the same Destination Connection ID value on all packets in this
+#   connection.  This Destination Connection ID is used to determine
+#   packet protection keys for Initial packets.
+
+function dcid_initial_same : cid
+relation initial_send : bool
+
+after init {
+	dcid_initial_same := 0;
+    initial_send :=  false;
+}
+
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         require client.ep.addr ~= 0;  # must have a client address to send to
@@ -53,6 +70,14 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    if pkt.long {
 	    	version_used := pkt.pversion;
 	    };
+        if pkt.ptype = quic_packet_type.initial {
+            if ~initial_send {
+                initial_send = true;
+                dcid_initial_same = pkt.dcid;
+            } else {
+                require  dcid_initial_same = pkt.dcid;
+            };
+        };
 	    call show_version(version_used);
     }
 }
