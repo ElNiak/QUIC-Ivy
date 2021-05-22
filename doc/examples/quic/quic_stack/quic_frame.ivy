@@ -1441,7 +1441,7 @@ object frame = { ...
 object frame = { ...
     object retire_connection_id = { ...
         action handle(f:frame.retire_connection_id,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
-	around handle {
+	    around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             # Will change with implementing TODO
@@ -1453,7 +1453,7 @@ object frame = { ...
             # TODO specify that you cannot retire the connection id of the current packet
             #
 	        ... 
-	    cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
+	        cid_mapped(seqnum_to_cid(dcid, f.seq_num)) := false; #[2]
             count_rcid_frame(f.seq_num) := count_rcid_frame(f.seq_num) + 1;
             if  count_rcid_frame(f.seq_num) = 1 {
                 num_conn(dcid) := num_conn(dcid) - 1;
@@ -1461,7 +1461,7 @@ object frame = { ...
             #Hamid
             # the connection id seqnum_to_cid is being retired, append it to an array and iterate over the array in packet
             #Hamid
-	    call enqueue_frame(scid,f,e,false);
+	        call enqueue_frame(scid,f,e,false);
         }
     }
 }
