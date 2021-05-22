@@ -854,9 +854,9 @@ object frame = { ...
             stream_length(dcid,f.id) := f.final_offset;  #[3]
             #require stream_seen(dcid,f.id);  # [8]
             require stream_id_allowed(dcid,f.id);  # [4]
-            // if ~_generating & stop_sending_in_bad_state {
-            //     stop_sending_in_bad_state := true;
-            // };
+            # if ~_generating & stop_sending_in_bad_state {
+            #     stop_sending_in_bad_state := true;
+            # };
 	    ...
             if ~_generating {
                 call handle_transport_error(f.err_code);
