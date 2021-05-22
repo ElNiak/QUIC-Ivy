@@ -560,5 +560,10 @@ action export_length_cid_extension(dcil:stream_pos,scil:stream_pos) = {
 	if(setenv("TEST_SCIL",str,true) != 0) 
 		fprintf(stderr, "setenv failed\n");
 
+    char str_p[20];
+	sprintf(str_p,"%llu",scil);
+	if(setenv("TEST_PCIL",str_p,true) != 0) 
+		fprintf(stderr, "setenv failed\n");
+
     >>>
 }
