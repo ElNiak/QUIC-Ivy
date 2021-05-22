@@ -272,15 +272,15 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     require pkt.long -> pkt.pversion = 0xff00001d  #version 29
 }
 
-#  An endpoint cannot send this frame if it was provided with a zero-
-#   length connection ID by its peer.  An endpoint that provides a zero-
-#   length connection ID MUST treat receipt of a RETIRE_CONNECTION_ID
-#   frame as a connection error of type PROTOCOL_VIOLATION.
+#   Receipt of a RETIRE_CONNECTION_ID frame containing a sequence number
+#   greater than any previously sent to the peer MUST be treated as a
+#   connection error of type PROTOCOL_VIOLATION.
 
 before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
         require scid = 0;
+        f.seq_num = 1000;
     }
 }
 

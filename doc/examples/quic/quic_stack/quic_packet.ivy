@@ -180,7 +180,7 @@ relation trans_params_set(C:cid)
 function trans_params(C:cid) : trans_params_struct
 relation connected(C:cid)
 function cid_to_aid(C:cid) : cid 
-relation cid_mapped(C : cid)
+relation cid_mapped(C:cid)
 function seqnum_to_cid (D : cid,S : cid_seq) : cid
 #Hamid
 function max_seq_num(C:cid) : cid_seq
@@ -199,6 +199,10 @@ relation retry_send(C:cid)
 function retry_token(C:cid) : stream_data
 relation tls_handshake_finished
 relation migration_done
+
+
+function cid_ip_mapped(D:ip.endpoint) :cid
+relation cid_ip_mapped(D:ip.endpoint)
 #chris
 
 
@@ -326,6 +330,19 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    migration_done := true;
 	    #call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
+
+    # Similarly, an endpoint MUST NOT reuse a connection ID when sending to
+    # more than one destination address.  
+    
+    #if ~_generating  {
+    #    if ~migration_done {
+    #        cid_ip_mapped(dst) := pkt.dst_cid;
+    #    } else {
+    #        cid_ip_mapped(dst) := pkt.dst_cid;
+    #    };
+    #};
+
+
 
     #if pkt.ptype = quic_packet_type.retry {
     #require retry_source_connection_id.is_set(trans_params(scid));

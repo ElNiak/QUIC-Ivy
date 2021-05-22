@@ -190,6 +190,12 @@ object min_ack_delay  = {
     instantiate trans_params_ops(this)
 }
 
+object unknown_ignore = {
+    variant this of transport_parameter = struct {  # tag = 0x42
+    }
+    instantiate trans_params_ops(this)
+}
+
 object unknown_transport_parameter = {
     variant this of transport_parameter = struct {  # tag = x
         unknown : stream_pos
