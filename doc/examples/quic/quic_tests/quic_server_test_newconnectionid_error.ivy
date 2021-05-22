@@ -272,19 +272,6 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     require pkt.long -> pkt.pversion = 0xff00001d  #version 29
 }
 
-#  An endpoint cannot send this frame if it was provided with a zero-
-#   length connection ID by its peer.  An endpoint that provides a zero-
-#   length connection ID MUST treat receipt of a RETIRE_CONNECTION_ID
-#   frame as a connection error of type PROTOCOL_VIOLATION.
-
-before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,dcid:cid) {
-    if _generating {
-        require scid = the_cid;
-	require connected(the_cid) & dcid = connected_to(the_cid);
-        #require scid = 0;
-    }
-}
-
 # The protocol specification describes all the events occurring the
 # system at all protocol layers. When constructing the test mirror,
 # however, we need to generate only events that are outputs of the
@@ -372,6 +359,7 @@ before frame.new_connection_id.handle(f:frame.new_connection_id,scid:cid,dcid:ci
     if _generating {
         require scid = the_cid;
         # require f.retire_prior_to = 0;
+	require f.length >= 0x1 & f.length <= 0x14; #[1]
         # require f.seq_num = 0;
     }
 }
@@ -385,7 +373,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
     if _generating {
         require scid = the_cid;
     } else {
-        require is_no_error
+        require is_no_error | is_protocol_violation
     }
 }
 
@@ -494,6 +482,7 @@ export client_send_event
 export tls_recv_event
 
 export frame.new_connection_id.handle
+
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
 #export frame.max_stream_id.handle
