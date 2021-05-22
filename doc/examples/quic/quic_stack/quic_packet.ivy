@@ -201,8 +201,8 @@ relation tls_handshake_finished
 relation migration_done
 
 
-function cid_ip_mapped(D:ip.endpoint) :cid
-relation cid_ip_mapped(D:ip.endpoint)
+#function cid_ip_mapped(D:ip.endpoint) :cid
+#relation cid_ip_mapped(D:ip.endpoint)
 #chris
 
 
