@@ -122,6 +122,7 @@ client_tests = [
 
       ['quic_client_test_unkown_tp','test_completed'],
       ['quic_client_test_max_limit_error','test_completed'],
+      ['quic_client_test_new_token_error','test_completed'],
       ]
     ],
 ]
