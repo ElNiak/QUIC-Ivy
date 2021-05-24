@@ -37,7 +37,7 @@ servers = [
     ['quiche',[scdir+'/quiche/','cargo run --manifest-path=tools/apps/Cargo.toml --bin quiche-server --  --cert tools/apps/src/bin/cert.crt  --key tools/apps/src/bin/cert.key --no-retry --listen 127.0.0.1:4443' ]], #--early-data 
     ['mvfst',[scdir+'/mvfst/_build/build/quic/samples/','./echo -mode=server -host=127.0.0.1 -port=4443  -v=10 -pr=false ']],
     ['lsquic',[scdir+'/lsquic/bin/','./http_server -c www.example.org/,/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem,/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.key -Q hq-29 -D -s 127.0.0.1:4443 -l event=debug,engine=debug -o version=FF00001D -G /home/chris/secrets/']],
-    ['quinn',[scdir+'/quinn/','cargo run -vv --example server . --keylog --listen 127.0.0.1:4443']], # home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/
+    ['quinn',[scdir+'/quinn/','cargo run -vv --example server /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/index.html --keylog --listen 127.0.0.1:4443']], # home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/
     ['quicly',[scdir+'/quicly/','./cli -l /home/chris/secret_test.log -a hq-29 -c /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -k /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.key 127.0.0.1 4443']],
 ]
 
@@ -57,7 +57,7 @@ clients = [
 
 
     ['mvfst',[scdir + '/mvfst/_build/build/quic/samples/','./echo -mode=client -host="127.0.0.1" -port=4443 -pr=true -v=10 -stop_logging_if_full_disk ']], # echo "HELOOOOO" > 
-    ['lsquic',[scdir+ '/lsquic/bin/','./http_client -Q hq-29 -s 127.0.0.1:4443 -w 6 -r 6 -t -l event=debug,engine=debug -p /1.html /2.html /3.html /4.html /5.html /6.html  -H 127.0.0.1 -o version=FF00001D']], #-C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -W -g -j -i 1000  -n 1 -r 1 -a -4  -r 20 index.html index.html index.html index.html index.html index.html index.html
+    ['lsquic',[scdir+ '/lsquic/bin/','./http_client -4 -Q hq-29 -R 50 -w 7 -r 7 -s 127.0.0.1:4443 -t -l event=debug,engine=debug -p /1.html /2.html /3.html /4.html /5.html /6.html /7.html -H 127.0.0.1 -o version=FF00001D']], #-C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -W -g -j -i 1000  -n 1 -r 1 -a -4  -r 20 index.html index.html index.html index.html index.html index.html index.html  -C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem
     ['quinn',[scdir+ '/quinn/','cargo run -vv --example client https://localhost:4443/index.html --keylog']], # --ca /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem
 ]
 
@@ -85,8 +85,8 @@ server_tests = [
 	  ['quic_server_test_ext_min_ack_delay','test_completed'],
 	  ['quic_server_test_tp_limit_newcoid','test_completed'],
 	  ['quic_server_test_unkown','test_completed'],
-      ['quic_server_test_stream_limit','test_completed'],
-      ['quic_server_test_crypto_limit','test_completed'],
+      ['quic_server_test_stream_limit_error','test_completed'],
+      ['quic_server_test_crypto_limit_error','test_completed'],
       ['quic_server_test_newconnectionid_error','test_completed'],
       ['quic_server_test_newcoid_rtp_error','test_completed'],
       ['quic_server_test_newcoid_length_error','test_completed'],
@@ -122,10 +122,10 @@ client_tests = [
 
       ['quic_client_test_unkown_tp','test_completed'],
       ['quic_client_test_max_limit_error','test_completed'],
+      ['quic_client_test_new_token_error','test_completed'],
       ]
     ],
 ]
-
 
 import sys
 

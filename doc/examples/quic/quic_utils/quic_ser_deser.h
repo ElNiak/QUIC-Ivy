@@ -211,7 +211,7 @@ struct tls_name_struct tls_tags[33] = {
     //{"enable_time_stamp",0x7158}, //for picoquic
     {"min_ack_delay", -4611686014149009894}, //0xFF02DE1A ||  0xc0000000FF02DE1A (13835058059560541722) OR 8000DE1A
     {"unknown_transport_parameter", -2},
-    {"unknown_ignore", 0x42},
+    {"unknown_ignore", 0x4042},
     {0, 0}};
 tls_name_map tls_tags_map;
 struct tls_name_struct tls_tag_bytes[25] = {
@@ -238,7 +238,7 @@ struct tls_name_struct tls_tag_bytes[25] = {
     {"loss_bits", 2},       //for picoquic
     {"grease_quic_bit", 2}, //for picoquic
     {"min_ack_delay", 8},
-    {"unknown_ignore", 1},
+    {"unknown_ignore", 2},
     //{"enable_time_stamp",2}, //for picoquic
     //{"unknown_transport_parameter",2},
     {0, 0}};

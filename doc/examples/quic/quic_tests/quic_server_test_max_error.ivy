@@ -208,20 +208,9 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
     tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
 
-    #   A NEW_CONNECTION_ID frame might cause an endpoint to add some active
-    #    connection IDs and retire others based on the value of the Retire
-    #    Prior To field.  After processing a NEW_CONNECTION_ID frame and
-    #    adding and retiring active connection IDs, if the number of active
-    #    connection IDs exceeds the value advertised in its
-    #    active_connection_id_limit transport parameter, an endpoint MUST
-    #    close the connection with an error of type CONNECTION_ID_LIMIT_ERROR.
+    var no_migration : disable_active_migration; #TODO update v29
+    tp.transport_parameters := tp.transport_parameters.append(no_migration);
 
-    # We check here during the execution if we never exceed 2 active connections 
-    # in quic_frame.ivy
-
-    var acid : active_connection_id_limit;
-    acid.stream_pos_32 := 2;
-    tp.transport_parameters := tp.transport_parameters.append(acid);
 }
 
 
@@ -238,7 +227,7 @@ interpret cid -> longbv[1][13][20]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
-interpret stream_id -> bv[16]
+interpret stream_id -> bv[62]
 attribute frame.idx.cardinality = 1
 attribute frame.ack.range.idx.cardinality = 1
 attribute pkt_num.cardinality = 1
@@ -407,7 +396,7 @@ before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:ci
 before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-        f.id := 0x01ffffffffffffff; #TODO > not implemented 0x0100000000000000
+        f.id := 0xffffffff; #TODO > not implemented 0x0100000000000000
     }
 }
 

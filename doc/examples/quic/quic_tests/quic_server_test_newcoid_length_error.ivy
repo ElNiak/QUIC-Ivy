@@ -204,7 +204,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(icid);
 
     var no_migration : disable_active_migration; #TODO update v29
-    #tp.transport_parameters := tp.transport_parameters.append(no_migration);
+    tp.transport_parameters := tp.transport_parameters.append(no_migration);
 
     var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
     max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
@@ -280,7 +280,8 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 }
 
 #     Length:  An 8-bit unsigned integer containing the length of the
-#      connection ID.  Values less than 1 and greater than 20 are invalid
+#      connection ID.  Values less than 1 and greater than [20 not testable 
+#      since 20 bytes not available] are invalid
 #      and MUST be treated as a connection error of type
 #       FRAME_ENCODING_ERROR
 
@@ -288,7 +289,9 @@ before frame.new_connection_id.handle(f:frame.new_connection_id,scid:cid,dcid:ci
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
-        require f.length < 1 | f.length > 20;
+	#var cid_bytes := random_stream_data(0x10,0xfffff,8);
+	#f.scid := bytes_to_cid(cid_bytes);
+        require f.length < 1;
         require f.retire_prior_to <= f.seq_num; #[4]
     }
 }

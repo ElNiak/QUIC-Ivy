@@ -177,7 +177,7 @@ object frame = {
     object max_streams = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
         # max_streams frames are a variant of frame.
         variant this of frame = struct {
-            id              : stream_id  # maximum stream id
+            id              : stream_id  # maximum stream id 
         }
     }
 
@@ -200,7 +200,7 @@ object frame = {
     }
 
     # (0x16 or 0x17)
-    object streams_blocked = { # TODO: handle bidi and uni cases
+    object streams_blocked = { # TODO: handle bidi and uni cases => create streams_blocked_uni and streams_blocked_bidi + serializer
         # Stream id blocked frames are a variant of frame.
         variant this of frame = struct {
             id                : cid  # the stream id (we use cid for the 16 bytes)
@@ -468,7 +468,8 @@ function stream_length(C:cid,S:stream_id) : stream_pos
 relation stream_finished(C:cid,S:stream_id)
 relation stream_reset(C:cid,S:stream_id)
 relation max_stream_set(C:cid,K:stream_kind)
-function max_stream(C:cid,K:stream_kind) : stream_id
+function max_stream(C:cid,K:stream_kind) : stream_id 
+#function max_stream_id(C:cid,K:stream_kind) : cid
 function queued_frames(C:cid) : frame.arr
 function queued_level(C:cid) : quic_packet_type
 relation queued_non_probing(C:cid)
@@ -510,6 +511,10 @@ relation connection_closed
 
 relation handshake_done_send
 
+#relation is_stream_limit_test
+var is_stream_limit_test : bool
+relation is_crypto_limit_test
+
 #TODO faire all retransmission
 relation stop_sending_in_bad_state
 #chris
@@ -542,6 +547,8 @@ after init {
     last_ack_freq_seq(C:cid) := 0;
     connection_closed := false;
     handshake_done_send := false;
+    is_stream_limit_test := false;
+    is_crypto_limit_test := false;
 #chris
 }
 
@@ -709,8 +716,10 @@ object frame = {
 
 	    require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
             #call show_offset_length(offset,f.length); #todo import 
+ 
+	    #if  is_stream_limit_test = false { #For stream limit test | ~_generating  not working
 	    require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
-
+	    #};
             require f.fin <-> (stream_app_data_finished(dcid,f.id)
                                & offset+f.length = stream_app_data_end(dcid,f.id));
 
@@ -790,8 +799,10 @@ object frame = {
             #chris
             require ~(e = quic_packet_type.zero_rtt);  # [4]
             #chris
+	    #if  ~is_crypto_limit_test | ~_generating { #For crypto limit test
             require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
             require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
+	    #};
             ...
             var length := f.offset + f.length;
             if crypto_length(scid,e) < length {
@@ -914,8 +925,10 @@ object frame = { ...
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [5]
             require connected(scid) & connected_to(scid) = dcid;
-            require stream_seen(dcid,f.id);  # [8]
-            require stream_id_allowed(dcid,f.id);  # [4]
+	    if ~_generating { # For tests
+            	require stream_seen(dcid,f.id);  # [8]
+            	require stream_id_allowed(dcid,f.id);  # [4]
+	    };
 	    ...
             if ~_generating {
                 call handle_transport_error(f.err_code);
@@ -983,6 +996,7 @@ object frame = { ...
             if ~ (max_stream_set(dcid,kind) & f.id < max_stream(dcid,kind)) { #[5]
                 max_stream_set(dcid,kind) := true;
                 max_stream(dcid,kind) := f.id; #  [1]
+		#max_stream_id(dcid,kind) := cid_to_stream_id(f.id);
             }
 
             #   if _generating {
@@ -1697,7 +1711,9 @@ action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
     ok := false;
     var tp := trans_params(dcid);
     var kind := get_stream_kind(id);
+    # var idhi_cid : cid := id / 4;
     var idhi : stream_id := id / 4;
+
     if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
         if kind = unidir {
             if initial_max_stream_id_uni.is_set(tp) {
@@ -1712,6 +1728,24 @@ action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
     }
     else ok := stream_seen(dcid, id) # TODO: locally initiated streams must have been seen!
 }
+
+action stream_id_to_cid(bytes:stream_id) returns (val:cid) = {
+    <<<
+    val.val = 0;
+    for (unsigned i = 0; i < bytes.size(); i++)
+        val.val = (val.val << 8) + bytes[i];
+    >>>
+}
+
+action cid_to_stream_id(c:cid,len:cid_length) returns(res:stream_id) = {
+    <<<
+    res.resize(len);
+    for (unsigned i = 0; i < len; i++) {
+        res[len-i-1] = 0xff & (c.val >> (i * 8));
+    }
+    >>>
+}
+
 
 # The procedure computes the maximum number of additional bytes that a given
 # destination aid can receive, based on the `initial_max_data` transport parameter

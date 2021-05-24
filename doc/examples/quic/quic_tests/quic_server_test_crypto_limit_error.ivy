@@ -79,9 +79,9 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
 before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
         require scid = the_cid;
-        require f.length > 0;
-        f.offset := 0xffffffffffffffff;
-        # require f.length = (crypto_data_end(scid,e)) - f.offset;
+        require f.length = 0;
+        f.offset := 0xffffffff;
+	is_crypto_limit_test := true;
     }
 }
 

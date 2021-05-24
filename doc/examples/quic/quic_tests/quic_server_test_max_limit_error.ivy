@@ -204,6 +204,9 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
 
+    var no_migration : disable_active_migration; #TODO update v29
+    tp.transport_parameters := tp.transport_parameters.append(no_migration);
+
     var max_streams_bidi : initial_max_stream_id_bidi; 
     max_streams_bidi.stream_id_16 := 50;
     tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
@@ -283,7 +286,10 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-        require f.id > 50;
+	var tp := trans_params(scid);
+	if initial_max_stream_id_bidi.is_set(tp) {
+        	require f.id > initial_max_stream_id_bidi.value(tp).stream_id_16;
+	}
     }
 }
 
