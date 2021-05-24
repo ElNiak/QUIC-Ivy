@@ -718,7 +718,7 @@ object frame = {
         #call show_offset_length(offset,f.length); #todo import 
  
 	    #if  is_stream_limit_test = false { #For stream limit test | ~_generating  not working
-	    #require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
+	    require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
 	    #};
             require f.fin <-> (stream_app_data_finished(dcid,f.id)
                                & offset+f.length = stream_app_data_end(dcid,f.id));
@@ -800,8 +800,8 @@ object frame = {
             require ~(e = quic_packet_type.zero_rtt);  # [4]
             #chris
 	    #if  ~is_crypto_limit_test | ~_generating { #For crypto limit test
-            require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
-            require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
+            #require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
+            #require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
 	    #};
             ...
             var length := f.offset + f.length;
