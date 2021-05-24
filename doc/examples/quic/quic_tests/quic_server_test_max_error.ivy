@@ -207,6 +207,10 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
     max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
     tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
+
+    var no_migration : disable_active_migration; #TODO update v29
+    tp.transport_parameters := tp.transport_parameters.append(no_migration);
+
 }
 
 
@@ -223,7 +227,7 @@ interpret cid -> longbv[1][13][20]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
-interpret stream_id -> bv[16]
+interpret stream_id -> bv[62]
 attribute frame.idx.cardinality = 1
 attribute frame.ack.range.idx.cardinality = 1
 attribute pkt_num.cardinality = 1
@@ -392,7 +396,7 @@ before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:ci
 before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-        f.id := 0x01ffffffffffffff; #TODO > not implemented 0x0100000000000000
+        f.id := 0xffffffff; #TODO > not implemented 0x0100000000000000
     }
 }
 

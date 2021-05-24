@@ -254,6 +254,9 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     # behavior.  An endpoint MUST ignore transport parameters that it does
     # not support
 
+    var no_migration : disable_active_migration; #TODO update v29
+    tp.transport_parameters := tp.transport_parameters.append(no_migration);
+
     var unk : unknown_ignore; 
     tp.transport_parameters := tp.transport_parameters.append(unk);
 
@@ -307,7 +310,7 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 var allowed_multiple_migration : bool
 
 after init {
-	allowed_multiple_migration := true
+	allowed_multiple_migration := false
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
