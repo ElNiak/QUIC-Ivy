@@ -45,13 +45,13 @@ include quic_client
 #   connection.  This Destination Connection ID is used to determine
 #   packet protection keys for Initial packets.
 
-function dcid_initial_same : cid
-relation initial_send : bool
+#function dcid_initial_same : cid
+#relation initial_send 
 
-after init {
-	dcid_initial_same := 0;
-    initial_send :=  false;
-}
+#after init {
+#	dcid_initial_same := 0;
+#    initial_send :=  false;
+#}
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
@@ -70,14 +70,14 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    if pkt.long {
 	    	version_used := pkt.pversion;
 	    };
-        if pkt.ptype = quic_packet_type.initial {
-            if ~initial_send {
-                initial_send = true;
-                dcid_initial_same = pkt.dcid;
-            } else {
-                require  dcid_initial_same = pkt.dcid;
-            };
-        };
+        #if pkt.ptype = quic_packet_type.initial {
+        #    if ~initial_send {
+        #        initial_send = true;
+        #        dcid_initial_same = pkt.dcid;
+        #    } else {
+        #        require  dcid_initial_same = pkt.dcid;
+        #    };
+        #};
 	    call show_version(version_used);
     }
 }
