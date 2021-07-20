@@ -708,20 +708,19 @@ object frame = {
 
             var offset := f.offset if f.off else 0;
 
-  	    call show_offset(offset);
-	    call show_offset(f.length);
-	    call show_offset(((offset) + (f.length)));
-	    call show_offset(stream_max_data(dcid,f.id));
-	    call show_offset(stream_app_data_end(dcid,f.id));
+            call show_offset(offset);
+            call show_offset(f.length);
+            call show_offset(((offset) + (f.length)));
+            call show_offset(stream_max_data(dcid,f.id));
+            call show_offset(stream_app_data_end(dcid,f.id));
 
-	    require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
+            require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
             #call show_offset_length(offset,f.length); #todo import 
- 
-	    #if  is_stream_limit_test = false { #For stream limit test | ~_generating  not working
-	    require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
-	    #};
-            require f.fin <-> (stream_app_data_finished(dcid,f.id)
-                               & offset+f.length = stream_app_data_end(dcid,f.id));
+    
+            #if  is_stream_limit_test = false { #For stream limit test | ~_generating  not working
+            #require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
+            #};
+            require f.fin <-> (stream_app_data_finished(dcid,f.id) & offset+f.length = stream_app_data_end(dcid,f.id));
 
             var kind := get_stream_kind(f.id);
 
