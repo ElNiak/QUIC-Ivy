@@ -44,7 +44,7 @@ servers = [
 clients = [
     ['picoquic',[scdir + '/picoquic','./picoquicdemo -l - -D -L -v ff00001d -a hq-29 localhost 4443']], # -b myqlog.bin -R
     ['pquic',[scdir + '/pquic','./picoquicdemo -D -L -v ff00001d localhost 4443 ']],
-    ['quant',['..',scdir + '/quant/Debug/bin/client -c false -r 20 -g -u -l /home/chris/secret.log -q /home/chris/qlog_quant -t 3600 -v 5 -e 0xff00001d https://localhost:4443/index.html']], #-c leaf_cert.pem /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -o -u -c leaf_cert.pem -c keypair.pem -a  -c false
+    ['quant',['..',scdir + '/quant/Debug/bin/client -c false -r 20 -l /home/chris/secret.log -q /home/chris/qlog_quant -t 3600 -v 5 -e 0xff00001d https://localhost:4443/index.html']], #-c leaf_cert.pem /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -o -u -c leaf_cert.pem -c keypair.pem -a  -c false -u 
     ['winquic',['..','true']], 
     ['minq',['..','go run '+ scdir + '/go/src/github.com/ekr/minq/bin/client/main.go ']],
     ['chromium',[scdircr + '/chromium/src','./out/Default/quic_client --host=127.0.0.1 --port=6121 --disable_certificate_verification  https://www.example.org/ --v=1 --quic_versions=h3-23']],
@@ -58,7 +58,7 @@ clients = [
 
     ['mvfst',[scdir + '/mvfst/_build/build/quic/samples/','./echo -mode=client -host="127.0.0.1" -port=4443 -pr=true -v=10 -stop_logging_if_full_disk ']], # echo "HELOOOOO" > 
     ['lsquic',[scdir+ '/lsquic/bin/','./http_client -4 -Q hq-29 -R 50 -w 7 -r 7 -s 127.0.0.1:4443 -t -l event=debug,engine=debug -p /1.html /2.html /3.html /4.html /5.html /6.html /7.html -H 127.0.0.1 -o version=FF00001D']], #-C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -W -g -j -i 1000  -n 1 -r 1 -a -4  -r 20 index.html index.html index.html index.html index.html index.html index.html  -C /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem
-    ['quinn',[scdir+ '/quinn/','cargo run -vv --example client https://localhost:4443/index.html --keylog']], # --ca /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem
+    ['quinn',[scdir+ '/quinn/','cargo run -vv --example client https://localhost:4443/index.html --ca /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem --keylog']], # --ca /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem
 ]
 
 #List of available server's tests 
@@ -92,9 +92,10 @@ server_tests = [
       ['quic_server_test_newcoid_length_error','test_completed'],
       ['quic_server_test_new_token_error','test_completed'],
       ['quic_server_test_stop_sending_error','test_completed'],
-      ['quic_server_test_unkown_tp','test_completed'],
-      ['quic_server_test_max_limit_error','test_completed'],
+      ['quic_server_test_tp_unkown','test_completed'],
+      ['quic_client_test_limit_max_error','test_completed'],
       ['quic_server_test_max_error','test_completed'],
+      ['quic_server_test_max_limit_error','test_completed'],
       ]
     ],
 ]
@@ -120,8 +121,9 @@ client_tests = [
 	  ['quic_client_test_stateless_reset_token','test_completed'],
 	  ['quic_client_test_handshake_done_error','test_completed'],
 
-      ['quic_client_test_unkown_tp','test_completed'],
-      ['quic_client_test_max_limit_error','test_completed'],
+      ['quic_client_test_unkown','test_completed'],
+      ['quic_client_test_tp_unkown','test_completed'],
+      ['quic_client_test_limit_max_error','test_completed'],
       ['quic_client_test_new_token_error','test_completed'],
       ]
     ],
@@ -377,7 +379,8 @@ try:
 
     num_failures = 0
     for test in all_tests:
-        if not test_pattern_obj.match(test.name):
+        #if not test_pattern_obj.match(test.name):
+        if not test_pattern == test.name:
             continue
         for test_command in range(0,iters):
             status = test.run(test_command)

@@ -286,10 +286,10 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-	var tp := trans_params(scid);
-	if initial_max_stream_id_bidi.is_set(tp) {
-        	require f.id > initial_max_stream_id_bidi.value(tp).stream_id_16;
-	}
+        var tp := trans_params(scid);
+        if initial_max_stream_id_bidi.is_set(tp) {
+                require f.id > initial_max_stream_id_bidi.value(tp).stream_id_16;
+        }
     }
 }
 
