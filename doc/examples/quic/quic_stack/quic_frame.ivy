@@ -719,7 +719,6 @@ object frame = {
     
             #if  is_stream_limit_test = false { #For stream limit test | ~_generating  not working
             require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
-            #};
             require f.fin <-> (stream_app_data_finished(dcid,f.id) & offset+f.length = stream_app_data_end(dcid,f.id));
 
             var kind := get_stream_kind(f.id);
