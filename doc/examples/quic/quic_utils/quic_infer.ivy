@@ -61,11 +61,11 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
                 # var data := sf.data.segment(stream_app_data_end(dcid,sf.id) - sf.offset,sf.data.end);
             call app_send_event(src,dst,dcid,sf.id,sf.data,sf.offset,sf.fin)
         };
-        if some(pf:frame.padding) f *> pf {
+        #if some(pf:frame.padding) f *> pf {
             # do nothing
-        } else {
+        #} else {
             call infer_frame(scid,dcid,f);
-        };
+        #};
         call f.handle(scid,dcid,e,sq);
         idx := idx.next
     }

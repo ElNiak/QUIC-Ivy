@@ -571,10 +571,10 @@ object quic_deser = {}
                     state = quic_handshake_done;
                     return 19;
                 }
-                if (frame_type == 0x00) {
+                /*if (frame_type == 0x00) {
                     state = quic_padding;
                     return 20;
-                }
+                }*/
                 if (frame_type == 0x40) {
                     ft = 0;
                     //ivy_binary_deser::getn(ft,1); // could be bigger
@@ -582,11 +582,11 @@ object quic_deser = {}
                     frame_type = ft;
                     if (frame_type == 0xAF) { //0x40af
                         state = quic_ack_frequency;
-                        return 21;
+                        return 20;
                     }
                     if (frame_type == 0x42) {
                         state = quic_unknow;
-                        return 22;
+                        return 21;
                     }
                 }
                 std::cerr << "saw tag " << ft << std::endl;  
@@ -603,8 +603,8 @@ object quic_deser = {}
                 // We must use/take in count the padding frame since Picoquic client sometimes send packet
                 // only with 1 padding frame which make fails the requirement saying that a 
                 // packet cannot be empty
-               /*while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
-                   pos++;  // skip padding frames*/
+               while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
+                   pos++;  // skip padding frames
                return (fence == 0 || pos < fence) && more(1);
             }
             if (state == quic_ack_gap) {

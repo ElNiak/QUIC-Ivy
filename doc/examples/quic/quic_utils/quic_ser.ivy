@@ -467,16 +467,16 @@ object quic_ser = {}
                     state = quic_handshake_done;
                     frame_type = 0x1e;
                 }
-                else if (tag == 20) {
+                /*else if (tag == 20) {
                     state = quic_padding;
                     frame_type = 0x00;
-                }
-                else if (tag == 21) {
+                }*/
+                else if (tag == 20) {
                     state = quic_ack_frequency;
                     frame_type = 0x40AF; // 0100 0000 AF
                     sz = 2;
                 }
-                else if (tag == 22) {
+                else if (tag == 21) {
                     state = quic_unknow;
                     frame_type = 0x4042; 
                     sz = 2;                }

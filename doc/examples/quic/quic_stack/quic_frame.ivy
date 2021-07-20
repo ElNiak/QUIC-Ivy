@@ -282,13 +282,13 @@ object frame = {
     }
 
 	# (0x00) implicit in parsing
-    object padding = {
+    #object padding = {
         # PADDING frame frames are a variant of frame and contains nothing
 		# 1 byte frame to increase the size of a packet
-        variant this of frame = struct {
+    #    variant this of frame = struct {
 			
-        }
-    }    
+    #    }
+    #}    
 
     #TODO EXTENSION Frames
 
@@ -1334,14 +1334,14 @@ object frame = { ...
 # be used to keep a connection alive.
 #
 
-object frame = { ...
-    object padding = { ...
-        action handle(f:frame.padding,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
-	after handle {
-            call enqueue_frame(scid,f,e,true);
-        }
-    }
-}
+#object frame = { ...
+#    object padding = { ...
+#        action handle(f:frame.padding,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
+#	after handle {
+#            call enqueue_frame(scid,f,e,true);
+#        }
+#    }
+#}
 
 #
 # #### HANDSHAKE_DONE  event
@@ -1629,7 +1629,7 @@ action enqueue_frame(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
     if ~probing {
         queued_non_probing(scid) := true;
     };
-    if ~(f isa frame.ack) & ~(f isa frame.padding){
+    if ~(f isa frame.ack){ #& ~(f isa frame.padding){
         queued_non_ack(scid) := true;
     };
     if  f isa frame.path_challenge {
@@ -1639,7 +1639,7 @@ action enqueue_frame(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
         queued_close(scid) := true;
     };
 #Hamid
-    if ~(f isa frame.ack) & ~(f isa frame.connection_close) & ~(f isa frame.padding){
+    if ~(f isa frame.ack) & ~(f isa frame.connection_close){ #& ~(f isa frame.padding){
 	queued_ack_eliciting(scid) := true;
     };
 #Hamid
