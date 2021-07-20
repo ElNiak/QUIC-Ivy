@@ -735,6 +735,7 @@ object frame = {
 
             require stream_reset(dcid,f.id) ->
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
+	    #remove for stream limit test
             require stream_id_allowed(dcid,f.id);  # [6]
 	        ...
             count_stream_frame(f.id,f.offset,f.length,f.data) := count_stream_frame(f.id,f.offset,f.length,f.data) + 1;
