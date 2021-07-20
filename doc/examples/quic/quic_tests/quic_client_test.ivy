@@ -46,10 +46,10 @@ include quic_client
 #   packet protection keys for Initial packets.
 
 function dcid_initial_same : cid
-relation initial_send : bool
+relation initial_send
 
 after init {
-	dcid_initial_same := 0;
+    dcid_initial_same := 0;
     initial_send :=  false;
 }
 
@@ -71,12 +71,12 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    	version_used := pkt.pversion;
 	    };
         if pkt.ptype = quic_packet_type.initial {
-            if ~initial_send {
-                initial_send = true;
-                dcid_initial_same = pkt.dcid;
-            } else {
-                require  dcid_initial_same = pkt.dcid;
-            };
+            #if ~initial_send {
+            #    initial_send := true;
+            #    dcid_initial_same := pkt.dst_cid;
+            #} else {
+            #    require  dcid_initial_same = pkt.dst_cid;
+            #};
         };
 	    call show_version(version_used);
     }

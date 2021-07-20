@@ -32,7 +32,7 @@ parameter initial_max_streams_bidi : stream_id = 10
 function version_used : version
 
 after init {
-    the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
+    the_cid := 0x0; # zero length => 0x1 mvfst and other 0x0
     version_used := 0xff00001d;
 }
 
@@ -305,6 +305,10 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
         call show_level_offset_length(e,f.offset,stream_length(dcid,f.id));
         require f.offset = stream_length(dcid,f.id);
         require f.length = (stream_app_data_end(dcid,f.id)) - f.offset;
+	var tp := trans_params(scid);
+	if initial_max_stream_id_bidi.is_set(tp) {
+        	require f.id > initial_max_stream_id_bidi.value(tp).stream_id_16;
+	}
         # require ~f.fin;  # TODO: should allow fin after handshake is complete, or never?
     }
 }
@@ -376,7 +380,10 @@ before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
-        require f.id > initial_max_streams_bidi;
+	var tp := trans_params(scid);
+	if initial_max_stream_id_bidi.is_set(tp) {
+        	require f.id > initial_max_stream_id_bidi.value(tp).stream_id_16;
+	}
     }
 }
 
@@ -454,7 +461,15 @@ after init {
 }
 
 around client_send_event {
-    require stream_seen(dcid,s); # TODO: wait until client request is finished?
+    #require stream_seen(dcid,s); # TODO: wait until client request is finished?
+	var tp := trans_params(dcid);
+	if initial_max_stream_id_bidi.is_set(tp) {
+        	require s > initial_max_stream_id_bidi.value(tp).stream_id_16 ;
+	}else  {
+		require s = current_stream;
+	};
+
+
     require src = server.ep;
     require dst = client.ep;
     #require cid_dst_to_src_set(the_cid) & dcid = cid_dst_to_src(the_cid);
@@ -485,7 +500,7 @@ export tls_recv_event
 #export frame.new_connection_id.handle
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
-export frame.max_streams.handle
+#export frame.max_streams.handle
 #export frame.connection_close.handle
 #export frame.max_stream_data.handle
 
