@@ -36,6 +36,9 @@ include quic_application
 include quic_security
 include quic_frame
 include quic_packet
+include quic_packet_nt
+include quic_packet_retry
+include quic_packet_vn
 
 include quic_fsm_sending
 include quic_fsm_receiving

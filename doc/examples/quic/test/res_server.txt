@@ -1,0 +1,4 @@
+output directory: temp/168
+implementation directory: ..
+implementation command: /home/chris/TVOQE_UPGRADE_27/quic/quant/Debug/bin/server -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q /home/chris/qlog_quant -l /home/chris/secret.log
+OK

@@ -82,6 +82,7 @@ parameter server_port : ip.port = 4443
 parameter server_cid  : cid = 0xb
 parameter client_port : ip.port = 4987
 parameter client_port_alt : ip.port = 4988
+parameter client_port_vn : ip.port = 4986
 parameter max_stream_data : stream_pos = 0x2000
 
 # Network setup
@@ -101,7 +102,7 @@ after init {
 # can model migration.
 
 object endpoint_id = {
-    type this = {client, client_alt, server}
+    type this = {client, client_alt, client_vn, server}
 }
 
 action endpoint_id_addr(ep_id : endpoint_id) returns (ep:ip.endpoint) = {
@@ -109,7 +110,8 @@ action endpoint_id_addr(ep_id : endpoint_id) returns (ep:ip.endpoint) = {
     ep.addr := server_addr if ep_id = endpoint_id.server else client_addr;   # the loop-back addr
     ep.port := client_port if ep_id = endpoint_id.client
                else (client_port_alt if ep_id = endpoint_id.client_alt
-               else server_port);
+               else (client_port_vn if ep_id = endpoint_id.client_vn
+               else server_port));
 }    
 
 module quic_endpoint(ep_id) = {
@@ -130,25 +132,29 @@ instance server : quic_endpoint(endpoint_id.server)
 # An ip endpoint for the client to migrate to.
 
 var client_alt : ip.endpoint
+var client_vn : ip.endpoint
 
 after init {
-    client_alt := endpoint_id_addr(endpoint_id.client_alt)
+    client_alt := endpoint_id_addr(endpoint_id.client_alt);
+    client_vn := endpoint_id_addr(endpoint_id.client_vn);
 }
 
 # We create sockets and bind them to the addresses that the client can use.
 
 var sock : net.socket
 var sock_alt : net.socket
+var sock_vn : net.socket
 
 instance tls_extensions : vector(tls.extension)
 
 # This creates the sockets and also a TLS instance to be used by `the_cid`.
-# TODO: the TLS isntance should be created dynamically when the application
+# TODO: the TLS instance should be created dynamically when the application
 # layer creates a connection. 
 
 after init {
     sock := net.open(endpoint_id.client,client.ep);
     sock_alt := net.open(endpoint_id.client_alt,client_alt);
+    sock_vn := net.open(endpoint_id.client_vn,client_vn);
     client.tls_id := 0;
     server.tls_id := 1;
     var extns := tls_extensions.empty;
@@ -167,13 +173,15 @@ action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
         pid := endpoint_id.client;
     } else if src = client_alt {
         pid:= endpoint_id.client_alt;
+    } else if src = client_vn {
+        pid:= endpoint_id.client_vn;
     } 
 }
 
 # Get the IP endpoint associated to a host id and socket number.
 
 action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
-    src := client.ep if host = endpoint_id.client else client_alt
+    src := client.ep if host = endpoint_id.client else (client_vn if version_negociated else client_alt)
 }
     
 # Get the socket number associated to an IP endpoint.
@@ -183,6 +191,8 @@ action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
         socket := sock;
     } else if src = client_alt {
         socket := sock_alt;
+    } else if src = client_vn {
+        socket := sock_vn;
     } 
 }
 
@@ -190,7 +200,7 @@ action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
 # TODO: this shouldn't be needed.
 
 action tls_id_to_src(tls_id:tls_api.id) returns (src:ip.endpoint) = {
-    src := client.ep if tls_id = client.tls_id else server.ep;
+    src := client.ep if tls_id = client.tls_id & ~version_negociated else (client_vn if tls_id = client.tls_id & version_negociated else server.ep);
 }
 
 # Get the destination IP endpoint associated to a TLS instance
@@ -210,7 +220,7 @@ action tls_id_to_cid(tls_id:tls_api.id) returns (scid:cid) = {
 # TODO: shouldn't be needed.
 
 action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
-    res := dst = client.ep | dst = client_alt
+    res := dst = client.ep | dst = client_alt | dst = client_vn
 }
 
 # Returns the TLS instance associated to a destination IP endppoint.

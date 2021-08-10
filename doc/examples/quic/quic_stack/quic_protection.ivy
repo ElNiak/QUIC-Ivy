@@ -87,19 +87,19 @@ module quic_protection(tls_id,tls) = {
         # never be larger than the smallest encrypted payload, so we
         # should be OK.
 
-	var pn_offset : stream_pos := 0;
-	if h.hdr_long {
-		pn_offset := hdr_len - pnum_pos;
-	} else {
-		pn_offset := 1 + 4;
-	};
+        var pn_offset : stream_pos := 0;
+        if h.hdr_long {
+            pn_offset := hdr_len - pnum_pos;
+        } else {
+            pn_offset := 1 + 4;
+        };
 	
-	#call show_payload(pyld);
+	    #call show_payload(pyld);
         #var sample_pos : stream_pos :=  4 + pnum_pos; #- pnum_len; #pnum_pos; # skipped payload size
         var sample_pos : stream_pos :=  4 - pnum_len;  #- pnum_len;
-	call show_data(sample_pos,sample_size,sample_pos + sample_size,pyld.end);
-	#var new_pkt := pkt;
-	var new_pyld := pyld;
+        call show_data(sample_pos,sample_size,sample_pos + sample_size,pyld.end);
+        #var new_pkt := pkt;
+        var new_pyld := pyld;
         if sample_pos + sample_size > pkt.end { #MC
 	    call show_if;
 	    var diff := (sample_pos + sample_size) - pyld.end;
@@ -113,15 +113,15 @@ module quic_protection(tls_id,tls) = {
 	    pyld := new_pyld;  #[*2*]
         };
 	
-	#call show_payload(new_pyld);
-	#var s := get_packet_sample(h,pkt,pnum_pos,hdr_len,sample_size);
-	#call show_payload(s);
-	#var sample_offset : stream_pos := pn_offset + 4; #pn_offset +
+        #call show_payload(new_pyld);
+        #var s := get_packet_sample(h,pkt,pnum_pos,hdr_len,sample_size);
+        #call show_payload(s);
+        #var sample_offset : stream_pos := pn_offset + 4; #pn_offset +
         #var sample := s.segment(sample_offset,sample_offset+16); 
-	#var sample := pkt.segment(sample_pos,sample_pos+sample_size); 
-	var sample := pyld.segment(sample_pos,sample_pos+sample_size); 
+        #var sample := pkt.segment(sample_pos,sample_pos+sample_size); 
+        var sample := pyld.segment(sample_pos,sample_pos+sample_size); 
         var mask := stream_data.empty;
-	call show_enc_level(level);
+	    call show_enc_level(level);
         mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,false);
         var byte0_mask := bvand(mask.value(0), 0x0f if h.hdr_long else 0x1f);
         hdr := hdr.set(0,byte_xor(pkt.value(0),byte0_mask));
@@ -131,10 +131,10 @@ module quic_protection(tls_id,tls) = {
 
     implement decrypt {
         var h := get_header_info(pkt,true);
-	call show_header(h);
+	    call show_header(h);
         var level := get_level(pkt);
         var sample_size := tls.iv_size(c,level);
-	call show_iv_size(sample_size);
+	    call show_iv_size(sample_size);
         if sample_size = 0 {
             res.ok := false;
         }
@@ -252,9 +252,9 @@ module quic_protection(tls_id,tls) = {
             h.dcid := bytes_to_cid(pkt.segment(6,6+dcil));
             var scil : stream_pos := bfe[0][7](pkt.value(6+dcil));
             h.scid := bytes_to_cid(pkt.segment(7+dcil,7+dcil+scil));
-	    if decrypt {
-		client_initial_scil := scil;
-	    };
+            if decrypt {
+                client_initial_scil := scil;
+            };
             var pos := 7 + dcil + scil;
             if bvand(h.hdr_type,0x30) = 0x00 {
                 #Retry packet
@@ -268,16 +268,16 @@ module quic_protection(tls_id,tls) = {
             h.pkt_num_pos := pos + len;
         }
         else {
-	    #todo check if good for client test too
-	    if ~decrypt {
-		    h.dcid := bytes_to_cid(pkt.segment(1,1+client_initial_scil));
-		    h.payload_length_pos := 1+client_initial_scil;
-		    h.pkt_num_pos := 1+client_initial_scil;
-	    } else {
-		    h.dcid := bytes_to_cid(pkt.segment(1,1+8));
-		    h.payload_length_pos := 1+8;
-		    h.pkt_num_pos := 1+8;
-	    }
+            #todo check if good for client test too
+            if ~decrypt {
+                h.dcid := bytes_to_cid(pkt.segment(1,1+client_initial_scil));
+                h.payload_length_pos := 1+client_initial_scil;
+                h.pkt_num_pos := 1+client_initial_scil;
+            } else {
+                h.dcid := bytes_to_cid(pkt.segment(1,1+8));
+                h.payload_length_pos := 1+8;
+                h.pkt_num_pos := 1+8;
+            }
         }
     }
 

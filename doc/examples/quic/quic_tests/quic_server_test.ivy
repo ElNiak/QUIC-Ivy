@@ -50,27 +50,43 @@ include quic_server
 #   section 4.1.2 of [QUIC-TLS].
 
 var allowed_multiple_migration : bool
+var version_negociated : bool
+var initial_version : version
 
 after init {
-	allowed_multiple_migration := true
+	allowed_multiple_migration := true;
+    version_negociated := false;
+    initial_version := 0xff00001d;
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         var tp := trans_params(the_cid);
-        if ~disable_active_migration.is_set(tp) {
-            if ~migration_done | allowed_multiple_migration { #only one migration
-                require src = client.ep | src = client_alt;
-            } else {
-                require src = client_alt;
-            }
+        if version_negociated {
+            require src = client_vn;
         } else {
-            require src = client.ep;
+            if ~disable_active_migration.is_set(tp) {
+                if ~migration_done | allowed_multiple_migration { 
+                    #only one migration
+                    require src = client.ep | src = client_alt;
+                } else {
+                    require src = client_alt;
+                }
+            } else {
+                require src = client.ep;
+            }
         };
         require dst = server.ep;
         require pkt.token.end = 0; 
     };
-    require pkt.long -> pkt.pversion = 0xff00001d  #version 29
+    if final_version = 0x00000000 {
+        #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
+        #require pkt.long -> pkt.pversion = 0xff000020  #version 32
+        #require pkt.long -> pkt.pversion = 0xff00001e  #version 30
+        require pkt.long -> pkt.pversion = initial_version  #version 30
+    } else {
+        require pkt.long -> pkt.pversion = final_version
+    };
 }
 
 # The protocol specification describes all the events occurring the
@@ -248,14 +264,19 @@ after init {
 around client_send_event {
     require s = current_stream;
     var tp := trans_params(the_cid);
-    if ~disable_active_migration.is_set(tp) {
-	 if ~migration_done | allowed_multiple_migration  { #only one migration
-        	 require src = client.ep | src = client_alt;
-	 } else {
-		 require src = client_alt;
-	 }
+
+    if version_negociated {
+        require src = client_vn;
     } else {
-	require src = client.ep;
+        if ~disable_active_migration.is_set(tp) {
+            if ~migration_done | allowed_multiple_migration  { #only one migration
+                require src = client.ep | src = client_alt;
+            } else {
+                require src = client_alt;
+            }
+        } else {
+            require src = client.ep;
+        }
     };
 
     require dst = server.ep;

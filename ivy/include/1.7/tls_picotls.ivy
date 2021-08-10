@@ -599,10 +599,10 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         <<< impure
         //std::cerr << "decrypt_aead start " << "\n";
         //std::cerr << "decrypt_aead ad " << ad.size() <<  "\n";
-	picotls_connection *s = `cid_map`[c];
+	    picotls_connection *s = `cid_map`[c];
         ptls_aead_context_t *aead = (ptls_aead_context_t *)(s->crypto_context[l].aead_decrypt);
         //std::cerr << "aead == " << aead << "\n";
-	if(aead != 0) {
+	    if(aead != 0) {
 		uint32_t checksum_length = aead->algo->tag_size;
 		//std::cerr << "checksum_length == " << checksum_length << "\n";
 		std::vector<uint8_t> bytes;
