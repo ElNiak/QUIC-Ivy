@@ -181,6 +181,12 @@ function trans_params(C:cid) : trans_params_struct
 relation connected(C:cid)
 function cid_to_aid(C:cid) : cid 
 relation cid_mapped(C:cid)
+
+#chris
+function cid_to_token(C:cid) : stream_data 
+relation cid_mapped_token(C:cid)
+#chris
+
 function seqnum_to_cid (D : cid,S : cid_seq) : cid
 #Hamid
 function max_seq_num(C:cid) : cid_seq
@@ -479,6 +485,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         #if retry_send(dcid) {
         #    require pkt.token = retry_token(dcid);
         #}
+        # cid_mapped_token(dcid) := 
+        cid_to_token(dcid) := pkt.token;
     };
 
     conn_seen(scid) := true;  # [1]

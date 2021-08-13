@@ -134,6 +134,20 @@ action tls_client_version_request(src:ip.endpoint,dst:ip.endpoint)
 
 action tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,ppkt:stream_data)
 
+#
+# Client Retry response event
+# ============================
+#
+# This event occurs when a client transmits in retry response to
+# supported address validation. This results in the creation of a TLS instance that
+# generates the initial handshake message. TODO
+
+# - `src`: the soure endpoint
+# - `dst`: the destination endpoint
+
+action tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,ppkt:stream_data)
+
+
 # Security protocol state
 # -----------------------
 

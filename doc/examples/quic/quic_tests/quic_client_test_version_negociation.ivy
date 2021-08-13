@@ -14,6 +14,7 @@ parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4443
 parameter max_stream_data : stream_pos = 0x2000
 parameter initial_max_streams_bidi : stream_id = 10
+parameter client_port_vn : ip.port = 4986
 
 # Network setup
 # -------------
@@ -30,22 +31,30 @@ parameter initial_max_streams_bidi : stream_id = 10
 # can model migration.
 
 object endpoint_id = {
-    type this = {client, server, client_alt}
+    type this = {client, server, client_alt, client_vn}
 }
 
 # An ip endpoint for the client to migrate to.
 
 var client_alt : ip.endpoint
+var client_vn : ip.endpoint # todo useless for now
+
 
 after init {
-    client_alt := endpoint_id_addr(endpoint_id.client_alt)
+    client_alt := endpoint_id_addr(endpoint_id.client_alt);
+    client_vn := endpoint_id_addr(endpoint_id.client_vn);
 }
 
+
+# TODO configure implementation with unsupported version
+
 function version_used : version
+var server_cid  : cid  # useless for now, refactoring of shim neeeded
 
 after init {
-    the_cid := 0x1;
+    the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
     version_used := 0xff00001d;
+    server_cid := 0xb;
 }
 
 # Map test endpoint ids to the ip endpoints
@@ -214,12 +223,24 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 }
 
+relation initial_send
+var version_negociated : bool
+
+var server_scid  : cid
+var server_dcid  : cid
+
+after init {
+    initial_send :=  false;
+    version_negociated := false;
+}
+
 #
 # Restrict generation to packets from the designated client endpoints
 # to the server endpoint.
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
+        require ~negocation_of_version;
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
@@ -231,12 +252,30 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    call show_version(version_used);
     } 
     else {
+        server_scid := pkt.src_cid;
+        server_dcid := pkt.dst_cid;
 	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
 	    if pkt.long {
 	    	version_used := pkt.pversion;
 	    };
 	    call show_version(version_used);
     }
+}
+
+
+before packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
+    if _generating {
+        #require version_used ~= 0xff00001d; 
+        require negocation_of_version;
+        require client.ep.addr ~= 0;  # must have a client address to send to
+        require src = server.ep;
+        require dst = client.ep;
+        require pkt.dst_cid = client_initial_scid;
+        require pkt.src_cid = client_initial_dcid;
+        require pkt.pversion = 0x00000000;  #version 0
+        pkt.supported_version := versions_bv.empty;
+        pkt.supported_version := pkt.supported_version.append(0xff00001d);
+    } 
 }
 
 before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
@@ -446,6 +485,7 @@ export frame.crypto.handle
 export frame.path_response.handle
 export frame.handshake_done.handle
 export packet_event
+export packet_event_vn
 export client_send_event
 export tls_recv_event
 #export frame.new_connection_id.handle

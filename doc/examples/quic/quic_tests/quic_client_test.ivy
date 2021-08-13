@@ -48,10 +48,12 @@ include quic_client
 
 function dcid_initial_same : cid
 relation initial_send
+var version_negociated : bool
 
 after init {
     dcid_initial_same := 0;
     initial_send :=  false;
+    version_negociated := false;
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
@@ -65,20 +67,11 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require connected(pkt.src_cid);
     	require pkt.long -> pkt.pversion = version_used;  #version 29
 	    call show_version(version_used);
-    } 
-    else {
+    } else {
 	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
 	    if pkt.long {
 	    	version_used := pkt.pversion;
 	    };
-        #if pkt.ptype = quic_packet_type.initial {
-        #    if ~initial_send {
-        #        initial_send = true;
-        #        dcid_initial_same = pkt.dcid;
-        #    } else {
-        #        require  dcid_initial_same = pkt.dcid;
-        #    };
-        #};
 	    call show_version(version_used);
     }
 }
@@ -232,7 +225,7 @@ before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
-	require ~handshake_done_send;
+	    require ~handshake_done_send;
 	    #require tls_handshake_finished; # & ~handshake_done_send;
 	    #require ;
 	    #handshake_done_send := true; #Tricks, we should wait ack and restransmit

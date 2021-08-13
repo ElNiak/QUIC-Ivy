@@ -42,9 +42,9 @@ servers = [
 ]
 
 clients = [
-    ['picoquic',[scdir + '/picoquic','./picoquicdemo -l - -D -L -v ff00001d -a hq-29 localhost 4443']], # -b myqlog.bin -R
+    ['picoquic',[scdir + '/picoquic','./picoquicdemo -l - -D -L -v ff00001e -a hq-29 localhost 4443']], # -b myqlog.bin -R ff00001d
     ['pquic',[scdir + '/pquic','./picoquicdemo -D -L -v ff00001d localhost 4443 ']],
-    ['quant',['..',scdir + '/quant/Debug/bin/client -c false -r 20 -l /home/chris/secret.log -q /home/chris/qlog_quant -t 3600 -v 5 -e 0xff00001d https://localhost:4443/index.html']], #-c leaf_cert.pem /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -o -u -c leaf_cert.pem -c keypair.pem -a  -c false -u 
+    ['quant',['..',scdir + '/quant/Debug/bin/client -c false -r 20 -l /home/chris/secret.log -q /home/chris/qlog_quant -t 3600 -v 5 -e 0xff00001e 0xff00001d https://localhost:4443/index.html']], #-c leaf_cert.pem /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -o -u -c leaf_cert.pem -c keypair.pem -a  -c false -u 
     ['winquic',['..','true']], 
     ['minq',['..','go run '+ scdir + '/go/src/github.com/ekr/minq/bin/client/main.go ']],
     ['chromium',[scdircr + '/chromium/src','./out/Default/quic_client --host=127.0.0.1 --port=6121 --disable_certificate_verification  https://www.example.org/ --v=1 --quic_versions=h3-23']],
@@ -96,6 +96,8 @@ server_tests = [
       ['quic_client_test_limit_max_error','test_completed'],
       ['quic_server_test_max_error','test_completed'],
       ['quic_server_test_max_limit_error','test_completed'],
+      ['quic_server_test_version_negociation','test_completed'],
+      ['quic_server_test_retry','test_completed'],
       ]
     ],
 ]
@@ -125,6 +127,7 @@ client_tests = [
       ['quic_client_test_tp_unkown','test_completed'],
       ['quic_client_test_limit_max_error','test_completed'],
       ['quic_client_test_new_token_error','test_completed'],
+      ['quic_client_test_version_negociation','test_completed'],
       ]
     ],
 ]

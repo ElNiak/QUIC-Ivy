@@ -106,9 +106,9 @@ module quic_protection(tls_id,tls) = {
 	    var i : stream_pos := 0;
 	    while i < diff {
 	    	new_pyld := new_pyld.append(0x00);
-		i := i + 1
+		    i := i + 1
 	    };
-            #sample_pos := pyld.end - sample_size #MC shift vs padding ? #[*1*]
+        #sample_pos := pyld.end - sample_size #MC shift vs padding ? #[*1*]
 	    #check with mcmillan vs maxime piraux
 	    pyld := new_pyld;  #[*2*]
         };
@@ -155,7 +155,7 @@ module quic_protection(tls_id,tls) = {
             var hdr := pkt.segment(0,pnum_pos);
             hdr := hdr.set(0,byte_xor(pkt.value(0),byte0_mask));
             var pnum_len := get_pnum_len(hdr);
-	    call show_seqnum_pos(pnum_len);
+	        call show_seqnum_pos(pnum_len);
             pnum := stream_data_xor(pnum.segment(0,pnum_len),mask.segment(1,1+pnum_len));
     	    call show_seqnum_data(pnum);
             hdr := hdr.extend(pnum);
@@ -222,23 +222,23 @@ module quic_protection(tls_id,tls) = {
     # FROM quic-tracker GetPacketSample
     action get_packet_sample(header:header_info, packetByte: stream_data, pnum_pos:stream_pos,hdr_len:stream_pos,sample_size:stream_pos) 
     returns (sample: stream_data) = {
-	#var sample_length: stream_pos := 16;
-	var pn_offset : stream_pos := 0;
-	if header.hdr_long {
-		pn_offset := hdr_len - pnum_pos;
-	} else {
-		pn_offset := 1 + 8; #should be length of dcid
-	};
-	sample := packetByte;
-	var sample_offset := pn_offset + 4;
-	if sample_offset + sample_size > packetByte.end {
-	    var diff := (sample_offset + sample_size) - packetByte.end;
-	    var i : stream_pos := 0;
-	    while i < diff {
-	    	sample := sample.append(0x00);
-		i := i + 1
-	    };
-	}
+        #var sample_length: stream_pos := 16;
+        var pn_offset : stream_pos := 0;
+        if header.hdr_long {
+            pn_offset := hdr_len - pnum_pos;
+        } else {
+            pn_offset := 1 + 8; #should be length of dcid
+        };
+        sample := packetByte;
+        var sample_offset := pn_offset + 4;
+        if sample_offset + sample_size > packetByte.end {
+            var diff := (sample_offset + sample_size) - packetByte.end;
+            var i : stream_pos := 0;
+            while i < diff {
+                sample := sample.append(0x00);
+            i := i + 1
+            };
+        }
     }
     
     # This returns the header information of a packet, whether

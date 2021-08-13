@@ -2,11 +2,11 @@
 
 # a fake deserializer for quic
 
-object quic_deser_vn = {}
+object quic_deser_retry = {}
 
 <<< member
 
-    class `quic_deser_vn`;
+    class `quic_deser_retry`;
 
 >>>
 
@@ -16,8 +16,8 @@ object quic_deser_vn = {}
     //int scid_h = 8;
     //int dcid_h = 8;
 
-    class `quic_deser_vn` : public ivy_binary_deser_128 {
-    //class `quic_deser_vn` : public ivy_binary_deser {
+    class `quic_deser_retry` : public ivy_binary_deser_128 {
+    //class `quic_deser_retry` : public ivy_binary_deser {
         enum {quic_s_init,
               quic_s_type,
               quic_s_version,
@@ -43,8 +43,8 @@ object quic_deser_vn = {}
 	    bool have_scid = false;
     
     public:
-        quic_deser_vn(const std::vector<char> &inp) : ivy_binary_deser_128(inp),state(quic_s_init) {
-        //quic_deser_vn(const std::vector<char> &inp) : ivy_binary_deser(inp),state(quic_s_init) {
+        quic_deser_retry(const std::vector<char> &inp) : ivy_binary_deser_128(inp),state(quic_s_init) {
+        //quic_deser_retry(const std::vector<char> &inp) : ivy_binary_deser(inp),state(quic_s_init) {
             // pos = 42; // skip 42 bytes of IP and UDP header
             fence = 0;
         }
@@ -53,12 +53,6 @@ object quic_deser_vn = {}
             switch (state) {
                 case quic_s_init:
                 {
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    //std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
                     getn(res,1);
                     long_format = (res & 0x80) ? true : false;
                     //0x7f is 0111 1111 in binary. This means the lower 7 bits of res are significant.
@@ -71,12 +65,6 @@ object quic_deser_vn = {}
                 break;
                 case quic_s_version:
                 {
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    //std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
                     if (long_format) {
                         ivy_binary_deser_128::getn(res,4);
                         //ivy_binary_deser::getn(res,4);
@@ -88,12 +76,6 @@ object quic_deser_vn = {}
                 break;
                 case quic_s_dcid:
                 {   
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    //std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
                     if (long_format) {
                         int128_t cil;
                         //long long cil;
@@ -111,12 +93,6 @@ object quic_deser_vn = {}
                 break;
                 case quic_s_scid:
                 {
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    //std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
                     if (long_format) {
                         int128_t cil;
                         //long long cil;
@@ -136,34 +112,24 @@ object quic_deser_vn = {}
                     tls_field_bytes_map["scid"] = scil;
                     }*/
                     //std::cerr << "sourceID res " << res << std::endl;
-                    //data_remaining = 4;
+                    data_remaining = 8;
                     std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
                     std::cerr << "scid " << res << std::endl;
                     state = quic_s_supported_version;
                 }
                 break;
                 case quic_s_supported_version:
-                {   
-                    //while (pos < inp.size()) 
+                {
                     getn(res,4);
-                    //std::cerr << "version " << res << std::endl;
-                    //getn(res,4);
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    //std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
-                    //data_remaining = 8;
-                    //pos += 4;
-                    //state = quic_s_supported_version;
+                    std::cerr << "version " << res << std::endl;
+                    getn(res,4);
+                    std::cerr << "version " << res << std::endl;
+                    state = quic_s_supported_version;
                 }
-                break;
                 default: 
                 {
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "quic_deser_vn 3" << std::endl;  
-                    throw deser_err();
+                    std::cout << "quic_deser_retry 3" << std::endl;  
+                    //throw deser_err();
                 }
             }
         }
@@ -202,7 +168,7 @@ object quic_deser_vn = {}
         }
 
         virtual int open_tag(const std::vector<std::string> &tags) {
-            std::cout << "quic_deser_vn 6" << std::endl;    
+            std::cout << "quic_deser_retry 6" << std::endl;    
             throw deser_err();
         }
 
@@ -211,17 +177,16 @@ object quic_deser_vn = {}
                 // We must use/take in count the padding frame since Picoquic client sometimes send packet
                 // only with 1 padding frame which make fails the requirement saying that a 
                 // packet cannot be empty
-                //while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
-                //   pos++;  // skip padding frames
-                return (fence == 0 || pos < fence) && more(1);
-                //return pos < inp.size()-4;
+               while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
+                   pos++;  // skip padding frames
+               return (fence == 0 || pos < fence) && more(1);
             }
             if (state == quic_s_init)
                 return more(1);
 
             //if (state == quic_crypto_data)
             //    return data_remaining-- > 0;
-            std::cout << "quic_deser_vn 1" << std::endl;  
+            std::cout << "quic_deser_retry 1" << std::endl;  
             throw deser_err();
         }
 
@@ -230,8 +195,8 @@ object quic_deser_vn = {}
         }
         void close_list() {
             if (state == quic_s_supported_version) {
-                //state = quic_s_init;
-                //pos += QUIC_DESER_FAKE_CHECKSUM_LENGTH; // skip the fake checksum
+                state = quic_s_init;
+                pos += QUIC_DESER_FAKE_CHECKSUM_LENGTH; // skip the fake checksum
             }
         }
         void close_list_elem() {}
@@ -240,7 +205,7 @@ object quic_deser_vn = {}
             state = quic_s_supported_version;
         }
 
-        ~quic_deser_vn(){}
+        ~quic_deser_retry(){}
     };
 
 >>>

@@ -7,6 +7,7 @@ include quic_shim_server
 include quic_locale
 include quic_server
 
+
 # This is a simple tester for quic servers. The tester plays the role of a
 # single client, which may use multiple UDP ports.
 #
@@ -44,10 +45,9 @@ include quic_server
 # to the server endpoint.
 #
 
-#   If the version selected by the client is not acceptable to the
-#   server, the server responds with a Version Negotiation packet; see
-#   Section 17.2.1.  This includes a list of versions that the server
-#   will accept. 
+# An endpoint MUST NOT initiate
+#   connection migration before the handshake is confirmed, as defined in
+#   section 4.1.2 of [QUIC-TLS].
 
 var allowed_multiple_migration : bool
 var version_negociated : bool
@@ -56,7 +56,7 @@ var initial_version : version
 after init {
 	allowed_multiple_migration := true;
     version_negociated := false;
-    initial_version := 0xbabababa;
+    initial_version := 0xff00001d;
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
@@ -316,6 +316,8 @@ export tls_recv_event
 #export frame.connection_close.handle
 #export frame.max_stream_data.handle
 #export frame.max_data.handle
+attribute frame.crypto.handle.weight = "5"
+attribute frame.path_response.handle.weight = "5"
 
 # Final check
 #

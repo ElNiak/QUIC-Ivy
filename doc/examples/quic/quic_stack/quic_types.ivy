@@ -123,7 +123,7 @@ interpret ipv6 -> bv[16]
 # Packet type, also determines encryption keys
 
 object quic_packet_type = {
-    type this = {initial,zero_rtt,handshake,one_rtt} #, retry, version_negociation
+    type this = {initial,zero_rtt,handshake,one_rtt, version_negociation} #, retry, version_negociation
 
     # The `next` action computes the next packet type
     # according to the normal sequence.
