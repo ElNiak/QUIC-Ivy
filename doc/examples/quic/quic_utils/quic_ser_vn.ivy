@@ -16,6 +16,9 @@ object quic_ser_vn = {}
     #include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     //#include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     
+    int dcid_vn = 8;
+    int scid_vn = 0;
+
     class `quic_ser_vn` : public ivy_binary_ser_128 {
     //class `quic_ser_vn` : public ivy_binary_ser {
         enum {quic_s_init,
@@ -24,53 +27,8 @@ object quic_ser_vn = {}
 	          quic_s_scil,
               quic_s_dcid,
               quic_s_scid,
-              quic_s_retry_token_length,
-              quic_s_retry_token,
-	          quic_s_payload_length,
-              quic_s_pkt_num,
-              quic_s_payload,
-              quic_stream_id,
-              quic_stream_off,
-              quic_stream_len,
-              quic_stream_fin,
-              quic_stream_offset,
-              quic_stream_length,
-              quic_stream_data,
-              quic_crypto_offset,
-              quic_crypto_length,
-              quic_crypto_data,
-              quic_ack_largest,
-              quic_ack_delay,
-              quic_ack_block_count,
-              quic_ack_gap,
-              quic_ack_block,
-              quic_reset_stream_id,
-              quic_reset_err_code,
-              quic_reset_final_offset,
-              quic_stop_sending_id,
-              quic_stop_sending_err_code,
-              quic_connection_close_err_code,
-              quic_connection_close_frame_type,
-              quic_connection_close_reason_length,
-              quic_connection_close_reason,
-              quic_application_close_err_code,
-              quic_max_stream_data_id,
-              quic_path_challenge_data,
-              quic_new_connection_id_length,
-              quic_new_connection_id_seq_num,
-              quic_new_connection_id_retire_prior_to,
-              quic_new_connection_id_scid,
-              quic_new_connection_id_token,
-              quic_retire_connection_id_seq_num,
-              quic_handshake_done,
-              quic_padding,
-              quic_ping,
-              quic_unknow,
-              quic_ack_frequency, //seq_num
-              quic_ack_frequency_packet_tolerence,
-              quic_ack_frequency_update_max_ack_delay,
-              quic_ack_frequency_ignore_order,
-              quic_s_done} state;
+              quic_s_supported_version
+              } state;
         bool long_format;
         char hdr_type;
         int dcil;
@@ -108,256 +66,51 @@ object quic_ser_vn = {}
             break;    
             case quic_s_dcid:
             {
-                //std::cerr << "ser res dcid 1 " << res << std::endl;
-                if (long_format) {
-		    if((res != 0 && res != 1) || scid_h == 0)
-                    	setn(scid_h,1);
-		    else 
-			setn(8,1);
+                if(const char* env_p3 = std::getenv("TEST_SCIL")) {
+                    std::cout << "TEST_SCIL_VN " << env_p3 << std::endl;
+                    scid_vn = atoi(env_p3);
                 }
-		if((res != 0 && res != 1) || scid_h == 0)
-			setn(res,scid_h); //scid_h
-		else 
-			setn(res,8); 
+                std::cerr << "ser res dcid 1 " << res << std::endl;
+                std::cerr << "ser res dcid_h 1 " << scid_vn << std::endl;
+                if (long_format) {
+                    if((res != 0 && res != 1) || scid_vn == 0)
+                        setn(scid_vn,1);
+                    else 
+                        setn(8,1);
+                }
+                if((res != 0 && res != 1) || scid_vn == 0)
+                    setn(res,scid_vn); //scid_vn
+                else 
+			        setn(res,8); 
                 //std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
             case quic_s_scid:
             {
-		//std::cerr << "ser res scid_h 1 " << res << std::endl;
-                if (long_format) {
-		    if((res == 0 || res == 1) && scid_h != 0){
-                    	setn(8,1);
-		    	setn(res,8);
-		    } else {
-                    	setn(dcid_h,1);
-		    	setn(res,dcid_h);
-		    }
+                if(const char* env_p3 = std::getenv("TEST_DCIL")) {
+                    std::cout << "TEST_DCIL_VN " << env_p3 << std::endl;
+                    dcid_vn = atoi(env_p3);
                 }
-		//std::cerr << "ser res scid_h 1 " << res << std::endl;
-                state = quic_s_retry_token_length;
+		        std::cerr << "ser res scid_h 1 " << res << std::endl;
+                if (long_format) {
+                    if((res == 0 || res == 1) && scid_vn != 0){
+                        setn(8,1);
+                        setn(res,8);
+                    } else {
+                        setn(dcid_vn,1);
+                        setn(res,dcid_vn);
+                    }
+                }
+		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+                state = quic_s_supported_version;
             }
             break;
-            case quic_s_pkt_num:
+            case quic_s_supported_version:
             {
-                set_pkt_num(res);
-                state = quic_s_payload;
-            }
-            break;
-            case quic_stream_off:
-            {
-                frame_type |= res ? 0x04 : 0;
-                state = quic_stream_len;
-            }
-            break;
-            case quic_stream_len:
-            {
-                frame_type |= res ? 0x02 : 0;
-                state = quic_stream_fin;
-            }
-            break;
-            case quic_stream_fin:
-            {
-                frame_type |= res ? 0x01 : 0;
-		        setn(frame_type,1);
-                state = quic_stream_id;
-            }
-            break;
-            case quic_stream_id:
-            {
-                set_var_int(res);
-                state = quic_stream_offset;
-            }
-            break;
-            case quic_stream_offset:
-            {
-                if (0x04 & frame_type)
-                    set_var_int(res);
-                state = quic_stream_length;
-            }
-            break;
-            case quic_stream_length:
-            {
-                if (0x02 & frame_type)
-                    set_var_int(res);
-                data_remaining = res;
-                state = quic_stream_data;
-            }
-            break;
-            case quic_crypto_offset:
-            {
-                set_var_int(res);
-                state = quic_crypto_length;
-            }
-            break;
-            case quic_crypto_length:
-            {
-                set_var_int(res);
-                data_remaining = res;
-                state = quic_crypto_data;
-            }
-            break;
-            case quic_stream_data:
-            case quic_crypto_data:
-            case quic_connection_close_reason:
-            case quic_path_challenge_data:
-            case quic_padding:
-            case quic_ping:
-            case quic_unknow:
-            case quic_handshake_done: // TODO
-            case quic_ack_frequency: //TODO
-            /*{
-                set_var_int(res);
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
-                state = quic_ack_frequency_packet_tolerence;
-            }
-            break;
-            case quic_ack_frequency_packet_tolerence:
-            {
-                set_var_int(res);
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
-                state = quic_ack_frequency_update_max_ack_delay;
-            }
-            break;
-            case quic_ack_frequency_update_max_ack_delay: 
-            {
-                set_var_int(res);
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
-                state = quic_ack_frequency_ignore_order;
-            }
-            break;
-            case quic_ack_frequency_ignore_order: 
-            {
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
-                setn(res,1);
-            }
-            break;*/
-            case quic_s_retry_token:
-            {
-                setn(res,1);
-            }
-            break;
-            case quic_ack_largest:
-            {
-                set_var_int(res);
-                state = quic_ack_delay;
-            }
-            break;
-            case quic_ack_delay:
-            {
-                set_var_int(res);
-                state = quic_ack_block_count;
-            }
-            break;
-            case quic_ack_gap:
-            {
-                if (ack_block_count == 0)
-                    {} // first ack block has no gap
-                else
-                    set_var_int(res);
-                state = quic_ack_block;
-            }
-            break;
-            case quic_ack_block:
-            {
-                set_var_int(res);
-                state = quic_ack_gap;
-                ack_block_count++;
-            }
-            break;
-            case quic_reset_stream_id:
-            {
-                set_var_int(res);
-                state = quic_reset_err_code;
-            }
-            break;
-            case quic_reset_err_code:
-            {
-                set_var_int(res);
-                state = quic_reset_final_offset;
-            }
-            break;
-            case quic_reset_final_offset:
-            {
-                set_var_int(res);
-            }
-            break;
-            case quic_stop_sending_id:
-            {
-                set_var_int(res);
-                state = quic_stop_sending_err_code;
-            }
-            break;
-            case quic_stop_sending_err_code:
-            {
-                set_var_int(res);
-            }
-            break;
-            case quic_connection_close_err_code:
-            {
-                set_var_int(res);
-                state = quic_connection_close_frame_type;
-            }
-            break;
-            case quic_connection_close_frame_type:
-            {
-                set_var_int(res);
-                state = quic_connection_close_reason_length;
-            }
-            break;
-            case quic_connection_close_reason_length:
-            {
-                set_var_int(res);
-                data_remaining = res;
-                state = quic_connection_close_reason;
-            }
-            break;
-            case quic_application_close_err_code:
-            {
-                set_var_int(res);
-                state = quic_connection_close_reason_length;
-            }
-            break;
-            case quic_max_stream_data_id:
-            {
-                set_var_int(res);
-                state = quic_reset_final_offset;
-            }
-            break;
-            case quic_new_connection_id_length:
-            {
-                setn(res,1);
-                scil = res;
-                state = quic_new_connection_id_scid;
-            }
-            break;
-            case quic_new_connection_id_seq_num:
-            {
-                set_var_int(res);
-                state = quic_new_connection_id_retire_prior_to;
-            }
-            break;
-            case quic_new_connection_id_retire_prior_to:
-            {
-                set_var_int(res);
-                state = quic_new_connection_id_length;
-            }
-            break;
-            case quic_new_connection_id_scid:
-            {
-                setn(res,scil);
-                state = quic_new_connection_id_token;
-            }
-            break;
-            case quic_new_connection_id_token:
-            {
-                setn(res,16);
-            }
-            break;
-            case quic_retire_connection_id_seq_num:
-            {
-                set_var_int(res);
+		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+                //TODO only work with 1 version for now
+                setn(res,4);
             }
             break;
             default:
@@ -384,109 +137,6 @@ object quic_ser_vn = {}
         }
 
         virtual void open_tag(int tag, const std::string &) {
-            if (state == quic_s_payload) {
-                int sz = 1;
-                if (tag == 6) {
-		            frame_type = 0x08;
-                    state = quic_stream_off;
-                    return;
-                }
-                if (tag == 1) {
-                    state = quic_ack_largest;
-                    frame_type = 0x02;
-                }
-                else if (tag == 2) {
-                    state = quic_reset_stream_id;
-                    frame_type = 0x04;
-                }
-                else if (tag == 9) {
-                    state = quic_reset_stream_id; // max_stream_id state equivalent to this
-                    frame_type = 0x12;
-                }
-                else if (tag == 17) {
-                    state = quic_connection_close_err_code;
-                    frame_type = 0x1c;
-                }
-                else if (tag == 8) {
-                    state = quic_max_stream_data_id;
-                    frame_type = 0x11;
-                }
-                else if (tag == 12) {
-                    state = quic_reset_final_offset;
-                    frame_type = 0x16;
-                }
-                else if (tag == 4) {
-                    frame_type = 0x06;
-                    state = quic_crypto_offset;
-                }
-                else if (tag == 0) {
-                    frame_type = 0x01;
-                    state = quic_ping;
-                }
-                else if (tag == 18) {
-                    frame_type = 0x1d;
-                    state = quic_application_close_err_code;
-                }
-                else if (tag == 13) {
-                    frame_type = 0x18;
-                    state = quic_new_connection_id_seq_num;
-                }
-                else if (tag == 15) {
-                    frame_type = 0x1a;
-                    state = quic_path_challenge_data;
-                }
-                else if (tag == 16) {
-                    frame_type = 0x1b;
-                    state = quic_path_challenge_data;
-                }
-                else if (tag == 5) {
-                    frame_type = 0x07;
-                    state = quic_crypto_length;  // new token equivalent to this
-                }
-                else if (tag == 7) {
-                    frame_type = 0x10;  // max_data
-                    state = quic_reset_final_offset;
-                }
-                else if (tag == 11) {
-                    state = quic_max_stream_data_id;
-                    frame_type = 0x15;
-                }
-                else if (tag == 3) {
-                    state = quic_stop_sending_id;
-                    frame_type = 0x05;
-                }
-                else if (tag == 10) {
-                    state = quic_reset_final_offset;
-                    frame_type = 0x14;
-                }
-                else if (tag == 14) {
-                    state = quic_retire_connection_id_seq_num;
-                    frame_type = 0x19;
-                }
-                else if (tag == 19) {
-                    state = quic_handshake_done;
-                    frame_type = 0x1e;
-                }
-                /*else if (tag == 20) {
-                    state = quic_padding;
-                    frame_type = 0x00;
-                }*/
-                else if (tag == 20) {
-                    state = quic_ack_frequency;
-                    frame_type = 0x40AF; // 0100 0000 AF
-                    sz = 2;
-                }
-                else if (tag == 21) {
-                    state = quic_unknow;
-                    frame_type = 0x4042; 
-                    sz = 2;                }
-	            else {
-                    std::cout << "saw frame tag " << tag << std::endl;  
-                    throw deser_err();
-	            }
-                setn(frame_type,sz);
-                return;
-            }
             std::cout << "quic_ser_vn 1" << std::endl;  
             throw deser_err();
         }
@@ -495,49 +145,18 @@ object quic_ser_vn = {}
         }
 
         void open_list(int len) {
-	        ack_blocks_expected = len;
-            if (state == quic_ack_block_count) {
-                set_var_int(ack_blocks_expected - 1); // block count doesn't include first
-                ack_block_count = 0;
-                state = quic_ack_gap;
-            } else if (state == quic_s_retry_token_length) {
-                if (long_format & ((hdr_type & 0x30) == 0x00)) {
-                    set_var_int(len);
-                    data_remaining = len;
-                }
-                state = quic_s_retry_token;
-            }
+	        
         }
         void close_list() {
-            if (state == quic_s_payload) {
-                if (long_format && (hdr_type & 0x30) == 0x00)
+            /*if (state ==  quic_s_supported_version) {
                     while (res.size() < 1200)
-                        res.push_back(0);  // pad initial packet to 1200 bytes
-		/*else if ((hdr_type & 0x30) == 0x20){
-                    while (res.size() < 2000)
-                        res.push_back(0);  // pad initial packet to 1200 bytes
-		}*/
-                for(unsigned i = 0; i < 16; i++)
-                    res.push_back(0);
-                if (long_format) {
-                    int len = res.size() - (payload_length_pos+2) ;
-                    res[payload_length_pos] = 0x40 | ((len >> 8) & 0x3f);
-                    res[payload_length_pos+1] = len & 0xff;
-                    state = quic_s_init;
-                }
-            }
-            else if (state == quic_s_retry_token) {
-                payload_length_pos = this->res.size();
-                if (long_format) {
-                    setn(0,2);  // will fill in correct value later
-                }
-                state = quic_s_pkt_num;
-            }
+                        res.push_back(0);  // pad version_negociation packet to 1200 bytes
+            }*/
         }
         void close_list_elem() {}
 
         virtual void close_tag() {
-            state = quic_s_payload;
+            state = quic_s_supported_version;
         }
 
         ~quic_ser_vn(){}

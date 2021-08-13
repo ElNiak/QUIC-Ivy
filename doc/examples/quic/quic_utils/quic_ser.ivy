@@ -110,32 +110,32 @@ object quic_ser = {}
             {
                 //std::cerr << "ser res dcid 1 " << res << std::endl;
                 if (long_format) {
-		    if((res != 0 && res != 1) || scid_h == 0)
-                    	setn(scid_h,1);
-		    else 
-			setn(8,1);
+                    if((res != 0 && res != 1) || scid_h == 0)
+                        setn(scid_h,1);
+                    else 
+                        setn(8,1);
                 }
-		if((res != 0 && res != 1) || scid_h == 0)
-			setn(res,scid_h); //scid_h
-		else 
-			setn(res,8); 
+                if((res != 0 && res != 1) || scid_h == 0)
+                    setn(res,scid_h); //scid_h
+                else 
+                    setn(res,8); 
                 //std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
             case quic_s_scid:
             {
-		//std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 if (long_format) {
-		    if((res == 0 || res == 1) && scid_h != 0){
-                    	setn(8,1);
-		    	setn(res,8);
-		    } else {
+                    if((res == 0 || res == 1) && scid_h != 0){
+                        setn(8,1);
+                        setn(res,8);
+                    } else {
                     	setn(dcid_h,1);
-		    	setn(res,dcid_h);
-		    }
+		    	        setn(res,dcid_h);
+		            }
                 }
-		//std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token_length;
             }
             break;
@@ -513,10 +513,10 @@ object quic_ser = {}
                 if (long_format && (hdr_type & 0x30) == 0x00)
                     while (res.size() < 1200)
                         res.push_back(0);  // pad initial packet to 1200 bytes
-		/*else if ((hdr_type & 0x30) == 0x20){
-                    while (res.size() < 2000)
-                        res.push_back(0);  // pad initial packet to 1200 bytes
-		}*/
+                /*else if ((hdr_type & 0x30) == 0x20){
+                            while (res.size() < 2000)
+                                res.push_back(0);  // pad initial packet to 1200 bytes
+                }*/
                 for(unsigned i = 0; i < 16; i++)
                     res.push_back(0);
                 if (long_format) {

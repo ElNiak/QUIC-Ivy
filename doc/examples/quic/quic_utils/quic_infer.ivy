@@ -82,9 +82,9 @@ action infer_tls_events_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) =
 
     # On short headers, the scid is not given, so we use the recorded value
 
-    if ~pkt.long {
-        scid := connected_to(dcid)
-    };
+    #if ~pkt.long {
+    #    scid := connected_to(dcid)
+    #};
 
     # If this is an initial client request, we infer the nonce choice
 
@@ -101,9 +101,9 @@ action infer_tls_events_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) =
     call tls_keys_established_event(scid,e);
 
     # Infer an app_server_open_event.
-    if conn_requested(dst,src,dcid) & ~connected(dcid) & ~connected(scid) {
-        call app_server_open_event(src,dst,scid,dcid);
-    };
+    #if conn_requested(dst,src,dcid) & ~connected(dcid) & ~connected(scid) {
+    #    call app_server_open_event(src,dst,scid,dcid);
+    #};
 
     #var idx := pkt.payload.begin;
     #while idx < pkt.payload.end {

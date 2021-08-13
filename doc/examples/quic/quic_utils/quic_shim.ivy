@@ -51,11 +51,6 @@ include quic_locale
 # This is not necessarily a protocol error, as an undecryptable
 # packet may be a stateless reset.
 
-instance index : unbounded_sequence
-instance versions : array(index,stream_data)
-interpret version -> bv[32]
-instance versions_bv : array(index,version)
-
 function last_packet_type : quic_packet_type
 function last_packet_length : stream_pos
 var supported_versions : versions
@@ -94,10 +89,6 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var typ : type_bits  := bfe[7][8](ppkt.value(0));
         # var h : header_info := get_header_info(ppkt,true);
         var version := ppkt.segment(1,1+4);
-        if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 {
-            # for client test
-            call tls_client_initial_response(src,dst,ppkt)
-        };
         call show_type(src,dst,ppkt.value(0));
         call show_type(src,dst,bfe[7][8](ppkt.value(0)));
         call show_typed(src,dst,version);
@@ -113,8 +104,12 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         #var rnum := reference_pkt_num(ppkt,true);
         #if is_pad { #is_pad | is_rand_pad
         #    call padding_packet_event(src,dst,ppkt);
-        #  } 
+        #} 
 	    else { 
+            if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 {
+                # for client test
+                call tls_client_initial_response(src,dst,ppkt)
+            };
             var rnum := reference_pkt_num(ppkt,true);
             var res := prot.decrypt(tls_id,rnum,ppkt);
             if res.ok {
@@ -307,12 +302,14 @@ function client_initial_dcid_size : stream_pos
 function client_initial_version : version
 
 relation client_present_scid
+relation negocation_of_version
 
 
 after init {
     initial_keys_set := false;
     tp_client_set := false;
     client_present_scid := false;
+    negocation_of_version:=  false;
 }
 
 after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
@@ -354,12 +351,13 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
     call show_version(client_initial_version);
 
-    if ~initial_keys_set {
+    if client_initial_version ~= 0xff00001d {
+        negocation_of_version := true;
+    } else if ~initial_keys_set {
         #TODO check value
         var lens := spkt.value(5);
         var dcil : stream_pos := bfe[0][7](spkt.value(5));
         var ikm := spkt.segment(6,6+dcil); # dcid
-
         var salt : stream_data := stream_data.empty;
         
         #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
@@ -384,10 +382,9 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
             salt := salt.append(0xf9);
             salt := salt.append(0xf5);
             salt := salt.append(0x02);
-        };
-
+        }
         #0xaf bf ec 28 99 93 d2 4c 9e 97 86 f1 9c 61 11 e0 43 90 a8 99 QUIC-29
-        if client_initial_version = 0xff00001d   {
+        else if client_initial_version = 0xff00001d   {
             salt := salt.append(0xaf);
             salt := salt.append(0xbf);
             salt := salt.append(0xec);
@@ -409,7 +406,6 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
             salt := salt.append(0xa8);
             salt := salt.append(0x99);
         };
-
         call tls_api.upper.set_initial_keys(0,salt,ikm);
         initial_keys_set := true;
     }
@@ -503,17 +499,17 @@ after tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         call tls_client_initial_request(src,client_vn,server_cid,final_version);
     };
 
-    #var rnum := reference_pkt_num(spkt,true);
-    #var res := prot.decrypt(tls_id,rnum,spkt);
-    #var pkt := pkt_serdes_vn.from_bytes(spkt);
+    var pkt := pkt_serdes_vn.from_bytes(spkt);
+    pkt.ptype := quic_packet_type.version_negociation;
     call recv_vn_packet(src,dst,spkt);
-    #call infer_tls_events_vn(src,dst,pkt);   # infer any TLS events on server side
-    #call packet_event_vn(src,dst,pkt);       # also an inferred event
+    call recv_vn_pkt(src,dst,pkt);
+    call packet_event_vn(src,dst,pkt);       # also an inferred event
 }
 
 import action recv_vn_packet(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data)
 import action recv_vn_packet_nn(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data)
 import action recv_vn_packet_v(src:ip.endpoint,dst:ip.endpoint,spkt: version)
+import action recv_vn_pkt(src:ip.endpoint,dst:ip.endpoint,spkt: quic_packet_vn)
 
 
 # Procedures
