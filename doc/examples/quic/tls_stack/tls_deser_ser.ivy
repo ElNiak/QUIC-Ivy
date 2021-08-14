@@ -82,7 +82,7 @@ object tls_ser_server = {}
 
         virtual int open_tag(const std::vector<std::string> &tags) {
             //std::cout << std::endl; 
-	    //std::cout << "open_tag : " << tags << std::endl;  
+	        //std::cout << "open_tag : " << tags << std::endl;  
             int bytes = 1;
             if (tls_tag_bytes_map.find(tags[0]) != tls_tag_bytes_map.end())   {
                 bytes = tls_tag_bytes_map[tags[0]];
@@ -97,7 +97,7 @@ object tls_ser_server = {}
             getn(tag,bytes);
             std::cout << "tag v1: " << tag << std::endl;  
 
-	    u_int tag_int = (u_int) tag;  //TODO change could be dangerous
+	        u_int tag_int = (u_int) tag;  //TODO change could be dangerous
             int tag_size = (tag_int >> 6) & ((1 << 2) -1);
             if(tag_size == 0) {
                 tag_size = 1;
@@ -121,11 +121,11 @@ object tls_ser_server = {}
             std::cout <<  "tags[0]: " <<  tags[0] << std::endl;
 
             int128_t value_size = 0;
-	    //long long value_size = 0;
+	        //long long value_size = 0;
 
             if(((tag_size != bytes || is_unknow || tag == 0x1010 || tag == 0x0f || tag == 0x00 || tag == 0x0d) 
-		 && tags[0] != "tls.unknown_extension" && tags[0] != "tls.client_hello"
-		 && tags[0] != "tls.server_hello")) { //|| tag == 0x0d
+		            && tags[0] != "tls.unknown_extension" && tags[0] != "tls.client_hello"
+		            && tags[0] != "tls.server_hello")) { //|| tag == 0x0d
                 tls_tag_bytes_map["unknown_transport_parameter"] = tag_size;
                 pos -= bytes;
 
@@ -144,7 +144,7 @@ object tls_ser_server = {}
                     tls_field_bytes_map["scid"] = value_size;
                 }
                 else if(tag == 0x0d) {
-		    int128_t pcil = value_size - 4 - 2 -16 - 2 - 1 - 16;
+		            int128_t pcil = value_size - 4 - 2 -16 - 2 - 1 - 16;
                     //std::cout << "pcil: " << pcil << std::endl;     
                     //std::cout << "pref_add: " << (pcil+4+2+16+2+1+16) << std::endl;   
                     tls_field_bytes_map["pcid"] = pcil;

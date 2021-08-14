@@ -186,16 +186,15 @@ after init {
 
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsdbl : initial_max_stream_data_bidi_local;
-    imsdbl.stream_pos_32 := max_stream_data;
+    imsdbl.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var imd : initial_max_data;
-    imd.stream_pos_32 := random_stream_pos(0,0xFFFFFFF);
+    imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var it : max_idle_timeout;
     it.seconds_16 := random_microsecs(0,0xFFFFFFF);
     var imsdbr : initial_max_stream_data_bidi_remote;
-    imsdbr.stream_pos_32 := max_stream_data;
+    imsdbr.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var imsdu : initial_max_stream_data_uni;
     imsdu.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
-
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
     tp.transport_parameters := tp.transport_parameters.append(it);
@@ -207,20 +206,15 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsib : initial_max_stream_id_bidi;
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
-
+    
+    #if client_present_scid {
     var icid : initial_source_connection_id; #update v29
     icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
+    #};
     var odci : original_destination_connection_id; #update v29
     odci.dcid := client_initial_dcid;
     tp.transport_parameters := tp.transport_parameters.append(odci);
-
-    # An endpoint MUST NOT send a parameter more than once in a given
-    # transport parameters extension.  An endpoint SHOULD treat receipt of
-    # duplicate transport parameters as a connection error of type
-    # TRANSPORT_PARAMETER_ERROR.
-
-    tp.transport_parameters := tp.transport_parameters.append(imsib);
 }
 
 relation initial_send
@@ -497,7 +491,7 @@ export tls_recv_event
 
 attribute radix=16       # print in hex
 
-interpret cid -> longbv[1][13][3]
+interpret cid -> longbv[1][13][5]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
@@ -539,7 +533,7 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 
 export action _finalize = {
     # chris TODO 
-    require is_transport_parameter_error | ~handshake_done_send;
+    require conn_total_data(the_cid) > 0;
 }
 
 

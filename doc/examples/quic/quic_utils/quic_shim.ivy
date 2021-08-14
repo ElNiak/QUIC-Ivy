@@ -330,54 +330,59 @@ after init {
 
 after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
     client.ep := src; # TODO: migration?
-    if ~tp_client_set {
-	    var ver := bytes_to_version(spkt.segment(1,5));
-        var lens := spkt.value(5);
-        var dcil : stream_pos := bfe[0][7](spkt.value(5));
-        var ikm := cid_to_bytes(0,1); # dcid
-	    if(~dcil = 0) {
-	        ikm := spkt.segment(6,6+dcil); # dcid
-        };
-        var lenss := spkt.value(6+dcil);
-        var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
-        var skm := cid_to_bytes(0,1); # scid
-        if(~scil = 0) {
-		    client_present_scid := true;	
-	        skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
-        };
+    
+	var ver := bytes_to_version(spkt.segment(1,5));
+    var lens := spkt.value(5);
+    var dcil : stream_pos := bfe[0][7](spkt.value(5));
+    var ikm := cid_to_bytes(0,1); # dcid
+	if(~dcil = 0) {
+	    ikm := spkt.segment(6,6+dcil); # dcid
+    };
+    var lenss := spkt.value(6+dcil);
+    var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
+    var skm := cid_to_bytes(0,1); # scid
+    if(~scil = 0) {
+		client_present_scid := true;	
+	    skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
+    };
 
-        #  When an Initial packet is sent by a client that has not previously
-        #    received an Initial or Retry packet from the server, the client
-        #    populates the Destination Connection ID field with an unpredictable
-        #    value.  This Destination Connection ID MUST be at least 8 bytes in
-        #    length
-        require dcil >= 8;
+    #  When an Initial packet is sent by a client that has not previously
+    #    received an Initial or Retry packet from the server, the client
+    #    populates the Destination Connection ID field with an unpredictable
+    #    value.  This Destination Connection ID MUST be at least 8 bytes in
+    #    length
+    require dcil >= 8;
 
-        client_initial_dcid := bytes_to_cid(ikm);
-        client_initial_scid := bytes_to_cid(skm); # skm
+    client_initial_dcid := bytes_to_cid(ikm);
+    client_initial_scid := bytes_to_cid(skm); # skm
+
+    if ~tp_client_set 
+        | negocation_of_version {
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
 	    call export_length_cid_extension(dcil,scil);
         call tls_api.upper.create(0,true,extns);  
         # 'true' means this instance of tls is a server
         tp_client_set := true;
-	    client_initial_version := ver;
-    };
+	}; 
 
-
+    client_initial_version := ver;
     call show_version(client_initial_version);
 
     if client_initial_version ~= 0xff00001d {
         negocation_of_version := true;
-    } else if ~initial_keys_set {
+    } else  if ~initial_keys_set 
+        | negocation_of_version { # if ~initial_keys_set
         #TODO check value
-        var lens := spkt.value(5);
-        var dcil : stream_pos := bfe[0][7](spkt.value(5));
-        var ikm := spkt.segment(6,6+dcil); # dcid
+        negocation_of_version := false;
+        #var lens := spkt.value(5);
+        #var dcil : stream_pos := bfe[0][7](spkt.value(5));
+        #var ikm := spkt.segment(6,6+dcil); # dcid
         var salt : stream_data := stream_data.empty;
         
         #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
-	    if client_initial_version = 0xfaceb002 | client_initial_version = 0xff00001b {
+	    if client_initial_version = 0xfaceb002 
+         | client_initial_version = 0xff00001b {
             salt := salt.append(0xc3);
             salt := salt.append(0xee);
             salt := salt.append(0xf7);

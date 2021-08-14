@@ -213,8 +213,8 @@ object quic_deser_vn = {}
                 // packet cannot be empty
                 //while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
                 //   pos++;  // skip padding frames
-                return (fence == 0 || pos < fence) && more(1);
-                //return pos < inp.size()-4;
+                //return (fence == 0 || pos < fence) && more(1);
+                return pos < inp.size()-4;
             }
             if (state == quic_s_init)
                 return more(1);

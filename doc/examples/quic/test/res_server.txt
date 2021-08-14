@@ -1,40 +1,40 @@
-between random: 70979871
-between random: 70979867
-between random: 70979871
-between random: 57867
+between random: 256549304
+between random: 256549302
+between random: 256549304
+between random: 7910
 state 0
-res 1734656357210135387229091342719840
+res 1738064451237146204948039267678560
 pos 0
 fence 0
-inp.size 25
+inp.size 24
 state 2
-res 140926127500693247523685827745931067400
+res -15639957570425559239582451447871045624
 pos 1
 fence 0
-inp.size 25
+inp.size 24
 state 5
 res 0
 pos 5
 fence 0
-inp.size 25
+inp.size 24
 state 6
 res 0
 pos 14
 fence 0
-inp.size 25
-sourceID data_remaining 1929908504
+inp.size 24
+sourceID data_remaining 1995546952
 scid 2
-between random: 70979871
-between random: 70979867
-between random: 70979871
-between random: 57867
+between random: 256549304
+between random: 256549302
+between random: 256549304
+between random: 7910
 state 0
-res 1734656357210135387229091342719840
+res 1738064451237146204948039267678560
 pos 0
 fence 0
 inp.size 71
 state 2
-res 140926127500693247523685827745931067400
+res -15639957570425559239582451447871045624
 pos 1
 fence 0
 inp.size 71
@@ -48,7 +48,7 @@ res 0
 pos 14
 fence 0
 inp.size 71
-sourceID data_remaining 1929908504
+sourceID data_remaining 1995546952
 scid 2
 state 7
 res 1
@@ -105,12 +105,12 @@ res 1346588976
 pos 67
 fence 0
 inp.size 71
-output directory: temp/181
+output directory: temp/253
 implementation directory: /home/chris/TVOQE_UPGRADE_27/quic/picoquic
 implementation command: ./picoquicdemo -l - -D -L -q /home/chris/qlog_picoquic
 ../quic_server_test_version_negociation (0) ...
 implementation command: ['./picoquicdemo', '-l', '-', '-D', '-L', '-q', '/home/chris/qlog_picoquic']
-quic_process pid: 17749
-timeout 100 ./build/quic_server_test_version_negociation seed=122 the_cid=0 server_cid=1 client_port=4987 client_port_alt=4988
+quic_process pid: 31013
+timeout 100 ./build/quic_server_test_version_negociation seed=432 the_cid=0 server_cid=1 client_port=4987 client_port_alt=4988
 PASS
 OK
