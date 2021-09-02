@@ -25,7 +25,8 @@ object quic_deser_retry = {}
 	          quic_s_scil,
               quic_s_dcid,
               quic_s_scid,
-              quic_s_supported_version
+              quic_s_retry_token,
+              quic_s_retry_integrity_tag
             } state;
         bool long_format;
         char hdr_type;
@@ -61,6 +62,7 @@ object quic_deser_retry = {}
                     //This is then shifted by 4 so that only the original 0xxx 0000 (3) bits are significant.
                     res = long_format ? ((hdr_type & 0x30) >> 4) : 3;
                     state = quic_s_version;
+                    std::cerr << "quic_s_init " << res << std::endl;
                 }
                 break;
                 case quic_s_version:
@@ -71,6 +73,7 @@ object quic_deser_retry = {}
                     }
                     else
                         res = 0;
+                    std::cerr << "quic_s_version " << res << std::endl;
                     state = quic_s_dcid;
                 }
                 break;
@@ -80,14 +83,14 @@ object quic_deser_retry = {}
                         int128_t cil;
                         //long long cil;
                         getn(cil,1);
-                        //std::cerr << "dstID size " << cil << std::endl;
+                        std::cerr << "dstID size " << cil << std::endl;
                         dcil = cil;
                         dcid_h = cil;
                     } else {
                         dcil = dcid_h; //dcil_long
                     }
                     getn(res,(dcil));
-                    //std::cerr << "dstID res " << res << std::endl;
+                    std::cerr << "dstID res " << res << std::endl;
                     state = quic_s_scid;
                 }
                 break;
@@ -115,21 +118,30 @@ object quic_deser_retry = {}
                     data_remaining = 8;
                     std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
                     std::cerr << "scid " << res << std::endl;
-                    state = quic_s_supported_version;
+                    state = quic_s_retry_token;
                 }
                 break;
-                case quic_s_supported_version:
+                case quic_s_retry_token:
                 {
-                    getn(res,4);
-                    std::cerr << "version " << res << std::endl;
-                    getn(res,4);
-                    std::cerr << "version " << res << std::endl;
-                    state = quic_s_supported_version;
+                    int packet_size = inp.size();
+                    std::cerr << "packet_size " << packet_size << std::endl;
+                    int token_length = packet_size - 16 - 1 - dcil - 1 - scil - 1 - 4;
+                    std::cerr << "token_length " << token_length << std::endl;
+                    getn(res,token_length);
+                    std::cerr << "token " << res << std::endl;
+                    state = quic_s_retry_integrity_tag;
                 }
+                break;
+                case quic_s_retry_integrity_tag:
+                {
+                    getn(res,16);
+                    std::cerr << "retry_integrity_tag " << res << std::endl;
+                }
+                break;
                 default: 
                 {
                     std::cout << "quic_deser_retry 3" << std::endl;  
-                    //throw deser_err();
+                    throw deser_err();
                 }
             }
         }
@@ -173,13 +185,23 @@ object quic_deser_retry = {}
         }
 
         virtual bool open_list_elem() {
-            if (state == quic_s_supported_version) {
+            if (state == quic_s_retry_token) {
                 // We must use/take in count the padding frame since Picoquic client sometimes send packet
                 // only with 1 padding frame which make fails the requirement saying that a 
                 // packet cannot be empty
-               while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
+               /*while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
                    pos++;  // skip padding frames
+                */
                return (fence == 0 || pos < fence) && more(1);
+            }
+            if (quic_s_retry_integrity_tag) {
+                // We must use/take in count the padding frame since Picoquic client sometimes send packet
+                // only with 1 padding frame which make fails the requirement saying that a 
+                // packet cannot be empty
+               /*while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
+                   pos++;  // skip padding frames
+                */
+               return false;
             }
             if (state == quic_s_init)
                 return more(1);
@@ -194,7 +216,7 @@ object quic_deser_retry = {}
 
         }
         void close_list() {
-            if (state == quic_s_supported_version) {
+            if (state == quic_s_retry_integrity_tag) {
                 state = quic_s_init;
                 pos += QUIC_DESER_FAKE_CHECKSUM_LENGTH; // skip the fake checksum
             }
@@ -202,7 +224,7 @@ object quic_deser_retry = {}
         void close_list_elem() {}
 
         virtual void close_tag() {
-            state = quic_s_supported_version;
+            state = quic_s_retry_integrity_tag;
         }
 
         ~quic_deser_retry(){}

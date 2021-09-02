@@ -24,7 +24,8 @@ object quic_ser_retry = {}
 	          quic_s_scil,
               quic_s_dcid,
               quic_s_scid,
-              quic_s_supported_version
+              quic_s_retry_token,
+              quic_s_integrity_token
               } state;
         bool long_format;
         char hdr_type;
@@ -50,7 +51,7 @@ object quic_ser_retry = {}
                 //std::cerr << "ser res init " << res << std::endl;
                 long_format = res != 3;
                 hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
-		        setn(hdr_type | (long_format ? 0x80 : 0), 1);
+		        setn(246, 1);
                 state = quic_s_version;
             }
             break;
@@ -100,14 +101,18 @@ object quic_ser_retry = {}
                     }
                 }
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
-                state = quic_s_supported_version;
+                state = quic_s_retry_token;
             }
             break;
-            case quic_s_supported_version:
+            case quic_s_retry_token:
             {
-		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
-                //TODO only work with 1 version for now
-                setn(res,4);
+                setn(res,1);
+                state = quic_s_integrity_token;
+            }
+            break;
+            case quic_s_integrity_token:
+            {
+		        setn(res,16);
             }
             break;
             default:
@@ -142,18 +147,31 @@ object quic_ser_retry = {}
         }
 
         void open_list(int len) {
-	        
+	        /*if (state == quic_s_retry_token_length) {
+                if (long_format & ((hdr_type & 0x30) == 0x00)) {
+                    set_var_int(len);
+                    data_remaining = len;
+                }
+                state = quic_s_retry_token;
+            }*/
         }
         void close_list() {
             /*if (state ==  quic_s_supported_version) {
                     while (res.size() < 1200)
                         res.push_back(0);  // pad version_negociation packet to 1200 bytes
             }*/
+            /*if (state == quic_s_retry_token) {
+                payload_length_pos = this->res.size();
+                if (long_format) {
+                    setn(0,2);  // will fill in correct value later
+                }
+                //state = quic_s_pkt_num;
+            }*/
         }
         void close_list_elem() {}
 
         virtual void close_tag() {
-            state = quic_s_supported_version;
+            state = quic_s_integrity_token;
         }
 
         ~quic_ser_retry(){}

@@ -25,7 +25,7 @@ else:
 scdir = os.environ.get('QUIC_IMPL_DIR',os.environ.get('HOME','') + '/TVOQE_UPGRADE_27/quic')
 scdircr = os.environ.get('QUIC_IMPL_DIR',os.environ.get('HOME','') + '/TVOQE_Perso/quic')
 servers = [
-    ['picoquic',[scdir+'/picoquic','./picoquicdemo -l - -D -L -q /home/chris/qlog_picoquic']], # -b myqlog.bins _pico.log
+    ['picoquic',[scdir+'/picoquic','./picoquicdemo -l - -D -L -q /home/chris/qlog_picoquic']], # -b myqlog.bins _pico.log -r
     ['pquic',[scdir+'/pquic','./picoquicdemo -l - -D -L']],
     ['quant',['..', scdir+'/quant/Debug/bin/server -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q /home/chris/qlog_quant -l /home/chris/secret.log']], # -o
     ['winquic',['..','true']],
@@ -42,9 +42,9 @@ servers = [
 ]
 
 clients = [
-    ['picoquic',[scdir + '/picoquic','./picoquicdemo -l - -D -L -a hq-29 localhost 4443']], # -b myqlog.bin -R ff00001d -v ff00001e 
+    ['picoquic',[scdir + '/picoquic','./picoquicdemo -v ff00001d -l - -D -L -a hq-29 localhost 4443']], # -b myqlog.bin -R ff00001d -v ff00001e 
     ['pquic',[scdir + '/pquic','./picoquicdemo -D -L -v ff00001d localhost 4443 ']],
-    ['quant',['..',scdir + '/quant/Debug/bin/client -c false -r 20 -l /home/chris/secret.log -q /home/chris/qlog_quant -t 3600 -v 5  https://localhost:4443/index.html']], #-c leaf_cert.pem /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -o -u -c leaf_cert.pem -c keypair.pem -a  -c false -u  -e 0xff00001d
+    ['quant',['..',scdir + '/quant/Debug/bin/client -e 0xff00001d -c false -r 20 -l /home/chris/secret.log -q /home/chris/qlog_quant -t 3600 -v 5  https://localhost:4443/index.html']], #-c leaf_cert.pem /home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -o -u -c leaf_cert.pem -c keypair.pem -a  -c false -u  -e 0xff00001d
     ['winquic',['..','true']], 
     ['minq',['..','go run '+ scdir + '/go/src/github.com/ekr/minq/bin/client/main.go ']],
     ['chromium',[scdircr + '/chromium/src','./out/Default/quic_client --host=127.0.0.1 --port=6121 --disable_certificate_verification  https://www.example.org/ --v=1 --quic_versions=h3-23']],
@@ -128,9 +128,28 @@ client_tests = [
       ['quic_client_test_limit_max_error','test_completed'],
       ['quic_client_test_new_token_error','test_completed'],
       ['quic_client_test_version_negociation','test_completed'],
+      ['quic_client_test_retry','test_completed'],
       ]
     ],
 ]
+
+output_path = None       # Output directory of tests (iev)
+iters = 100              # Number of iteration per test
+quic_name = 'winquic'    # Name of the client/server tested
+getstats = False         # Print all stats
+run = True               # For server/client's test, launch or not the server/client
+test_pattern = '*'       # Test to launch regex, * match all test
+time = 100               # Timeout
+is_client = False        # True -> client tested <=> False -> server tested
+
+# server_addr=0xc0a80101 client_addr=0xc0a80102
+# Can be added in the command to parametrize more the command line
+ivy_options = {'server_addr':None,'client_addr':None,'max_stream_data':None,'initial_max_streams_bidi':None}
+
+all_tests = []
+quic_cmd = None
+quic_dir = None
+extra_args = []
 
 import sys
 
@@ -147,100 +166,6 @@ options:
     run={{true,false}}
     """.format(sys.argv[0])
     sys.exit(1)
-
-output_path = None       # Output directory of tests (iev)
-iters = 100              # Number of iteration per test
-quic_name = 'winquic'    # Name of the client/server tested
-getstats = False         # Print all stats
-run = True               # For server/client's test, launch or not the server/client
-test_pattern = '*'       # Test to launch regex, * match all test
-time = 100               # Timeout
-is_client = False        # True -> client tested <=> False -> server tested
-
-# server_addr=0xc0a80101 client_addr=0xc0a80102
-# Can be added in the command to parametrize more the command line
-ivy_options = {'server_addr':None,'client_addr':None,'max_stream_data':None,'initial_max_streams_bidi':None}
-
-
-# Parse the arguments
-for arg in sys.argv[1:]:
-    vals = arg.split('=')
-    if len(vals) != 2:
-        usage()
-    name,val = vals
-    if name == 'dir':
-        output_path = val
-    elif name == 'iters':
-        try:
-            iters = int(val)
-        except:
-            usage()
-    elif name == 'server':
-        quic_name = val
-    elif name == 'client':
-        quic_name = val
-        is_client = True
-    elif name == 'stats':
-        if val not in ['true','false']:
-            usage()
-        getstats = val == 'true'
-    elif name == 'run':
-        if val not in ['true','false']:
-            usage()
-        run = val == 'true'
-    elif name == 'test':
-        test_pattern = val
-    elif name == 'time':
-        time = val
-    elif name in ivy_options:
-        ivy_options[name] = val
-    else:
-        usage()
-
-# If no output path specified, put the results in the temp folder 
-# of the ivy project
-if output_path is None:
-    idx = 0
-    while True:
-        path = os.path.join('temp',str(idx))
-        if not os.path.exists(path):
-            output_path = path
-            break
-        idx = idx + 1
-
-print 'output directory: {}'.format(output_path)
-
-# Check if the pattern is good, and get the regex object      
-try:
-    test_pattern_obj = re.compile(test_pattern)
-except:
-    sys.stderr.write('bad regular expression\n')
-    exit(1)
-
-#Create the output directory
-try:  
-    os.mkdir(output_path)
-except OSError:  
-    sys.stderr.write('cannot create directory "{}"\n'.format(output_path))
-    exit(1)
-
-# Put an array of eventual extra argument for the test
-extra_args = [opt_name+'='+opt_val for opt_name,opt_val in ivy_options.iteritems() if opt_val is not None]
-
-# Dict with implementation matched with corresponding command
-quic = dict(clients if is_client else servers)
-if quic_name not in quic:
-    sys.stderr.write('unknown implementation: {}\n'.format(quic_name))
-    exit(1)
-quic_dir,quic_cmd = quic[quic_name]
-
-#We have to launch the tested quic ourself
-if not run:
-    quic_cmd = 'true'
-
-print 'implementation directory: {}'.format(quic_dir)
-print 'implementation command: {}'.format(quic_cmd)
-
 
 def open_out(name):
     return open(os.path.join(output_path,name),"w")
@@ -369,39 +294,148 @@ class IvyTest(Test):
         random.seed(datetime.now())
         return ' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,self.name,randomSeed,0,'' if is_client else 'server_cid={} client_port={} client_port_alt={}'.format(1,2*test_command+4987,2*test_command+4988))] + extra_args)
 
-all_tests = []
 def get_tests(cls,arr):
     for checkd in arr:
         dir,checkl = checkd
         for check in checkl:
             all_tests.append(cls(dir,check))
 
-# Main   
-try:
-    get_tests(IvyTest,client_tests if is_client else server_tests)
+def main():
+    global output_path, is_client, run, quic_cmd, quic_dir, extra_args, getstats
+    # Parse the arguments
+    for arg in sys.argv[1:]:
+        vals = arg.split('=')
+        if len(vals) != 2:
+            usage()
+        name,val = vals
+        if name == 'dir':
+            output_path = val
+        elif name == 'iters':
+            try:
+                iters = int(val)
+            except:
+                usage()
+        elif name == 'server':
+            quic_name = val
+        elif name == 'client':
+            quic_name = val
+            is_client = True
+        elif name == 'stats':
+            if val not in ['true','false']:
+                usage()
+            getstats = val == 'true'
+        elif name == 'run':
+            if val not in ['true','false']:
+                usage()
+            run = val == 'true'
+        elif name == 'test':
+            test_pattern = val
+        elif name == 'time':
+            time = val
+        elif name in ivy_options:
+            ivy_options[name] = val
+        else:
+            usage()
 
-    num_failures = 0
-    for test in all_tests:
-        #if not test_pattern_obj.match(test.name):
-        if not test_pattern == test.name:
-            continue
-        for test_command in range(0,iters):
-            status = test.run(test_command)
-            if not status:
-                num_failures += 1
-        if getstats:
-            import stats
-            with open_out(test.name+'.dat') as out:
-                save = os.getcwd()
-                os.chdir(output_path)
-                stats.doit(test.name,out)
-                os.chdir(save)
-    if num_failures:
-        print 'error: {} tests(s) failed'.format(num_failures)
-    else:
-        print 'OK'
-except KeyboardInterrupt:
-    print 'terminated'
+    # If no output path specified, put the results in the temp folder 
+    # of the ivy project
+    if output_path is None:
+        idx = 0
+        while True:
+            path = os.path.join('temp',str(idx))
+            if not os.path.exists(path):
+                output_path = path
+                break
+            idx = idx + 1
+
+    print 'output directory: {}'.format(output_path)
+    # Check if the pattern is good, and get the regex object      
+    try:
+        test_pattern_obj = re.compile(test_pattern)
+    except:
+        sys.stderr.write('bad regular expression\n')
+        exit(1)
+
+    #Create the output directory
+    try:  
+        os.mkdir(output_path)
+    except OSError:  
+        sys.stderr.write('cannot create directory "{}"\n'.format(output_path))
+        exit(1)
+
+    # Put an array of eventual extra argument for the test
+    extra_args = [opt_name+'='+opt_val for opt_name,opt_val in ivy_options.iteritems() if opt_val is not None]
+
+    # Dict with implementation matched with corresponding command
+    quic = dict(clients if is_client else servers)
+    if quic_name not in quic:
+        sys.stderr.write('unknown implementation: {}\n'.format(quic_name))
+        exit(1)
+    quic_dir,quic_cmd = quic[quic_name]
+
+    #We have to launch the tested quic ourself
+    if not run:
+        quic_cmd = 'true'
+
+    print 'implementation directory: {}'.format(quic_dir)
+    print 'implementation command: {}'.format(quic_cmd)
+
+
+    # Main   
+    try:
+        get_tests(IvyTest,client_tests if is_client else server_tests)
+
+        num_failures = 0
+        for test in all_tests:
+            #if not test_pattern_obj.match(test.name):
+            if not test_pattern == test.name:
+                continue
+            for test_command in range(0,iters):
+
+
+		#todo refactor
+                if "quic_server_test_retry" in test.name: 
+                    if quic_name == "quant":
+                        quic_cmd = scdir+'/quant/Debug/bin/server -r -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q /home/chris/qlog_quant -l /home/chris/secret.log'
+                    elif quic_name == "picoquic":
+                        quic_cmd = './picoquicdemo -r -l - -D -L -q /home/chris/qlog_picoquic' 
+                if "quic_server_test_version_negociation" in test.name: 
+                    if quic_name == "quant":
+                        quic_cmd = scdir+'/quant/Debug/bin/server -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q /home/chris/qlog_quant -l /home/chris/secret.log'
+                    elif quic_name == "picoquic":
+                        quic_cmd = './picoquicdemo -l - -D -L -q /home/chris/qlog_picoquic' 
+
+                if "quic_client_test_retry" in test.name: #todo 
+                    if quic_name == "quant":
+                        quic_cmd = scdir + '/quant/Debug/bin/client -e 0xff00001d -c false -r 20 -l /home/chris/secret.log -q /home/chris/qlog_quant -t 3600 -v 5  https://localhost:4443/index.html'
+                    elif quic_name == "picoquic":
+                        quic_cmd = './picoquicdemo -v ff00001d -l - -D -L -a hq-29 localhost 4443' 
+                if "quic_client_test_version_negociation" in test.name:
+                    if quic_name == "quant":
+                        quic_cmd = scdir + '/quant/Debug/bin/client -c false -r 20 -l /home/chris/secret.log -q /home/chris/qlog_quant -t 3600 -v 5  https://localhost:4443/index.html'
+                    elif quic_name == "picoquic":
+                        quic_cmd = './picoquicdemo -l - -D -L -a hq-29 localhost 4443' 
+
+
+                status = test.run(test_command)
+                if not status:
+                    num_failures += 1
+            if getstats:
+                import stats
+                with open_out(test.name+'.dat') as out:
+                    save = os.getcwd()
+                    os.chdir(output_path)
+                    stats.doit(test.name,out)
+                    os.chdir(save)
+        if num_failures:
+            print 'error: {} tests(s) failed'.format(num_failures)
+        else:
+            print 'OK'
+    except KeyboardInterrupt:
+        print 'terminated'
+
+
+main()
 
 # for checkd in checks:
 #     dir,checkl = checkd

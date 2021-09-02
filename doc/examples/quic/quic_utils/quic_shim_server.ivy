@@ -54,3 +54,12 @@ after packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
         call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
     }
 }
+
+after packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) {
+    if _generating {  # & ~conn_closed(pkt.the_cid)
+        var spkt := pkt_serdes_retry.to_bytes(pkt);
+        var pkts := prot.arr.empty;
+        pkts := pkts.append(spkt);
+        call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
+    }
+}

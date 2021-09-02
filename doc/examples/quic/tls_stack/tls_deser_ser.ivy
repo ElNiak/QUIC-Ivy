@@ -149,8 +149,8 @@ object tls_ser_server = {}
                     //std::cout << "pref_add: " << (pcil+4+2+16+2+1+16) << std::endl;   
                     tls_field_bytes_map["pcid"] = pcil;
                 }
-                else if(tag == 0x1010) {
-                    tls_field_bytes_map["dcid"] = value_size;
+                else if(tag == 0x10) { // else if(tag == 0x1010) {
+                    tls_field_bytes_map["rcid"] = value_size;
                 } 
                 else {
                     tls_field_bytes_map["unknown"] = value_size;

@@ -256,16 +256,16 @@ after init {
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-	var tp := trans_params(the_cid);
-	if ~disable_active_migration.is_set(tp) {
-		if ~migration_done | allowed_multiple_migration { #only one migration
-        		require src = client.ep | src = client_alt;
-		} else {
-			require src = client_alt;
-		}
-	} else {
-		require src = client.ep;
-	};
+        var tp := trans_params(the_cid);
+        if ~disable_active_migration.is_set(tp) {
+            if ~migration_done | allowed_multiple_migration { #only one migration
+                    require src = client.ep | src = client_alt;
+            } else {
+                require src = client_alt;
+            }
+        } else {
+            require src = client.ep;
+        };
         require dst = server.ep;
         require pkt.token.end = 0; 
     };

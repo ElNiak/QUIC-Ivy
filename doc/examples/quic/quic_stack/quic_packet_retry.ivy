@@ -170,7 +170,7 @@ action packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 
 around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) {
     #call show_connected(connected(the_cid), connected_to(the_cid));
-    require pkt.token.end ~= 0 -> (pkt.ptype = quic_packet_type.initial);
+    #require pkt.token.end ~= 0 -> (pkt.ptype = quic_packet_type.retry);
 
     # TEMPORARY: Do not allow zero_rtt packets
 
@@ -200,7 +200,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     #    };
     #};
 
-    require retry_source_connection_id.is_set(trans_params(scid));
+    # require retry_source_connection_id.is_set(trans_params(dcid));
     
     # The destination cid must represent an existing connection,
     # except in the case of a client initial packet, when the
@@ -216,10 +216,10 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     # reponsive to a server FRAME. This is trick to check, however,
     # and the actual servers do not seem to check it.
 
-    require connected(dcid) |
-        pkt.ptype = quic_packet_type.initial
-        & is_client(scid)
-        & dcid = nonce_cid(scid);
+    #require connected(dcid) |
+    #    pkt.ptype = quic_packet_type.retry
+    #    & is_client(scid)
+    #    & dcid = nonce_cid(scid);
 
     # On long headers, both cids are given. If the destination cid is
     # connected, it must be connected to the source cid (otherwise it
@@ -227,12 +227,12 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     # On short headers (meaning one_rtt) the scid is not given, so we
     # use the recorded value.
 
-    if pkt.long {
-        require connected(dcid) -> connected_to(dcid) = scid;
-    }
-    else {
-        scid := connected_to(dcid);
-    };
+    #if pkt.long {
+    #    require connected(dcid) -> connected_to(dcid) = scid;
+    #}
+    #else {
+    #    scid := connected_to(dcid);
+    #};
 
     #call show_pstats(scid,pkt.ptype,pkt.seq_num);
     #call show_pstats(scid,queued_level(scid),pkt.seq_num);
@@ -240,7 +240,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     # The packet type must match the encryption level of the queued
     # frames at the source. 
 
-    require pkt.ptype = queued_level(scid);
+    # require pkt.ptype = queued_level(scid);
 
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
     # Removed for MVFST that start with big PKT_NUM
@@ -253,7 +253,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 
     # The payload may not be empty
 
-    require num_queued_frames(scid) > 0;  # [7]
+    #require num_queued_frames(scid) > 0;  # [7]
 
     # The payload must exactly match the queued frames.
 
@@ -261,18 +261,18 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 
     # TEMPORARY: don't allow client migration during handshake
 
-    require conn_seen(scid) & pkt.long & is_client(scid) -> conn_requested(src,dst,scid);
+    # require conn_seen(scid) & pkt.long & is_client(scid) -> conn_requested(src,dst,scid);
 
     # Packet must be sent to the endpoint from which the highest numbered
     # packet has been received. ~queued_challenge(dcid) & 
-    call show_probing(dcid ,hi_non_probing(dcid));
-    require  conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
+    # call show_probing(dcid ,hi_non_probing(dcid));
+    # require  conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
 
     # TEMPORARY: do not apply ack-only rule to generated packets
     # This can be removed when we have a frame queue per encryption level
 
     # call show_ack_credit(scid, ack_credit(scid), queued_ack_eliciting(scid), queued_non_ack(scid), pkt.seq_num);
-    require ~_generating & ~queued_non_ack(scid) -> ack_credit(scid) > 0;  # [5]
+    # require ~_generating & ~queued_non_ack(scid) -> ack_credit(scid) > 0;  # [5]
 
     #Hamid - This is wrong, because if there is no ack credits, it prevents from sending a packet 
     #        containing only a CONNECTION_CLOSE frame but we want to stop packets that contain only ACKs 
@@ -291,9 +291,9 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     # Make sure that a draining packet has not previously been sent and
     # that the packet contains a connection_close frame;
 
-    if conn_draining(scid) {
-        require ~draining_pkt_sent(scid) & queued_close(scid);
-    };
+    #if conn_draining(scid) {
+    #    require ~draining_pkt_sent(scid) & queued_close(scid);
+    #};
 
     ...
 

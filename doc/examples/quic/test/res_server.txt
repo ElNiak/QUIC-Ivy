@@ -1,116 +1,46 @@
-between random: 256549304
-between random: 256549302
-between random: 256549304
-between random: 7910
-state 0
-res 1738064451237146204948039267678560
-pos 0
-fence 0
-inp.size 24
-state 2
-res -15639957570425559239582451447871045624
-pos 1
-fence 0
-inp.size 24
-state 5
-res 0
-pos 5
-fence 0
-inp.size 24
-state 6
-res 0
-pos 14
-fence 0
-inp.size 24
-sourceID data_remaining 1995546952
-scid 2
-between random: 256549304
-between random: 256549302
-between random: 256549304
-between random: 7910
-state 0
-res 1738064451237146204948039267678560
-pos 0
-fence 0
-inp.size 71
-state 2
-res -15639957570425559239582451447871045624
-pos 1
-fence 0
-inp.size 71
-state 5
-res 0
-pos 5
-fence 0
-inp.size 71
-state 6
-res 0
-pos 14
-fence 0
-inp.size 71
-sourceID data_remaining 1995546952
-scid 2
-state 7
-res 1
-pos 27
-fence 0
-inp.size 71
-state 7
-res 4278190114
-pos 31
-fence 0
-inp.size 71
-state 7
-res 4278190113
-pos 35
-fence 0
-inp.size 71
-state 7
-res 4278190112
-pos 39
-fence 0
-inp.size 71
-state 7
-res 4278190111
-pos 43
-fence 0
-inp.size 71
-state 7
-res 4278190109
-pos 47
-fence 0
-inp.size 71
-state 7
-res 4278190110
-pos 51
-fence 0
-inp.size 71
-state 7
-res 4278190108
-pos 55
-fence 0
-inp.size 71
-state 7
-res 4278190107
-pos 59
-fence 0
-inp.size 71
-state 7
-res 1346588977
-pos 63
-fence 0
-inp.size 71
-state 7
-res 1346588976
-pos 67
-fence 0
-inp.size 71
-output directory: temp/253
+between random: 201800227
+between random: 201800223
+between random: 201800227
+between random: 10819
+quic_s_init 3
+quic_s_version 4278190109
+dstID size 8
+dstID res 1
+sourceID data_remaining 8
+scid 9753108607408091644
+packet_size 90
+token_length 51
+token 3221000733560154537985021843423238468
+quic_s_init 3
+between random: 201800227
+between random: 201800223
+between random: 201800227
+between random: 10819
+quic_s_init 3
+quic_s_version 4278190109
+dstID size 8
+dstID res 1
+sourceID data_remaining 8
+scid 13662655487912666983
+packet_size 75
+token_length 36
+token -157126375392796969018188620105830931288
+quic_s_init 0
+between random: 201800227
+between random: 201800223
+between random: 201800227
+between random: 10819
+terminate called after throwing an instance of 'std::bad_alloc'
+  what():  std::bad_alloc
+timeout: the monitored command dumped core
+Aborted
+output directory: temp/495
 implementation directory: /home/chris/TVOQE_UPGRADE_27/quic/picoquic
 implementation command: ./picoquicdemo -l - -D -L -q /home/chris/qlog_picoquic
-../quic_server_test_version_negociation (0) ...
-implementation command: ['./picoquicdemo', '-l', '-', '-D', '-L', '-q', '/home/chris/qlog_picoquic']
-quic_process pid: 31013
-timeout 100 ./build/quic_server_test_version_negociation seed=432 the_cid=0 server_cid=1 client_port=4987 client_port_alt=4988
-PASS
-OK
+../quic_server_test_retry (0) ...
+implementation command: ['./picoquicdemo', '-r', '-l', '-', '-D', '-L', '-q', '/home/chris/qlog_picoquic']
+quic_process pid: 6536
+timeout 100 ./build/quic_server_test_retry seed=600 the_cid=0 server_cid=1 client_port=4987 client_port_alt=4988
+client return code: 134
+FAIL
+error: 1 tests(s) failed

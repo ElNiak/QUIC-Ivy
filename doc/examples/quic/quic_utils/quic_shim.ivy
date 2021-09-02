@@ -83,6 +83,8 @@ after init {
 implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.arr) {
     var dst := socket_endpoint(host,s);  # because net API doesn't tell us the dst
     var idx := pkts.begin;
+
+    # todo put global
     var vn_version : stream_data := stream_data.empty;
     vn_version := vn_version.append(0x0);
     vn_version := vn_version.append(0x0);
@@ -95,13 +97,22 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var ppkt := pkts.value(idx);
         var tls_id := dst_tls_id(dst);
         var typ : type_bits  := bfe[7][8](ppkt.value(0));
-        var typ_retry : type_bits := bfe[0][6](ppkt.value(0));
+        var typ_retry : type_bits := bfe[4][5](ppkt.value(0)); # bfe[5][6](ppkt.value(0));
         # var h : header_info := get_header_info(ppkt,true);
         var version := ppkt.segment(1,1+4);
-        call show_type(src,dst,ppkt.value(0));
-        call show_type(src,dst,bfe[7][8](ppkt.value(0)));
+        # call show_type(src,dst,ppkt.value(0));
+        # call show_type(src,dst,bfe[7][8](ppkt.value(0)));
         call show_typed(src,dst,version);
-        if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 {
+
+        # call show_typp(src,dst,typ);
+        # call show_typp(src,dst,typ_retry);
+        # call show_typp(src,dst,bfe[6][7](ppkt.value(0)));
+        # call show_typp(src,dst,bfe[6][8](ppkt.value(0)));
+        call show_typp(src,dst,bfe[4][5](ppkt.value(0)));
+        call show_typp(src,dst,bfe[4][7](ppkt.value(0)));
+
+        if host = endpoint_id.server 
+                & bvand(ppkt.value(0),0xf0) = 0xc0 {
             # for client test
             call tls_client_initial_response(src,dst,ppkt)
         };
@@ -112,9 +123,9 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             past_data := past_data.extend(ppkt);
             call tls_client_version_response(src,dst,past_data);
         } 
-        else if bvand(typ_retry,0x30) = 0x00 
-                & ~host = endpoint_id.server & false {
-            #Retry packet
+        else if typ_retry = 0x03 
+                & ~host = endpoint_id.server  {
+            #for server test, Retry packet
             call tls_client_retry_response(src,dst,ppkt)
         }       
         # Check if packet is only padding
@@ -154,6 +165,7 @@ import action app_server_open_event_show(src:ip.endpoint,dst:ip.endpoint,pkt:qui
 import action recv_packet(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
 import action show_type(src:ip.endpoint,dst:ip.endpoint,v:byte)
 import action show_typed(src:ip.endpoint,dst:ip.endpoint,v:stream_data)
+import action show_typp(src:ip.endpoint,dst:ip.endpoint,v:type_bits)
 
 import action padding_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
 
@@ -542,7 +554,6 @@ import action recv_vn_packet_nn(src:ip.endpoint,dst:ip.endpoint,spkt: stream_dat
 import action recv_vn_packet_v(src:ip.endpoint,dst:ip.endpoint,spkt: version)
 import action recv_vn_pkt(src:ip.endpoint,dst:ip.endpoint,spkt: quic_packet_vn)
 
-
 after tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
     var dcil : stream_pos := bfe[0][7](spkt.value(5));
     var dcid := prot.bytes_to_cid(spkt.segment(6,6+dcil));
@@ -553,7 +564,53 @@ after tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_dat
     var retry_token_len := prot.get_var_int(spkt,pos,len);
     pos := pos + len + retry_token_len;
     call recv_retry_packet(src,dst,spkt);
+
+    var pkt := pkt_serdes_retry.from_bytes(spkt);
+    pkt.ptype := quic_packet_type.retry;
+    call packet_event_retry(src,dst,pkt);       # also an inferred event
+
+    conn_requested(src,dst,scid) := false;
+    conn_requested(src,dst,dcid) := false;
+    connected(dcid) :=  false;
+    conn_seen(dcid) := false;
+    #the_cid := 0x3; # 0x0;
+    #server_cid := 0x0; # 0x1;
+    var extns := tls_extensions.empty;
+    extns := extns.append(make_transport_parameters_no_retry);
+    call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
+    call tls_client_initial_request(src,client_vn,server_cid,final_version);
 }
+
+action make_transport_parameters_no_retry returns (tp:quic_transport_parameters) = {
+    var imsdbl : initial_max_stream_data_bidi_local;
+    imsdbl.stream_pos_32 := max_stream_data;
+    var imd : initial_max_data;
+    imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
+    var it : max_idle_timeout;
+    it.seconds_16 := random_microsecs(0,0xFFFFFFF);
+    var imsdbr : initial_max_stream_data_bidi_remote;
+    imsdbr.stream_pos_32 := max_stream_data;
+    var imsdu : initial_max_stream_data_uni;
+    imsdu.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
+    tp.transport_parameters := tp.transport_parameters.append(imsdbl);
+    tp.transport_parameters := tp.transport_parameters.append(imd);
+    tp.transport_parameters := tp.transport_parameters.append(it);
+    tp.transport_parameters := tp.transport_parameters.append(imsdbr);
+    tp.transport_parameters := tp.transport_parameters.append(imsdu);
+
+    var icid : initial_source_connection_id; #TODO update v29
+    icid.scid := the_cid;
+    tp.transport_parameters := tp.transport_parameters.append(icid);
+
+    var no_migration : disable_active_migration; #TODO update v29
+    #tp.transport_parameters := tp.transport_parameters.append(no_migration);
+
+    var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
+    max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
+    tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
+}
+
+#TODO no error trigger by impl when retry without parameter => tocheck
 
 import action recv_retry_packet(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data)
 

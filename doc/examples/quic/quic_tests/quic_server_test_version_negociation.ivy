@@ -54,7 +54,7 @@ var version_negociated : bool
 var initial_version : version
 
 after init {
-	allowed_multiple_migration := true;
+	allowed_multiple_migration := false;
     version_negociated := false;
     initial_version := 0xbabababa;
 }

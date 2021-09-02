@@ -144,7 +144,7 @@ struct tls_name_struct tls_field_length_bytes[35] = {
     {"unknown_ignore", 1},
     {0, 0}};
 tls_name_map tls_field_length_bytes_map;
-struct tls_name_struct tls_field_bytes[31] = {
+struct tls_name_struct tls_field_bytes[32] = {
     {"version", 2},
     {"client_version", 2}, //0x0303 = 2 bytes
     {"server_version", 2},
@@ -167,6 +167,7 @@ struct tls_name_struct tls_field_bytes[31] = {
     {"data_8", 16},
     {"dcid", 8},
     {"scid", 8},
+    {"rcid", 8},
     {"pcid", 4},
     {"ip_addr", 4},
     {"ip_port", 2},
@@ -205,7 +206,7 @@ struct tls_name_struct tls_tags[33] = {
     {"initial_max_stream_data_uni", 0x07},
     {"max_ack_delay", 0x0b},
     {"initial_source_connection_id", 0x0f},
-    {"retry_source_connection_id", 0x1010}, //0x10 = 0100 0000 = 2 bytes with varint
+    {"retry_source_connection_id", 0x10}, //0x10 = 0100 0000 = 2 bytes with varint 0x10
     {"loss_bits", 0x1057},                  //for picoquic
     {"grease_quic_bit", 0x2ab2},            //for picoquic
     //{"enable_time_stamp",0x7158}, //for picoquic
@@ -233,7 +234,7 @@ struct tls_name_struct tls_tag_bytes[25] = {
     {"initial_max_stream_data_uni", 1},
     {"max_ack_delay", 1},
     {"initial_source_connection_id", 1},
-    {"retry_source_connection_id", 2},
+    {"retry_source_connection_id", 1},
     {"disable_active_migration", 1},
     {"loss_bits", 2},       //for picoquic
     {"grease_quic_bit", 2}, //for picoquic
