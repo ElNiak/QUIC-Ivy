@@ -1,19 +1,16 @@
-between random: 6010953
-between random: 6010953
-between random: 6010955
-ser res dcid 1 8025142495587025512
-ser res dcid_h 1 8
-ser res scid_h 1 13
+between random: 95055391
+between random: 95055391
+between random: 95055399
 "    require pkt.ptype = queued_level(scid);
 "
 /usr/local/lib/python2.7/dist-packages/ivy/include/1.7/quic_packet.ivy: line 395: error: assumption failed
-output directory: temp/503
+output directory: temp/535
 implementation directory: /home/chris/TVOQE_UPGRADE_27/quic/picoquic
 implementation command: ./picoquicdemo -v ff00001d -l - -D -L -a hq-29 localhost 4443
 ../quic_client_test_retry (0) ...
 implementation command: sleep 4; ./picoquicdemo -v ff00001d -l - -D -L -a hq-29 localhost 4443
-quic_process pid: 8763
-timeout 100 ./build/quic_client_test_retry seed=400 the_cid=0 
+quic_process pid: 31958
+timeout 100 ./build/quic_client_test_retry seed=747 the_cid=0 
 client return code: 1
 FAIL
 error: 1 tests(s) failed

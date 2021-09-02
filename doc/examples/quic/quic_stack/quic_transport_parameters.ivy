@@ -3,6 +3,7 @@
 include quic_types
 include quic_transport_error_code
 include quic_stream
+include quic_packet_vn
 include tls_record
 include ip
 include ipv6
@@ -186,6 +187,15 @@ object enable_time_stamp = {
 object min_ack_delay  = {
     variant this of transport_parameter = struct {  # tag = 0xff02de1a
         exponent_8 : microsecs
+    }
+    instantiate trans_params_ops(this)
+}
+
+# https://datatracker.ietf.org/doc/html/draft-ietf-quic-version-negotiation#page-11
+object version_information  = {
+    variant this of transport_parameter = struct {  # tag = 0xFF73DB
+        chosen_version : version,
+        other_version : versions_bv # [3]
     }
     instantiate trans_params_ops(this)
 }

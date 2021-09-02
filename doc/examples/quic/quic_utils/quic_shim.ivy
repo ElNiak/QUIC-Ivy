@@ -10,6 +10,7 @@ include quic_ser_vn
 include quic_deser_retry
 include quic_ser_retry
 include quic_protection
+include random_value
 
 # TODO import show_stream for debug
 

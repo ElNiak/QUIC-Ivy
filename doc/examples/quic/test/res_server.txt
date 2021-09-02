@@ -1,13 +1,116 @@
-between random: 157371438
-between random: 157371432
-between random: 157371438
-between random: 45492
-output directory: temp/521
+between random: 5033283
+between random: 5033276
+between random: 5033283
+between random: 20088
+state 0
+res 1740231428649868011280788633821712
+pos 0
+fence 0
+inp.size 24
+state 2
+res 3737465940952161266944859923780993032
+pos 1
+fence 0
+inp.size 24
+state 5
+res 0
+pos 5
+fence 0
+inp.size 24
+state 6
+res 0
+pos 14
+fence 0
+inp.size 24
+sourceID data_remaining -795424936
+scid 2
+between random: 5033283
+between random: 5033276
+between random: 5033283
+between random: 20088
+state 0
+res 1740231428649868011280788633821712
+pos 0
+fence 0
+inp.size 71
+state 2
+res 3737465940952161266944859923780993032
+pos 1
+fence 0
+inp.size 71
+state 5
+res 0
+pos 5
+fence 0
+inp.size 71
+state 6
+res 0
+pos 14
+fence 0
+inp.size 71
+sourceID data_remaining -795424936
+scid 2
+state 7
+res 1
+pos 27
+fence 0
+inp.size 71
+state 7
+res 4278190114
+pos 31
+fence 0
+inp.size 71
+state 7
+res 4278190113
+pos 35
+fence 0
+inp.size 71
+state 7
+res 4278190112
+pos 39
+fence 0
+inp.size 71
+state 7
+res 4278190111
+pos 43
+fence 0
+inp.size 71
+state 7
+res 4278190109
+pos 47
+fence 0
+inp.size 71
+state 7
+res 4278190110
+pos 51
+fence 0
+inp.size 71
+state 7
+res 4278190108
+pos 55
+fence 0
+inp.size 71
+state 7
+res 4278190107
+pos 59
+fence 0
+inp.size 71
+state 7
+res 1346588977
+pos 63
+fence 0
+inp.size 71
+state 7
+res 1346588976
+pos 67
+fence 0
+inp.size 71
+output directory: temp/559
 implementation directory: /home/chris/TVOQE_UPGRADE_27/quic/picoquic
 implementation command: ./picoquicdemo -l - -D -L -q /home/chris/qlog_picoquic
-../quic_server_test_stream (0) ...
+../quic_server_test_version_negociation_ext (0) ...
 implementation command: ['./picoquicdemo', '-l', '-', '-D', '-L', '-q', '/home/chris/qlog_picoquic']
-quic_process pid: 19316
-timeout 100 ./build/quic_server_test_stream seed=891 the_cid=0 server_cid=1 client_port=4987 client_port_alt=4988
+quic_process pid: 10033
+timeout 100 ./build/quic_server_test_version_negociation_ext seed=400 the_cid=0 server_cid=1 client_port=4987 client_port_alt=4988
 PASS
 OK

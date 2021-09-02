@@ -85,7 +85,7 @@ typedef struct tls_name_struct
 struct tls_name_map : hash_space::hash_map<std::string, int128_t> { };
 //struct tls_name_map : hash_space::hash_map<std::string,long long> {};
 
-std::string quic_params[17] = {
+std::string quic_params[18] = {
     "quic_transport_parameters",
     "initial_max_stream_data_bidi_local",
     "initial_max_data",
@@ -101,11 +101,12 @@ std::string quic_params[17] = {
     "initial_max_stream_data_bidi_remote",
     "initial_max_stream_data_uni",
     "max_ack_delay",
+    "version_information",
     "initial_source_connection_id",
     "loss_bits"
 };
 
-struct tls_name_struct tls_field_length_bytes[35] = {
+struct tls_name_struct tls_field_length_bytes[36] = {
     {"fragment", 2},
     {"content", 2},
     {"tls.client_hello", 3},
@@ -140,11 +141,12 @@ struct tls_name_struct tls_field_length_bytes[35] = {
     {"grease_quic_bit", 1}, //for picoquic
     //{"enable_time_stamp",1}, //for picoquic TODO test
     {"min_ack_delay", 1},
+    {"version_information", 1},
     {"unknown_transport_parameter", 1},
     {"unknown_ignore", 1},
     {0, 0}};
 tls_name_map tls_field_length_bytes_map;
-struct tls_name_struct tls_field_bytes[32] = {
+struct tls_name_struct tls_field_bytes[33] = {
     {"version", 2},
     {"client_version", 2}, //0x0303 = 2 bytes
     {"server_version", 2},
@@ -169,6 +171,8 @@ struct tls_name_struct tls_field_bytes[32] = {
     {"scid", 8},
     {"rcid", 8},
     {"pcid", 4},
+    {"chosen_version", 4},
+    {"other_version", 4}, //TODO
     {"ip_addr", 4},
     {"ip_port", 2},
     {"ip6_addr", 16},
@@ -179,7 +183,7 @@ struct tls_name_struct tls_field_bytes[32] = {
     {0, 0}};
 tls_name_map tls_field_bytes_map;
 //TODO check old version
-struct tls_name_struct tls_tags[33] = {
+struct tls_name_struct tls_tags[34] = {
     {"tls.handshake_record", 22},
     {"tls.application_data_record", 23},
     {"tls.change_cipher_spec", 20},
@@ -210,12 +214,13 @@ struct tls_name_struct tls_tags[33] = {
     {"loss_bits", 0x1057},                  //for picoquic
     {"grease_quic_bit", 0x2ab2},            //for picoquic
     //{"enable_time_stamp",0x7158}, //for picoquic
-    {"min_ack_delay", -4611686014149009894}, //0xFF02DE1A ||  0xc0000000FF02DE1A (13835058059560541722) OR 8000DE1A
+    {"min_ack_delay", -4611686014149009894},       //0xFF02DE1A ||  0xc0000000FF02DE1A (13835058059560541722) OR 8000DE1A
+    {"version_information", -4611686018410646565}, //0xFF73DB ||    0xc000000000FF73DB (-4611686018410646565) OR 8000DE1A
     {"unknown_transport_parameter", -2},
     {"unknown_ignore", 0x4042},
     {0, 0}};
 tls_name_map tls_tags_map;
-struct tls_name_struct tls_tag_bytes[25] = {
+struct tls_name_struct tls_tag_bytes[26] = {
     {"tls.unknown_extension", 2},
     {"quic_transport_parameters", 2},
     {"initial_max_stream_data_bidi_local", 1},
@@ -239,6 +244,7 @@ struct tls_name_struct tls_tag_bytes[25] = {
     {"loss_bits", 2},       //for picoquic
     {"grease_quic_bit", 2}, //for picoquic
     {"min_ack_delay", 8},
+    {"version_information", 8},
     {"unknown_ignore", 2},
     //{"enable_time_stamp",2}, //for picoquic
     //{"unknown_transport_parameter",2},

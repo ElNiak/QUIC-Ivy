@@ -48,6 +48,9 @@ relation is_crypto_buffer_exceeded
 # tag = 0x1XX
 relation is_crypto_error  
 
+# tag = 0x53F8 https://datatracker.ietf.org/doc/html/draft-ietf-quic-version-negotiation#page-11
+relation is_version_negociation_error
+
 # Initial state
 # -------------
 
@@ -67,6 +70,7 @@ after init {
     is_application_error := false;
     is_crypto_buffer_exceeded := false;
     is_crypto_error := false;
+    is_version_negociation_error := false;
 }
 
 action handle_transport_error(ec:error_code) =
@@ -99,7 +103,9 @@ action handle_transport_error(ec:error_code) =
         is_application_error := true;
     } else if ec = 0xd {
         is_crypto_buffer_exceeded := true;
-    } else {
+    } else if ec = 0x53F8 {
+        is_version_negociation_error := true;
+    }else {
         # TODO check if tag = 0x1XX
         is_crypto_error := true;
     }

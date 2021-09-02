@@ -64,41 +64,32 @@ object quic_ser_retry = {}
             break;    
             case quic_s_dcid:
             {
-                if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-                    std::cout << "TEST_SCIL_VN " << env_p3 << std::endl;
-                    scid_vn = atoi(env_p3);
-                }
-                std::cerr << "ser res dcid 1 " << res << std::endl;
-                std::cerr << "ser res dcid_h 1 " << scid_vn << std::endl;
+                //std::cerr << "ser res dcid 1 " << res << std::endl;
                 if (long_format) {
-                    if((res != 0 && res != 1) || scid_vn == 0)
-                        setn(scid_vn,1);
+                    if((res != 0 && res != 1) || scid_h == 0)
+                        setn(scid_h,1);
                     else 
                         setn(8,1);
                 }
-                if((res != 0 && res != 1) || scid_vn == 0)
-                    setn(res,scid_vn); //scid_vn
+                if((res != 0 && res != 1) || scid_h == 0)
+                    setn(res,scid_h); //scid_h
                 else 
-			        setn(res,8); 
+                    setn(res,8); 
                 //std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
             case quic_s_scid:
             {
-                if(const char* env_p3 = std::getenv("TEST_DCIL")) {
-                    std::cout << "TEST_DCIL_VN " << env_p3 << std::endl;
-                    dcid_vn = atoi(env_p3);
-                }
-		        std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 if (long_format) {
-                    if((res == 0 || res == 1) && scid_vn != 0){
+                    if((res == 0 || res == 1) && scid_h != 0){
                         setn(8,1);
                         setn(res,8);
                     } else {
-                        setn(dcid_vn,1);
-                        setn(res,dcid_vn);
-                    }
+                    	setn(dcid_h,1);
+		    	        setn(res,dcid_h);
+		            }
                 }
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token;
