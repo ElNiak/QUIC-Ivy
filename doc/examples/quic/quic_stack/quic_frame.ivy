@@ -57,7 +57,7 @@ object frame = {
     }
 
 
-    # (0x02 and 0x03) 
+    # (0x02) 
     object ack = {
 
         object range = {
@@ -92,6 +92,43 @@ object frame = {
 			# ecn_counts      : ecn.arr
         }
     }
+
+    # (0x03)
+    object ack_ecn = {
+
+        object range = {
+            type this = struct {
+                gap : pkt_num,       # gap, or zero for first range
+                ranges : pkt_num     # number of packets in range - 1
+            }
+            instance idx : unbounded_sequence
+            instance arr : array(idx,this)
+        }
+
+		# TODO: module counter ? variable ecn ?
+		
+        # object ecn = {
+        #     type this = struct {
+        #         ect0 : pkt_num,       # total number of packets received with the ECT(0)
+		# 		  ect1 : pkt_num,       # total number of packets received with the ECT(1)
+        #         ecn_ce : pkt_num      # total number of packets received with the CE codepoint
+        #     }
+        #     instance idx : unbounded_sequence
+        #     instance arr : array(idx,this)
+        # }
+		
+        # Ack frames are a variant of frame
+
+        variant this of frame = struct {
+        
+            largest_acked   : pkt_num,    # largest acknowledged packet number
+            ack_delay       : microsecs,  # delay of largest acked packet
+            ack_ranges      : range.arr   # ack ranges
+			# ecnp            : bool,     # is this the final offset
+			# ecn_counts      : ecn.arr
+        }
+    }
+
 
     # (0x04) RESET_STREAM Frame
     object rst_stream = {
@@ -173,8 +210,16 @@ object frame = {
         }
     }
 
-    # (0x12 and 0x13) 
+    # (0x12) 
     object max_streams = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
+        # max_streams frames are a variant of frame.
+        variant this of frame = struct {
+            id              : stream_id  # maximum stream id 
+        }
+    }
+
+    # (0x13) 
+    object max_streams_bidi = {  # TODO: handle cases of MAX_STREAMS for bidi and uni
         # max_streams frames are a variant of frame.
         variant this of frame = struct {
             id              : stream_id  # maximum stream id 
@@ -199,8 +244,16 @@ object frame = {
         }
     }
 
-    # (0x16 or 0x17)
+    # (0x16)
     object streams_blocked = { # TODO: handle bidi and uni cases => create streams_blocked_uni and streams_blocked_bidi + serializer
+        # Stream id blocked frames are a variant of frame.
+        variant this of frame = struct {
+            id                : cid  # the stream id (we use cid for the 16 bytes)
+        }
+    }
+
+    # (0x17)
+    object streams_blocked_bidi = { # TODO: handle bidi and uni cases => create streams_blocked_uni and streams_blocked_bidi + serializer
         # Stream id blocked frames are a variant of frame.
         variant this of frame = struct {
             id                : cid  # the stream id (we use cid for the 16 bytes)
@@ -649,6 +702,69 @@ object frame = {
     }
 }
 
+object frame = {
+    ...
+    object ack_ecn = {
+        ...
+        action handle(f:frame.ack_ecn,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
+
+	around handle {
+            require connected(dcid) & connected_to(dcid) = scid;
+            if _generating  {
+            	require ~(e = quic_packet_type.initial) & ~(e = quic_packet_type.handshake); #& ~(e = quic_packet_type.handshake)
+            };
+
+            require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
+            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);  # [4]
+            #Chris
+            #TODO ECN
+            #require ~(e = quic_packet_type.version_negociation) & ~(e = quic_packet_type.retry);
+            #Chris
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            var idx : frame.ack_ecn.range.idx := 0;
+            var last := f.largest_acked;
+            if max_acked(dcid,e) < last {
+                max_acked(dcid,e) := last;  # [3]
+            };
+            require f.ack_ranges.end > 0;
+            var some_new_ack := false;
+            while idx < f.ack_ranges.end {
+                var ack_range := f.ack_ranges.value(idx);
+                require idx > 0 -> ack_range.gap < last - 1;
+                var upper := last - ((ack_range.gap+2) if idx > 0 else 0);
+                require ack_range.ranges <= upper;
+                last := upper - ack_range.ranges;
+                var jdx := last;
+                while jdx <= upper {
+                        require sent_pkt(dcid,e,jdx);  # [1]
+                        if pkt_has_close(dcid,e,jdx) {
+                            conn_draining(scid) := true  # [5]
+                        };
+                        if ~acked_pkt(dcid,e,jdx) {
+                            some_new_ack := true;
+                        };
+                    acked_pkt(dcid,e,jdx) := true;
+                    jdx := jdx + 1
+                };
+    #           acked_pkt(dcid,N) := (last <= N & N <= upper) | acked_pkt(dcid,N);  # [2]
+                idx := idx.next;
+            };
+            if _generating {
+                require some_new_ack;
+            }
+	    ...
+            force_new_ack := false;
+            if _generating {
+                call handle_sending_ack(f.largest_acked);
+            } else {
+                call handle_receiving_ack(seq_num);
+            };
+            call enqueue_frame(scid,f,e,false);
+        }
+    }
+}
+
+
 #
 # #### STREAM event
 #
@@ -733,7 +849,7 @@ object frame = {
 
             require stream_reset(dcid,f.id) ->
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
-	    #remove for stream limit test
+	        #remove for stream limit test
             require stream_id_allowed(dcid,f.id);  # [6]
 	        ...
             count_stream_frame(f.id,f.offset,f.length,f.data) := count_stream_frame(f.id,f.offset,f.length,f.data) + 1;
@@ -995,10 +1111,40 @@ object frame = { ...
             if ~ (max_stream_set(dcid,kind) & f.id < max_stream(dcid,kind)) { #[5]
                 max_stream_set(dcid,kind) := true;
                 max_stream(dcid,kind) := f.id; #  [1]
-		#max_stream_id(dcid,kind) := cid_to_stream_id(f.id);
+		        #max_stream_id(dcid,kind) := cid_to_stream_id(f.id);
             }
 
-            #   if _generating {
+            #  if _generating {
+            #      require some_max_streams;
+            #      require f.id = ms;
+            #  }
+
+	        ...
+
+            call enqueue_frame(scid,f,e,false);
+        }
+    }
+}
+
+object frame = { ...
+    object max_streams_bidi = { ...
+        action handle(f:frame.max_streams_bidi,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
+
+	around handle {
+            require connected(dcid) & connected_to(dcid) = scid;
+            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);  # [3]
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            require connected(scid) & connected_to(scid) = dcid;
+            require ~conn_closed(scid);  # [2]
+
+            var kind := bidir;
+            if ~ (max_stream_set(dcid,kind) & f.id < max_stream(dcid,kind)) { #[5]
+                max_stream_set(dcid,kind) := true;
+                max_stream(dcid,kind) := f.id; #  [1]
+		        #max_stream_id(dcid,kind) := cid_to_stream_id(f.id);
+            }
+
+            #  if _generating {
             #      require some_max_streams;
             #      require f.id = ms;
             #  }
@@ -1236,6 +1382,22 @@ object frame = { ...
 object frame = { ...
     object streams_blocked = { ...
         action handle(f:frame.streams_blocked,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
+	around handle {
+            require connected(dcid) & connected_to(dcid) = scid;
+            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            #  some_max_streams := true;
+            #  ms := f.id; #TODO not finished, should distinguish uni and bidi
+
+	    ...
+            call enqueue_frame(scid,f,e,false);
+        }
+    }
+}
+
+object frame = { ...
+    object streams_blocked_bidi = { ...
+        action handle(f:frame.streams_blocked_bidi,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
             require connected(dcid) & connected_to(dcid) = scid;
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
