@@ -572,6 +572,74 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         >>>
     }
 
+    implement compute_retry_integrity_tag(odcil: stream_pos, odcid: cid,
+                                       pversion: version,
+                                       dcil: stream_pos, dcid: cid,
+                                       scil: stream_pos, scid: cid,
+                                       token : stream_data) returns (cipher:bytes) {
+    <<< impure
+
+        uint8_t plaintext[] = "";
+        uint8_t key[16] = { 0xbe, 0x0c, 0x69, 0x0b, 0x9f, 0x66, 0x57,
+                            0x5a, 0x1d, 0x76, 0x6b, 0x54, 0xe3, 0x68, 
+                            0xc8, 0x4e };
+
+        uint8_t nonce[12] = { 0x46, 0x15, 0x99, 0xd3, 0x5d, 0x63, 0x2b,
+                              0xf2, 0x23, 0x98, 0x25, 0xbb };
+
+        ptls_aead_context_t *aead = ptls_aead_new_direct(&ptls_openssl_aes128gcm, 1, key, nonce);
+        uint32_t checksum_length = aead->algo->tag_size;
+
+        std::cerr << "compute_retry_integrity_tag ptls_aead_context_t " << "\n";
+
+
+        std::vector<uint8_t> ad;
+        //ad.resize(sizeof(odcid));
+        ad.push_back(odcil);
+        ad.push_back(odcid);
+        ad.push_back(246);
+        ad.push_back(pversion);
+        ad.push_back(dcil);
+        ad.push_back(dcid);
+        ad.push_back(scil);
+        ad.push_back(scid);
+        //ad.push_back(token);
+        std::copy(token.begin(),token.end(),ad.end());
+        std::vector<uint8_t> bytes;
+        bytes.resize(ad.size());
+
+        std::cerr << "compute_retry_integrity_tag ad size: " << ad.size()  << "\n";
+
+        for(std::vector<uint8_t>::const_iterator i = ad.begin(); i != ad.end(); ++i) {
+             std::cerr << *i;
+             std::cerr << " ";
+        }
+        std::cerr << "\n";
+
+
+        std::copy(ad.begin(),ad.end(),bytes.begin());
+
+        for(std::vector<uint8_t>::const_iterator i = bytes.begin(); i != bytes.end(); ++i) {
+             std::cerr << *i;
+             std::cerr << " ";
+        }
+        std::cerr << "\n";
+
+        std::vector<uint8_t> output;
+        //std::copy(clear.begin(),clear.end(),input.begin());
+        output.resize(16);
+        
+        
+        size_t encrypted = ptls_aead_encrypt(aead,
+          &output[0], plaintext, sizeof(plaintext), 0,
+          &bytes[0], bytes.size());
+        
+        cipher.resize(output.size());
+        std::copy(output.begin(),output.end(),cipher.begin());
+        std::cerr << "compute_retry_integrity_tag finish " << "\n";
+    >>>
+    }
+
     implement encrypt_aead(c:cid,l:level,clear:bytes,seq:seq_num,ad:bytes) returns (cipher:bytes) {
         <<< impure
                 //std::cerr << "encrypt_aead start " << "\n";

@@ -97,63 +97,72 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
     while idx < pkts.end {
         var ppkt := pkts.value(idx);
         var tls_id := dst_tls_id(dst);
-        var typ : type_bits  := bfe[7][8](ppkt.value(0));
-        var typ_retry : type_bits := bfe[4][5](ppkt.value(0)); # bfe[5][6](ppkt.value(0));
-        # var h : header_info := get_header_info(ppkt,true);
+        var header := ppkt.value(0);
+        var is_long : bool := bvand(0x80,header) ~= 0;
         var version := ppkt.segment(1,1+4);
+        var ptype : byte := bvand(0x30,header);
+
+        var typ : type_bits  := bfe[7][8](header);
+        var typ_retry : type_bits := bfe[4][5](header); # bfe[5][6](ppkt.value(0));
+        
+        # var h : header_info := get_header_info(ppkt,true);
         # call show_type(src,dst,ppkt.value(0));
         # call show_type(src,dst,bfe[7][8](ppkt.value(0)));
-        call show_typed(src,dst,version);
+        
 
         # call show_typp(src,dst,typ);
         # call show_typp(src,dst,typ_retry);
         # call show_typp(src,dst,bfe[6][7](ppkt.value(0)));
-        # call show_typp(src,dst,bfe[6][8](ppkt.value(0)));
-        call show_typp(src,dst,bfe[4][5](ppkt.value(0)));
-        call show_typp(src,dst,bfe[4][7](ppkt.value(0)));
+        call show_version_sd(src,dst,version);
+        call show_islong(src,dst,is_long);
+        call show_type(src,dst,ptype);
+        call show_typp(src,dst,bfe[4][5](header));
+        call show_typp(src,dst,bfe[4][7](header));
 
-        if host = endpoint_id.server 
-                & bvand(ppkt.value(0),0xf0) = 0xc0 {
-            # for client test
-            call tls_client_initial_response(src,dst,ppkt)
-        };
-        if ~ host = endpoint_id.server & typ = 0x1 
-                & version = vn_version | version_not_found { 
-            # for server test, for version_negociation
-            # 1000 0000 == version_negociation
-            past_data := past_data.extend(ppkt);
-            call tls_client_version_response(src,dst,past_data);
-        } 
-        else if typ_retry = 0x03 
-                & ~host = endpoint_id.server  {
-            #for server test, Retry packet
-            call tls_client_retry_response(src,dst,ppkt)
-        }       
-        # Check if packet is only padding
-        #var is_pad := is_padding_packet(ppkt); # For quic-go and quand client
-        #var is_rand_pad := is_random_padding_packet(ppkt);
-        #var rnum := reference_pkt_num(ppkt,true);
-        #if is_pad { #is_pad | is_rand_pad
-        #    call padding_packet_event(src,dst,ppkt);
-        #} 
-	    else { 
-            var rnum := reference_pkt_num(ppkt,true);
-            var res := prot.decrypt(tls_id,rnum,ppkt);
-            if res.ok {
-                var pkt := pkt_serdes.from_bytes(res.data);
-                pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
-                call recv_packet(src,dst,pkt);
-                call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
-                call packet_event(src,dst,pkt);       # also an inferred event
-                if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
-                    # for client test
-                    call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
-                    call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
-                }
-            } else {
-                call undecryptable_packet_event(src,dst,ppkt);
+        #if is_long {
+            if host = endpoint_id.server 
+                    & ptype = 0xc0 {
+                # for client test
+                call tls_client_initial_response(src,dst,ppkt)
             };
-        };
+            if ~ host = endpoint_id.server  
+                    & (version = vn_version & is_long) | version_not_found { 
+                # for server test, for version_negociation
+                # 1000 0000 == version_negociation
+                past_data := past_data.extend(ppkt);
+                call tls_client_version_response(src,dst,past_data);
+            } 
+            else if ptype = 0x30 
+                    & ~host = endpoint_id.server  {
+                #for server test, Retry packet
+                call tls_client_retry_response(src,dst,ppkt)
+            }       
+            # Check if packet is only padding
+            #var is_pad := is_padding_packet(ppkt); # For quic-go and quand client
+            #var is_rand_pad := is_random_padding_packet(ppkt);
+            #var rnum := reference_pkt_num(ppkt,true);
+            #if is_pad { #is_pad | is_rand_pad
+            #    call padding_packet_event(src,dst,ppkt);
+            #} 
+            else { 
+                var rnum := reference_pkt_num(ppkt,true);
+                var res := prot.decrypt(tls_id,rnum,ppkt);
+                if res.ok {
+                    var pkt := pkt_serdes.from_bytes(res.data);
+                    pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
+                    call recv_packet(src,dst,pkt);
+                    call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
+                    call packet_event(src,dst,pkt);       # also an inferred event
+                    if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
+                        # for client test
+                        call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
+                        call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
+                    }
+                } else {
+                    call undecryptable_packet_event(src,dst,ppkt);
+                };
+            };
+        #};
         idx := idx.next;
     };
     version_not_found := false;
@@ -164,8 +173,10 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
 
 import action app_server_open_event_show(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet,cid1 : cid, cid2: cid)
 import action recv_packet(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
+import action show_islong(src:ip.endpoint,dst:ip.endpoint,v:bool)
 import action show_type(src:ip.endpoint,dst:ip.endpoint,v:byte)
 import action show_typed(src:ip.endpoint,dst:ip.endpoint,v:stream_data)
+import action show_version_sd(src:ip.endpoint,dst:ip.endpoint,v:stream_data)
 import action show_typp(src:ip.endpoint,dst:ip.endpoint,v:type_bits)
 
 import action padding_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
@@ -326,6 +337,7 @@ var initial_keys_set : bool
 var tp_client_set : bool
 
 function client_initial_scid : cid
+function client_initial_scid_size : stream_pos
 function client_initial_dcid : cid
 function client_initial_dcid_size : stream_pos
 function client_initial_version : version
@@ -349,12 +361,14 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     var dcil : stream_pos := bfe[0][7](spkt.value(5));
     var ikm := cid_to_bytes(0,1); # dcid
 	if(~dcil = 0) {
+        client_initial_dcid_size := dcil;
 	    ikm := spkt.segment(6,6+dcil); # dcid
     };
     var lenss := spkt.value(6+dcil);
     var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
     var skm := cid_to_bytes(0,1); # scid
     if(~scil = 0) {
+        client_initial_scid_size := scil;
 		client_present_scid := true;	
 	    skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
     };

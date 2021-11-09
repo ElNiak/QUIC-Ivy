@@ -43,7 +43,13 @@ module quic_protection(tls_id,tls) = {
 
     action decrypt(c:tls_id,seq:pkt_num,pkt:stream_data) returns (res:tls.decrypt_result)
     
+    
     implement encrypt {
+        #var rt := tls.compute_retry_integrity_tag(1,0,
+        #                                        42,
+        #                                        1,1,
+        #                                        1,2,
+        #                                        random_stream_data(0,5,4));
         var h := get_header_info(pkt,false);
         var level := get_level(pkt);
         var sample_size : stream_pos := tls.iv_size(c,level);
@@ -70,6 +76,8 @@ module quic_protection(tls_id,tls) = {
         var new_seq := get_pnum(pnum,0,pnum_len);
         new_seq := correct_pnum(seq,new_seq,pnum_len);
         pyld := tls.encrypt_aead(c,level,pyld,new_seq,auth);
+
+
         # call show_aead(level,pyld,new_seq,auth);
 
         # Computing the sample position is a bit tricky. First we
@@ -178,6 +186,33 @@ module quic_protection(tls_id,tls) = {
         }
     }
 
+    action retry_integrity_tag(odcil: stream_pos, odcid: cid,
+                               pversion: version,
+                               dcil: stream_pos, dcid: cid,
+                               scil: stream_pos, scid: cid,
+                               token : stream_data) returns (cipher:stream_data)
+
+    implement retry_integrity_tag {
+
+        var rt := tls.compute_retry_integrity_tag(odcil, cid_to_tls_id(odcid),
+                                pversion,
+                                dcil, 1,
+                                scil, 2,
+                                token);
+    #     var rt := tls.compute_retry_integrity_tag(1,0,
+    #                                            42,
+    #                                            1,1,
+    #                                            1,2,
+    #                                            random_stream_data(0,5,4));
+         cipher := rt;
+    }
+
+    action cid_to_tls_id(c:cid) returns(res:tls_api.id) = {
+    <<<
+    res = c.val;
+    >>>
+    }
+
     # This returns the encryption level of a protected or unprotected
     # packet.
     # TODO check
@@ -257,7 +292,7 @@ module quic_protection(tls_id,tls) = {
             };
             var pos := 7 + dcil + scil;
             if bvand(h.hdr_type,0x30) = 0x00 {
-                #Retry packet
+                #Initial packet
                 var len := get_var_int_len(pkt,pos);
                 var retry_token_len := get_var_int(pkt,pos,len);
                 pos := pos + len + retry_token_len;

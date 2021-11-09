@@ -8,6 +8,7 @@ include quic_transport_parameters
 include ip
 include quic_fsm_sending
 include quic_fsm_receiving
+include byte_stream
 
 # The packet protocol
 #
@@ -51,8 +52,8 @@ object quic_packet_retry = {
         pversion : version, # [3]
         dst_cid : cid, # [4]
         src_cid : cid, # [5]
-        token : stream_data, # [6]
-        integrity_token : stream_pos # [6]
+        token : stream_data, # [6] TODO props
+        integrity_token : stream_data # [6] TODO
     }
 
     instance idx : unbounded_sequence

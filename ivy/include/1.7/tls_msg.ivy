@@ -97,6 +97,13 @@ module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
 
     action decrypt_cipher(c:cid,l:level,cipher:bytes,iv:bytes) returns (clear:bytes)
     
+
+    action compute_retry_integrity_tag(odcil: stream_pos, odcid: cid,
+                                       pversion: version,
+                                       dcil: stream_pos, dcid: cid,
+                                       scil: stream_pos, scid: cid,
+                                       token : stream_data) returns (cipher:bytes)
+
     # Encrypt data with AEAD for given level, additional data `ad` and
     # sequence number `seq`.
 
