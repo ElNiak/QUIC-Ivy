@@ -22,7 +22,7 @@ if platform.system() == 'Windows':
 else:
     spawn = pexpect.spawn
 
-scdir = os.environ.get('QUIC_IMPL_DIR',os.environ.get('HOME','') + '/TVOQE_UPGRADE_27/quic')
+scdir = os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH','') + '/quic-implementations')
 scdircr = os.environ.get('QUIC_IMPL_DIR',os.environ.get('HOME','') + '/TVOQE_Perso/quic')
 servers = [
     ['picoquic',[scdir+'/picoquic','./picoquicdemo -l - -D -L -q /home/chris/qlog_picoquic']], # -b myqlog.bins _pico.log -r

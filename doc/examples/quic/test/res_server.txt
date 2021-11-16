@@ -1,45 +1,4 @@
-between random: 190646738
-between random: 190646734
-between random: 190646738
-between random: 63302
-quic_s_init 3
-quic_s_version 4278190109
-dstID size 8
-dstID res 1
-sourceID data_remaining 8
-scid 5757490244358194605
-packet_size 52
-token_length 13
-token 2293389654490671862062726595781
-between random: 190646738
-between random: 190646734
-between random: 190646738
-between random: 63302
-cipher for level 3 is not set
-quic_s_init 3
-quic_s_version 4278190109
-dstID size 8
-dstID res 1
-sourceID data_remaining 8
-scid 12460739936156655468
-packet_size 77
-token_length 38
-token -146939669649878079381645398238222648440
-between random: 167490624
-between random: 167490621
-between random: 167490624
-between random: 23601
-terminate called after throwing an instance of 'std::bad_alloc'
-  what():  std::bad_alloc
-timeout: the monitored command dumped core
-Aborted
-output directory: temp/803
-implementation directory: /home/chris/TVOQE_UPGRADE_27/quic/picoquic
-implementation command: ./picoquicdemo -l - -D -L -q /home/chris/qlog_picoquic
-../quic_server_test_retry (0) ...
-implementation command: ['./picoquicdemo', '-r', '-l', '-', '-D', '-L', '-q', '/home/chris/qlog_picoquic']
-quic_process pid: 16580
-timeout 100 ./build/quic_server_test_retry seed=337 the_cid=0 server_cid=1 client_port=4987 client_port_alt=4988
-client return code: 134
-FAIL
-error: 1 tests(s) failed
+between random: 32015549
+between random: 32015542
+between random: 32015549
+between random: 3170
