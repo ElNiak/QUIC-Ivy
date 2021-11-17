@@ -5140,7 +5140,7 @@ int ask_ret(long long bound) {
 
 	    std::string command = "";
 	    if(path.find("test") != std::string::npos) 
-		path = std::string("$HOME/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_tests/") + path;
+		path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + path;
             command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
             //std::cerr << command.c_str() << std::endl;
 
