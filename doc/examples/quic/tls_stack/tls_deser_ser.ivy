@@ -12,12 +12,11 @@ object tls_ser_server = {}
 <<< impl
     //https://tools.ietf.org/html/draft-thomson-quic-bit-grease-00
     //https://tools.ietf.org/id/draft-huitema-quic-ts-03.html
-    if(const char* env_p2 = std::getenv("IS_NOT_DOCKER") && strcmp(env_p2, "true") == 0) {
-        printf(env_p2)
+    #if defined(IS_NOT_DOCKER) 
         #include "/home/user/Documents/QUIC-FormalVerification/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
-    }
-    else 
+    #else 
         #include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    #endif
     //#include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     //#include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
   
