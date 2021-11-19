@@ -48,9 +48,11 @@ object quic_deser = {}
 
     #define QUIC_DESER_FAKE_CHECKSUM_LENGTH 0
     //TODO
-    #include "/home/user/Documents/QUIC-FormalVerification/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
-    //#include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
-    //#include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    #if defined(IS_NOT_DOCKER) 
+        #include "/home/user/Documents/QUIC-FormalVerification/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    #else 
+        #include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    #endif
     int scid_h = 8;
     int dcid_h = 8;
 

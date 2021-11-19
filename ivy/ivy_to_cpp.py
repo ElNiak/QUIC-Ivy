@@ -6305,6 +6305,9 @@ def main_int(is_ivyc):
                             cmd = cmd + ' -lz3'
                         cmd += libspec
                         cmd += ' -pthread'
+                        from os import environ
+                        if environ.get('IS_NOT_DOCKER') is not None:
+                            cmd += ' -D IS_NOT_DOCKER'
                     print cmd
                     sys.stdout.flush()
                     with iu.WorkingDir(builddir):

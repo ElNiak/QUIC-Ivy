@@ -11,11 +11,12 @@ object quic_deser_retry = {}
 >>>
 
 <<< impl
-    #include "/home/user/Documents/QUIC-FormalVerification/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
-    //#include "/home/chris/TVOQE_UPGRADE_27/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
-    //#include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
-    //int scid_h = 8;
-    //int dcid_h = 8;
+    //TODO
+    #if defined(IS_NOT_DOCKER) 
+        #include "/home/user/Documents/QUIC-FormalVerification/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    #else 
+        #include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+    #endif
 
     class `quic_deser_retry` : public ivy_binary_deser_128 {
     //class `quic_deser_retry` : public ivy_binary_deser {
