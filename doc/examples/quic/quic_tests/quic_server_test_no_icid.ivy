@@ -14,6 +14,7 @@ parameter server_port : ip.port = 4443
 parameter server_cid  : cid = 0xb
 parameter client_port : ip.port = 4987
 parameter client_port_alt : ip.port = 4988
+parameter client_port_vn : ip.port = 4986
 parameter max_stream_data : stream_pos = 0x2000
 
 # Network setup
@@ -23,17 +24,17 @@ parameter max_stream_data : stream_pos = 0x2000
 # establish which interface and which ports the tester will use. 
 #
 
+# Mandatory for longbv else truncated
+after init {
+    the_cid := 0x1; # 0x0;
+    server_cid := 0x2; # 0x1;
+}
+
 # We use this type as a host id. There are two client host ids so we
 # can model migration.
 
-# Mandatory for longbv else truncated
-after init {
-    the_cid := 0x0;
-    server_cid := 0x1;
-}
-
 object endpoint_id = {
-    type this = {client, client_alt, server}
+    type this = {client, client_alt, client_vn, server}
 }
 
 action endpoint_id_addr(ep_id : endpoint_id) returns (ep:ip.endpoint) = {
@@ -41,7 +42,8 @@ action endpoint_id_addr(ep_id : endpoint_id) returns (ep:ip.endpoint) = {
     ep.addr := server_addr if ep_id = endpoint_id.server else client_addr;   # the loop-back addr
     ep.port := client_port if ep_id = endpoint_id.client
                else (client_port_alt if ep_id = endpoint_id.client_alt
-               else server_port);
+               else (client_port_vn if ep_id = endpoint_id.client_vn
+               else server_port));
 }    
 
 module quic_endpoint(ep_id) = {
@@ -62,25 +64,29 @@ instance server : quic_endpoint(endpoint_id.server)
 # An ip endpoint for the client to migrate to.
 
 var client_alt : ip.endpoint
+var client_vn : ip.endpoint
 
 after init {
-    client_alt := endpoint_id_addr(endpoint_id.client_alt)
+    client_alt := endpoint_id_addr(endpoint_id.client_alt);
+    client_vn := endpoint_id_addr(endpoint_id.client_vn);
 }
 
 # We create sockets and bind them to the addresses that the client can use.
 
 var sock : net.socket
 var sock_alt : net.socket
+var sock_vn : net.socket
 
 instance tls_extensions : vector(tls.extension)
 
 # This creates the sockets and also a TLS instance to be used by `the_cid`.
-# TODO: the TLS isntance should be created dynamically when the application
+# TODO: the TLS instance should be created dynamically when the application
 # layer creates a connection. 
 
 after init {
     sock := net.open(endpoint_id.client,client.ep);
     sock_alt := net.open(endpoint_id.client_alt,client_alt);
+    sock_vn := net.open(endpoint_id.client_vn,client_vn);
     client.tls_id := 0;
     server.tls_id := 1;
     var extns := tls_extensions.empty;
@@ -99,13 +105,15 @@ action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
         pid := endpoint_id.client;
     } else if src = client_alt {
         pid:= endpoint_id.client_alt;
+    } else if src = client_vn {
+        pid:= endpoint_id.client_vn;
     } 
 }
 
 # Get the IP endpoint associated to a host id and socket number.
 
 action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
-    src := client.ep if host = endpoint_id.client else client_alt
+    src := client.ep if host = endpoint_id.client else (client_vn if version_negociated else client_alt)
 }
     
 # Get the socket number associated to an IP endpoint.
@@ -115,6 +123,8 @@ action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
         socket := sock;
     } else if src = client_alt {
         socket := sock_alt;
+    } else if src = client_vn {
+        socket := sock_vn;
     } 
 }
 
@@ -122,7 +132,7 @@ action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
 # TODO: this shouldn't be needed.
 
 action tls_id_to_src(tls_id:tls_api.id) returns (src:ip.endpoint) = {
-    src := client.ep if tls_id = client.tls_id else server.ep;
+    src := client.ep if tls_id = client.tls_id & ~version_negociated else (client_vn if tls_id = client.tls_id & version_negociated else server.ep);
 }
 
 # Get the destination IP endpoint associated to a TLS instance
@@ -142,7 +152,7 @@ action tls_id_to_cid(tls_id:tls_api.id) returns (scid:cid) = {
 # TODO: shouldn't be needed.
 
 action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
-    res := dst = client.ep | dst = client_alt
+    res := dst = client.ep | dst = client_alt | dst = client_vn
 }
 
 # Returns the TLS instance associated to a destination IP endppoint.
@@ -248,28 +258,45 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 # to the server endpoint.
 #
 
+
 var allowed_multiple_migration : bool
+var version_negociated : bool
+var initial_version : version
 
 after init {
-	allowed_multiple_migration := false
+	allowed_multiple_migration := true;
+    version_negociated := false;
+    initial_version := 0xff00001d;
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-	var tp := trans_params(the_cid);
-	if ~disable_active_migration.is_set(tp) {
-		if ~migration_done { #only one migration
-        		require src = client.ep | src = client_alt;
-		} else {
-			require src = client_alt;
-		}
-	} else {
-		require src = client.ep;
-	};
+        var tp := trans_params(the_cid);
+        if version_negociated {
+            require src = client_vn;
+        } else {
+            if ~disable_active_migration.is_set(tp) {
+                if ~migration_done | allowed_multiple_migration { 
+                    #only one migration
+                    require src = client.ep | src = client_alt;
+                } else {
+                    require src = client_alt;
+                }
+            } else {
+                require src = client.ep;
+            }
+        };
         require dst = server.ep;
         require pkt.token.end = 0; 
     };
-    require pkt.long -> pkt.pversion = 0xff00001d  #version 29
+    if final_version = 0x00000000 {
+        #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
+        #require pkt.long -> pkt.pversion = 0xff000020  #version 32
+        #require pkt.long -> pkt.pversion = 0xff00001e  #version 30
+        require pkt.long -> pkt.pversion = initial_version  #version 30
+    } else {
+        require pkt.long -> pkt.pversion = final_version
+    };
 }
 
 # The protocol specification describes all the events occurring the
