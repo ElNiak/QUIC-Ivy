@@ -589,10 +589,6 @@ object quic_deser = {}
                     state = quic_handshake_done;
                     return 22;
                 }
-                /*if (frame_type == 0x00) {
-                    state = quic_padding;
-                    return 20;
-                }*/
                 if (frame_type == 0x40) {
                     ft = 0;
                     //ivy_binary_deser::getn(ft,1); // could be bigger
@@ -607,6 +603,10 @@ object quic_deser = {}
                         return 24;
                     }
                 }
+                /*if (frame_type == 0x00) {
+                    state = quic_padding;
+                    return 25;
+                }*/
                 std::cerr << "saw tag " << ft << std::endl;  
             }
             //std::cout << "state          = " << state << std::endl;  

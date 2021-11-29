@@ -326,22 +326,13 @@ object frame = {
     }
     
     	
-    #(0x1e) HANDSHAKE_DONE TODO
+    #(0x1e) HANDSHAKE_DONE 
     object handshake_done = {
         # HANDSHAKE_DONE frames are a variant of frame.
         variant this of frame = struct {
 
         }
     }
-
-	# (0x00) implicit in parsing
-    #object padding = {
-        # PADDING frame frames are a variant of frame and contains nothing
-		# 1 byte frame to increase the size of a packet
-    #    variant this of frame = struct {
-			
-    #    }
-    #}    
 
     #TODO EXTENSION Frames
 
@@ -364,6 +355,16 @@ object frame = {
         variant this of frame = struct {
         }
     } 
+
+	# (0x00) implicit in parsing
+    #object padding = {
+        # PADDING frame frames are a variant of frame and contains nothing
+		# 1 byte frame to increase the size of a packet
+    #    variant this of frame = struct {
+			
+    #    }
+    #}    
+
 
     instance idx : unbounded_sequence
     instance arr : array(idx,this)

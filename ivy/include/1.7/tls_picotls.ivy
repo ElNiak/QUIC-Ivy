@@ -483,14 +483,20 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
         if(const char* env_p = std::getenv("TEST_IMPL")) { 
             std::cout << "TEST_IMPL " << env_p << std::endl;
+            std::cerr << "TEST_IMPL " << env_p << std::endl;
+            std::cerr << "is_server " << is_server << std::endl;
             if(strncmp(env_p,"quic-go",10) == 0 
                 || strncmp(env_p,"quiche",10) == 0 
                    || strncmp(env_p,"lsquic",10) == 0 
                       || strncmp(env_p,"aioquic",10) == 0) //TODO ask why sometime ALPN needed
-                if (is_server) 
-                    ptls_set_negotiated_protocol(session, 
+                if (is_server) {
+                        std::cerr << "ptls_set_negotiated_protocol"  << std::endl;
+                        std::cout << "ptls_set_negotiated_protocol"  << std::endl;
+                        ptls_set_negotiated_protocol(session, 
                             (const char*) handshake_properties->client.negotiated_protocols.list[0].base, 
                             handshake_properties->client.negotiated_protocols.list[0].len);
+                }
+                   
         }
 
         picotls_connection *s = new picotls_connection(c,session,*`cb`,handshake_properties,is_server);
@@ -532,8 +538,10 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
     implement iv_size(c:cid,l:level) returns (sz:index) {
         <<< impure
-                //std::cerr << "iv_size start " << "\n";
-	picotls_connection *s = `cid_map`[c];
+        std::cerr << "iv_size start " << "\n";
+        std::cerr << "iv_size cid " <<  c << "\n";
+        std::cerr << "iv_size level " << l <<  "\n";
+	    picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_enc);
         if (!pn_enc)
             pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);
@@ -542,7 +550,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             sz = 0;
         }
         else sz = pn_enc->algo->iv_size;
-        //std::cerr << "iv_size end " << "\n";
+        std::cerr << "iv_size end " << "\n";
         >>>
     }
 
@@ -592,7 +600,6 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
         std::cerr << "compute_retry_integrity_tag ptls_aead_context_t " << "\n";
 
-
         std::vector<uint8_t> ad;
         //ad.resize(sizeof(odcid));
         ad.push_back(odcil);
@@ -611,24 +618,22 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         std::cerr << "compute_retry_integrity_tag ad size: " << ad.size()  << "\n";
 
         for(std::vector<uint8_t>::const_iterator i = ad.begin(); i != ad.end(); ++i) {
-             std::cerr << *i;
-             std::cerr << " ";
+            std::cerr << *i;
+            std::cerr << " ";
         }
         std::cerr << "\n";
-
 
         std::copy(ad.begin(),ad.end(),bytes.begin());
 
         for(std::vector<uint8_t>::const_iterator i = bytes.begin(); i != bytes.end(); ++i) {
-             std::cerr << *i;
-             std::cerr << " ";
+            std::cerr << *i;
+            std::cerr << " ";
         }
         std::cerr << "\n";
 
         std::vector<uint8_t> output;
         //std::copy(clear.begin(),clear.end(),input.begin());
         output.resize(16);
-        
         
         size_t encrypted = ptls_aead_encrypt(aead,
           &output[0], plaintext, sizeof(plaintext), 0,

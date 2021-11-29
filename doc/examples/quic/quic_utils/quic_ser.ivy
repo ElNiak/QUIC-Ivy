@@ -483,10 +483,6 @@ object quic_ser = {}
                     state = quic_handshake_done;
                     frame_type = 0x1e;
                 }
-                /*else if (tag == 20) {
-                    state = quic_padding;
-                    frame_type = 0x00;
-                }*/
                 else if (tag == 23) {
                     state = quic_ack_frequency;
                     frame_type = 0x40AF; // 0100 0000 AF
@@ -495,7 +491,12 @@ object quic_ser = {}
                 else if (tag == 24) {
                     state = quic_unknow;
                     frame_type = 0x4042; 
-                    sz = 2;                }
+                    sz = 2;                
+                }
+                /*else if (tag == 25) {
+                    state = quic_padding;
+                    frame_type = 0x00;
+                }*/
 	            else {
                     std::cout << "saw frame tag " << tag << std::endl;  
                     throw deser_err();
