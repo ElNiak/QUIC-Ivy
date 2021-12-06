@@ -15,7 +15,7 @@ object quic_ser_retry = {}
     //TODO
     //TODO
     #if defined(IS_NOT_DOCKER) 
-        #include "/home/user/Documents/QUIC-FormalVerification/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
+        #include "/home/user/Documents/QUIC-RFC9000/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     #else 
         #include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     #endif
@@ -87,13 +87,8 @@ object quic_ser_retry = {}
             {
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 if (long_format) {
-                    if((res == 0 || res == 1) && scid_h != 0){
-                        setn(8,1);
-                        setn(res,8);
-                    } else {
-                    	setn(dcid_h,1);
-		    	        setn(res,dcid_h);
-		            }
+                    setn(8,1);
+                    setn(res,8);
                 }
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token;

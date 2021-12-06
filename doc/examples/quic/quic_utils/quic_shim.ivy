@@ -119,9 +119,9 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         call show_typp(src,dst,bfe[4][5](header));
         call show_typp(src,dst,bfe[4][7](header));
 
-        #if is_long {
+        #if is_long { & ptype = 0xc0
             if host = endpoint_id.server 
-                    & ptype = 0xc0 {
+                    & bvand(ppkt.value(0),0xf0) = 0xc0 {
                 # for client test
                 call tls_client_initial_response(src,dst,ppkt)
             };
