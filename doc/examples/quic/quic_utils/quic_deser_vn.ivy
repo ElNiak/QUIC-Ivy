@@ -45,6 +45,8 @@ object quic_deser_vn = {}
         int payload_length;
         int fence;
 	    bool have_scid = false;
+        int version_count = 0;
+        int n_version;
     
     public:
         quic_deser_vn(const std::vector<char> &inp) : ivy_binary_deser_128(inp),state(quic_s_init) {
@@ -148,16 +150,34 @@ object quic_deser_vn = {}
                 break;
                 case quic_s_supported_version:
                 {   
+
+                    int packet_size = inp.size();
+                    std::cerr << "packet_size " << packet_size << std::endl;
+                    int versions = (packet_size - 1 - dcil - 1 - scil - 1 - 4)/4;
+                    std::cerr << "nb version " << versions << std::endl;
+
+                    /*if(version_count == 0)
+                        n_version = versions;
+
+                    std::cerr << "version_count " << version_count << std::endl;
+                    
+                    if(version_count < n_version){
+                        getn(res,4);    
+                        version_count += 1;
+                        state = quic_s_supported_version; //useless ?
+                    }*/
+
+                    
                     //while (pos < inp.size()) 
                     getn(res,4);
-                    //std::cerr << "version " << res << std::endl;
+                    //std::cerr << "vn version " << res << std::endl;
                     //getn(res,4);
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    //std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
+                    std::cerr <<  "vn state " << state << std::endl;
+                    std::cerr << "vn res " << res << std::endl;
+                    std::cerr << "vn pos " << pos << std::endl;
+                    std::cerr << "vn fence " << fence << std::endl;
+                    //std::cerr << "vn data_remaining " << data_remaining << std::endl;
+                    std::cerr << "vn inp.size " << inp.size() << std::endl;
                     //data_remaining = 8;
                     //pos += 4;
                     //state = quic_s_supported_version;
@@ -218,7 +238,7 @@ object quic_deser_vn = {}
                 //while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
                 //   pos++;  // skip padding frames
                 //return (fence == 0 || pos < fence) && more(1);
-                return pos < inp.size()-4;
+                return pos < inp.size()-4; //version_count < n_version; 
             }
             if (state == quic_s_init)
                 return more(1);

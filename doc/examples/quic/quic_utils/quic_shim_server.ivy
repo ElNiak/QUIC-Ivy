@@ -36,6 +36,7 @@ include quic_shim
 
 after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {  # & ~conn_closed(pkt.the_cid)
+        call recv_packet(src,dst,pkt);
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt,false);
         var tls_id := dst_tls_id(dst);

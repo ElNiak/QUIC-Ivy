@@ -29,7 +29,8 @@ object quic_ser_retry = {}
               quic_s_dcid,
               quic_s_scid,
               quic_s_retry_token,
-              quic_s_integrity_token
+              quic_s_integrity_token,
+              quic_s_retry_token_length
               } state;
         bool long_format;
         char hdr_type;
@@ -92,6 +93,7 @@ object quic_ser_retry = {}
                 }
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token;
+                //state = quic_s_retry_token_length;
             }
             break;
             case quic_s_retry_token:
@@ -137,26 +139,26 @@ object quic_ser_retry = {}
         }
 
         void open_list(int len) {
-	        /*if (state == quic_s_retry_token_length) {
+	        if (state == quic_s_retry_token_length) {
                 if (long_format & ((hdr_type & 0x30) == 0x00)) {
                     set_var_int(len);
                     data_remaining = len;
                 }
                 state = quic_s_retry_token;
-            }*/
+            }
         }
         void close_list() {
             /*if (state ==  quic_s_supported_version) {
                     while (res.size() < 1200)
                         res.push_back(0);  // pad version_negociation packet to 1200 bytes
             }*/
-            /*if (state == quic_s_retry_token) {
+            if (state == quic_s_retry_token) {
                 payload_length_pos = this->res.size();
                 if (long_format) {
                     setn(0,2);  // will fill in correct value later
                 }
                 //state = quic_s_pkt_num;
-            }*/
+            }
         }
         void close_list_elem() {}
 

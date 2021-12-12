@@ -5112,8 +5112,41 @@ int ask_ret(long long bound) {
 	
     virtual void ivy_assert(bool truth,const char *msg){
         if (!truth) {
+            int i;
             __ivy_out << "assertion_failed(\\"" << msg << "\\")" << std::endl;
-            std::cerr << msg << ": error: assertion failed\\n";
+
+            std::string::size_type pos = std::string(msg).find(".ivy");
+            std::string path = "";
+            if (pos != std::string::npos)
+                path = std::string(msg+0,msg+pos);
+
+            std::string lineNumber = "1";
+            std::string::size_type pos_n = std::string(msg).find("line");
+            if (pos_n != std::string::npos)
+                    lineNumber = std::string(msg+pos_n,msg+std::string(msg).length());
+            int num;
+            sscanf(lineNumber.c_str(),"%*[^0-9]%d", &num);
+            lineNumber = std::to_string(num);
+
+            std::string command = "";
+            if(path.find("test") != std::string::npos) 
+		        path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + path;
+        
+            command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
+            //std::cerr << command.c_str() << std::endl;
+
+            if (system(NULL)) i=system(command.c_str());
+            else exit (EXIT_FAILURE);
+
+	        std::ifstream ifs("temps.txt"); //.rdbuf()
+	        std::stringstream strStream;
+	        strStream << ifs.rdbuf();
+	        std::string str = strStream.str();
+
+            std::cerr << str << std::endl;
+	        if(std::remove("temps.txt") != 0) 
+		        std::cerr << "error: remove(temps.txt) failed\\n";
+	        std::cerr << msg << ": error: assertion failed\\n";
             CLOSE_TRACE
             __ivy_exit(1);
         }
@@ -5125,40 +5158,39 @@ int ask_ret(long long bound) {
         if (!truth) {
             int i;
             __ivy_out << "assumption_failed(\\"" << msg << "\\")" << std::endl;
+            
             std::string::size_type pos = std::string(msg).find(".ivy");
             std::string path = "";
             if (pos != std::string::npos)
                 path = std::string(msg+0,msg+pos);
             
-	    std::string lineNumber = "1";
-	    std::string::size_type pos_n = std::string(msg).find("line");
-	    if (pos_n != std::string::npos)
-                lineNumber = std::string(msg+pos_n,msg+std::string(msg).length());
-	    int num;
-	    sscanf(lineNumber.c_str(),"%*[^0-9]%d", &num);
-	    lineNumber = std::to_string(num);
+            std::string lineNumber = "1";
+            std::string::size_type pos_n = std::string(msg).find("line");
+            if (pos_n != std::string::npos)
+                    lineNumber = std::string(msg+pos_n,msg+std::string(msg).length());
+            int num;
+            sscanf(lineNumber.c_str(),"%*[^0-9]%d", &num);
+            lineNumber = std::to_string(num);
 
-	    std::string command = "";
-	    if(path.find("test") != std::string::npos) 
-		path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + path;
+            std::string command = "";
+            if(path.find("test") != std::string::npos) 
+		    path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + path;
+        
             command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
             //std::cerr << command.c_str() << std::endl;
 
             if (system(NULL)) i=system(command.c_str());
             else exit (EXIT_FAILURE);
 
-	    std::ifstream ifs("temps.txt"); //.rdbuf()
-	    std::stringstream strStream;
-	    strStream << ifs.rdbuf();
-	    std::string str = strStream.str();
+	        std::ifstream ifs("temps.txt"); //.rdbuf()
+	        std::stringstream strStream;
+	        strStream << ifs.rdbuf();
+	        std::string str = strStream.str();
 
-	    //std::string str((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-	    //str.erase(std::remove(str.begin(), str.end(), "\t"), str.end());
-	    	
             std::cerr << str << std::endl;
-	    if(std::remove("temps.txt") != 0) 
-		std::cerr << "error: remove(temps.txt) failed\\n";
-	    std::cerr << msg << ": error: assumption failed\\n";
+	        if(std::remove("temps.txt") != 0) 
+		        std::cerr << "error: remove(temps.txt) failed\\n";
+	        std::cerr << msg << ": error: assumption failed\\n";
             __ivy_exit(1);
         }
     }

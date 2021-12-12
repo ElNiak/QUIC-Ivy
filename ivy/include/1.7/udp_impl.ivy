@@ -105,7 +105,7 @@ module udp_impl(host,pkt,ser,des) = {
         // This is called in a loop by the task thread.
 
         virtual void read() {
-            // std::cout << "RECEIVING\n";
+            std::cout << "RECEIVING start\n";
 
 			int len=0;
 			socklen_t lenlen=4;
@@ -148,6 +148,7 @@ module udp_impl(host,pkt,ser,des) = {
 			ivy->__lock();
 			cb.rcb(sock,src,pkt);
 			ivy->__unlock();
+			std::cout << "RECEIVING finsh\n";
 		}
 
     };
@@ -211,7 +212,6 @@ object impl(me:host) = {
 		if (::bind(s, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0)
 		    { perror("bind failed"); exit(1); }
 		install_reader(new udp_reader(`me`,s, *`cb`, this));
-
 	    >>>
 	}
 
@@ -268,6 +268,7 @@ object impl(me:host) = {
 #else
 		     { perror("sendto failed"); exit(1); }
 #endif
+	std::cout << "sending id finish" << std::endl;
 	>>>
 	
     }

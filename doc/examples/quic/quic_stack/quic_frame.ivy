@@ -908,21 +908,22 @@ object frame = {
         action handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
-	    #if ~scid=0 {
-            	require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-	    #};
+	        #if ~scid=0 {
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+	        #};
             require ~conn_closed(scid);  # [1]
             #chris
             require ~(e = quic_packet_type.zero_rtt);  # [4]
             #chris
-	    #if  ~is_crypto_limit_test | ~_generating { #For crypto limit test
-            require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
-            require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
-	    #};
+	        #if  ~is_crypto_limit_test | ~_generating { #For crypto limit test
+                require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
+                require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
+	        #};
             ...
             var length := f.offset + f.length;
             if crypto_length(scid,e) < length {
-                crypto_length(scid,e) := length   # [3]
+                crypto_length(scid,e) := length;   # [3]
+                call show_crypto_length(crypto_length(scid,e));
             };
             var idx := f.offset;
             while idx < f.offset + f.length {
@@ -937,6 +938,9 @@ object frame = {
         }
     }
 }
+
+import action show_crypto_length(pkt:stream_pos)
+
 
 #
 # #### RESET_STREAM events

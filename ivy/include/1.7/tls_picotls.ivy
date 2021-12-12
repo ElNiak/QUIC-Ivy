@@ -132,6 +132,9 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     #define QUIC_LABEL_INITIAL_CLIENT "client in"
     #define QUIC_LABEL_INITIAL_SERVER "server in"
 
+    #define QUIC_LABEL_RETRY1 "quic key"
+    #define QUIC_LABEL_RETRY2 "quic iv"
+
     //SSL: ptls_get_client_random(), quic_update_traffic_key_callback
     // The following mess is to get the traffic keys from picotls
 
@@ -388,6 +391,8 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
     implement create(c:cid, is_server:bool, e:extens) {
         <<< impure
+
+         std::cerr << "create cid = " << c << std::endl;  
             
         // We create a new picootls session, and add an entry in the cid_map
         // for it.
@@ -488,8 +493,8 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             if(strncmp(env_p,"quic-go",10) == 0 
                 || strncmp(env_p,"quiche",10) == 0 
                    || strncmp(env_p,"lsquic",10) == 0 
-                      || strncmp(env_p,"aioquic",10) == 0) //TODO ask why sometime ALPN needed
-                if (is_server) {
+                      || strncmp(env_p,"aioquic",10) == 0 || true) //TODO ask why sometime ALPN needed
+                if (is_server || true) {
                         std::cerr << "ptls_set_negotiated_protocol"  << std::endl;
                         std::cout << "ptls_set_negotiated_protocol"  << std::endl;
                         ptls_set_negotiated_protocol(session, 
@@ -530,7 +535,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         
 	    picotls_connection *s = `cid_map`[c];
         setup_initial_traffic_keys(s,salt,ikm);
-        
+        std::cerr << "setup_initial_traffic_keys: " << ikm << "\n";
         >>>
     }
 
@@ -559,12 +564,12 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         //std::cerr << "encrypt_cipher start " << "\n";
         /*std::cerr << "encrypt_cipher c " << c << "\n";
         std::cerr << "encrypt_cipher iv " << iv << "\n";*/
-	picotls_connection *s = `cid_map`[c];
+	    picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc;
         if (recv) pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);
         else pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_enc);
         //std::cerr << "encrypt_cipher pn_enc " << pn_enc << "\n";
-	if(pn_enc != 0)
+	    if(pn_enc != 0)
         	encrypt_symm(pn_enc,clear,iv,cipher);
         //std::cerr << "encrypt_cipher end " << "\n";
         >>>
@@ -588,13 +593,23 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     <<< impure
 
         uint8_t plaintext[] = "";
-        uint8_t key[16] = { 0xbe, 0x0c, 0x69, 0x0b, 0x9f, 0x66, 0x57,
+        //0xbe 0c 69 0b 9f 66 57 5a 1d 76 6b 54 e3 68 c8 4e : rfc9001
+        /*uint8_t key[16] = { 0xbe, 0x0c, 0x69, 0x0b, 0x9f, 0x66, 0x57,
                             0x5a, 0x1d, 0x76, 0x6b, 0x54, 0xe3, 0x68, 
-                            0xc8, 0x4e };
+                            0xc8, 0x4e };*/
 
-        uint8_t nonce[12] = { 0x46, 0x15, 0x99, 0xd3, 0x5d, 0x63, 0x2b,
-                              0xf2, 0x23, 0x98, 0x25, 0xbb };
+        //0xcc 0xce 0x18 0x7e 0xd0 0x9a 0x09 0xd0 0x57 0x28 0x15 0x5a 0x6c 0xb9 0x6b 0xe1 : draft 29
+        uint8_t key[16] = { 0xcc, 0xce, 0x18, 0x7e, 0xd0, 0x9a, 0x09,
+                            0xd0, 0x57, 0x28, 0x15, 0x5a, 0x6c, 0xb9, 
+                            0x6b, 0xe1 };
 
+        //0x461599d35d632bf2239825bb
+        /*uint8_t nonce[12] = { 0x46, 0x15, 0x99, 0xd3, 0x5d, 0x63, 0x2b,
+                              0xf2, 0x23, 0x98, 0x25, 0xbb };*/
+
+        //0xe5 0x49 0x30 0xf9 0x7f 0x21 0x36 0xf0 0x53 0x0a 0x8c 0x1c : draft 29
+        uint8_t nonce[12] = { 0xe5, 0x49, 0x30, 0xf9, 0x7f, 0x21, 0x36,
+                              0xf0, 0x53, 0x0a, 0x8c, 0x1c };
         ptls_aead_context_t *aead = ptls_aead_new_direct(&ptls_openssl_aes128gcm, 1, key, nonce);
         uint32_t checksum_length = aead->algo->tag_size;
 
@@ -608,10 +623,12 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ad.push_back(pversion);
         ad.push_back(dcil);
         ad.push_back(dcid);
-        ad.push_back(scil);
+        ad.push_back(8); //scil
         ad.push_back(scid);
-        //ad.push_back(token);
-        std::copy(token.begin(),token.end(),ad.end());
+        std::cerr << "compute_retry_integrity_tag token size: " << token.size()  << "\n";
+        for (unsigned i = 0; i < token.size(); i++)
+            ad.push_back(token[i]);
+        //std::copy(token.begin(),token.end(),ad.end());
         std::vector<uint8_t> bytes;
         bytes.resize(ad.size());
 
@@ -641,15 +658,24 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         
         cipher.resize(output.size());
         std::copy(output.begin(),output.end(),cipher.begin());
+
+        //HKDF-Expand-Label(initial_secret, "client in", "", 32)
+        //int ret = ptls_hkdf_expand_label(cipher.hash, client_secret, cipher.hash->digest_size,
+        //    prk, QUIC_LABEL_RETRY1, ptls_iovec_init(NULL, 0),NULL);
+
+        //bail(ret,"tls: failed to set up retry secret\n");
+
         std::cerr << "compute_retry_integrity_tag finish " << "\n";
     >>>
     }
 
     implement encrypt_aead(c:cid,l:level,clear:bytes,seq:seq_num,ad:bytes) returns (cipher:bytes) {
         <<< impure
-                //std::cerr << "encrypt_aead start " << "\n";
+        std::cerr << "encrypt_aead start l " << l << "\n";
+        std::cerr << "encrypt_aead start c " << c << "\n";
 	    picotls_connection *s = `cid_map`[c];
         ptls_aead_context_t *aead = (ptls_aead_context_t *)(s->crypto_context[l].aead_encrypt);
+        std::cerr << "encrypt_aead aead " << aead << "\n";
         uint32_t checksum_length = aead->algo->tag_size;
         std::vector<uint8_t> bytes;
         bytes.resize(ad.size());
@@ -658,12 +684,14 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         input.resize(clear.size());
         std::copy(clear.begin(),clear.end(),input.begin());
         output.resize(clear.size() + checksum_length);
+        std::cerr << "encrypt_aead encrypted  1" << "\n";
         size_t encrypted = ptls_aead_encrypt(aead,
           &output[0], &input[0], input.size(), seq,
           &bytes[0], bytes.size());
+        std::cerr << "encrypt_aead encrypted " << encrypted << "\n";
         cipher.resize(output.size());
         std::copy(output.begin(),output.end(),cipher.begin());
-                //std::cerr << "encrypt_aead finish " << "\n";
+        std::cerr << "encrypt_aead finish " << "\n";
         >>>
     }
 

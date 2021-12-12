@@ -165,14 +165,7 @@ action packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) = {}
 #   transport parameter is included with a zero-length value.
 
 around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
-    #call show_connected(connected(the_cid), connected_to(the_cid));
-    #require pkt.token.end ~= 0 -> (pkt.ptype = quic_packet_type.initial);
-
-    # TEMPORARY: Do not allow zero_rtt packets
-
-    # TODO require pkt.ptype ~= quic_packet_type.zero_rtt;
-    
-    # Extract the source and destination cid's and packet number from the packet.
+        # Extract the source and destination cid's and packet number from the packet.
 
     var dcid := pkt.dst_cid;
     var scid := pkt.src_cid;
@@ -189,21 +182,9 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
     # The destination cid must represent an existing connection,
     # except in the case of a client initial packet, when the
     # destination cid may be the nonce cid chosen by the client for
-    # the given source cid. TODO: The standard says that on receiving
-    # the the server's cid, the clint must switch to it. However, we
-    # can't know when that server's cid has actually been received by
-    # the client. As an example, after the server sends its first
-    # initial packet, the client might still retransmit its initial
-    # packet using the nonce cid. In some cases, we can infer that the
-    # client has in fact seen the server's cid (for example, if it
-    # packet contains an ACK frame, or a CRYPTO frame that is
-    # reponsive to a server FRAME. This is trick to check, however,
-    # and the actual servers do not seem to check it.
+    # the given source cid. 
 
-    # require connected(dcid) |
-    #     pkt.ptype = quic_packet_type.initial
-    #     & is_client(scid)
-    #     & dcid = nonce_cid(scid);
+    #require pkt.ptype = quic_packet_type.version_negociation & is_client(scid) & dcid = nonce_cid(scid);
 
     # On long headers, both cids are given. If the destination cid is
     # connected, it must be connected to the source cid (otherwise it
@@ -221,22 +202,9 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
 
     require pkt.ptype = quic_packet_type.version_negociation;
 
-    # The payload may not be empty
-
-    # require num_queued_frames(scid) > 0;  # [7]
-
-    # The payload must exactly match the queued frames.
-
-    # require pkt.payload = queued_frames(scid);
-
     # TEMPORARY: don't allow client migration during handshake
 
     require conn_seen(scid) & is_client(scid) -> conn_requested(src,dst,scid);
-
-    # Here, we have the updates to the packet protocol state.
-
-    # TEMPORARY: The following are repeated because currently locals defined in
-    # the "before" section cannot be accessed in the "after" section.
 
     ...
 
@@ -247,13 +215,34 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
 	    dcid := cid_to_aid(dcid);
     };
 
+    if pkt.ptype = quic_packet_type.version_negociation {
+        conn_requested(src,dst,scid) := false;
+        conn_requested(src,dst,dcid) := false;
+        connected(dcid) :=  false;
+        connected(scid) :=  false;
+        conn_seen(dcid) := false;
+        conn_seen(scid) := false;
+
+        the_cid := 0x3; # 0x0;
+        server_cid := 0x0; # 0x1;
+
+        connected(the_cid) :=  false;
+        connected(server_cid) :=  false;
+
+        var extns := tls_extensions.empty;
+        extns := extns.append(make_transport_parameters);
+        call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
+        call show_initial_request_vn;
+        #call tls_client_initial_request(src,dst,server_cid,final_version);
+        #call tls_client_initial_response(src,dst,spkt);
+        conn_requested(src,dst,the_cid) := true;
+        #conn_requested(dst,src,the_cid) := true;
+    };
+
     # Record the packet number as latest see
 
     conn_seen(scid) := true;  # [1]
 
-    # If the sender is in the draining state, this is the draining packet.
-
-    if conn_draining(scid) {
-        draining_pkt_sent(scid) := true
-    };
 }
+
+import action show_initial_request_vn

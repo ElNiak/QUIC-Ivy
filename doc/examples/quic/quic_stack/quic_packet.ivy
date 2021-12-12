@@ -478,9 +478,15 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     if pkt.ptype = quic_packet_type.initial {
         # An initial packet with an unseen destination cid is a connection request.
-        if ~conn_seen(dcid) {
+        if ~conn_seen(dcid) | retry_response {
+            call show_initial_request_initial;
             call tls_client_initial_request(src,dst,dcid,pkt.pversion);
             conn_requested(src,dst,scid) := true;
+            if retry_response {
+                retry_rsp := false;
+                #crypto_length(scid,pkt.ptype) := 0x0;
+                #crypto_length(dcid,pkt.ptype) := 0x0;
+            };
         };
         #if retry_send(dcid) {
         #    require pkt.token = retry_token(dcid);
@@ -558,6 +564,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     queued_ack_eliciting(scid) := false;
 #Hamid
 }
+
+import action show_initial_request_initial
 
 
 
@@ -656,11 +664,23 @@ action handle_tls_extensions
 #Note that while the endpoint's
 #   max_ack_delay transport parameter is in milliseconds (Section 18.2 of
 #   [QUIC-TRANSPORT]), min_ack_delay is specified in microseconds.
-#
+#   An endpoint MUST treat the following as a connection error of type
+#   TRANSPORT_PARAMETER_ERROR or PROTOCOL_VIOLATION:
+#   *  absence of the retry_source_connection_id transport parameter from
+#      the server after receiving a Retry packet,
 # Note:
 #
 # - Setting a transport parameter requires that the parameter is not
 #   previously set.
+
+relation retry_sent
+relation retry_recv
+function retry_recv_token : stream_data #todo generalise with cid
+
+after init {
+    retry_sent := false;
+    retry_recv := false;
+}
 
 action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:cid,
                                           tps:quic_transport_parameters,
@@ -686,11 +706,16 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
     if is_client_hello {
         require ~stateless_reset_token.is_set(trans_params(scid));  # [4]
     } else {
-        if ~ _generating & ~(scid = 1) { 
+        if ~ _generating & ~(scid = 1) {  # TODO
             require original_destination_connection_id.is_set(trans_params(scid));  # [6]
         };
     };
 
+    if ~is_client_hello & retry_sent {
+        require retry_source_connection_id.is_set(trans_params(scid));
+        require retry_source_connection_id.value(trans_params(scid)).rcid = 0x5; # todo generalize
+    };
+    
     # [7]
     if min_ack_delay.is_set(trans_params(scid)) & max_ack_delay.is_set(trans_params(scid)) {
         var min_ack_milli := min_ack_delay.value(trans_params(scid)).exponent_8 * 1000;

@@ -135,6 +135,8 @@ module quic_protection(tls_id,tls) = {
         hdr := hdr.set(0,byte_xor(pkt.value(0),byte0_mask));
         pnum := stream_data_xor(pkt.segment(pnum_pos,pnum_pos+pnum_len),mask.segment(1,1+pnum_len));        
         pkt := hdr.extend(pnum).extend(pyld);
+
+        call show_encrypt_finish;
     }
 
     implement decrypt {
@@ -196,8 +198,8 @@ module quic_protection(tls_id,tls) = {
 
         var rt := tls.compute_retry_integrity_tag(odcil, cid_to_tls_id(odcid),
                                 pversion,
-                                dcil, 1,
-                                scil, 2,
+                                dcil, cid_to_us(dcid),
+                                scil, cid_to_us(scid),
                                 token);
     #     var rt := tls.compute_retry_integrity_tag(1,0,
     #                                            42,
@@ -243,8 +245,9 @@ module quic_protection(tls_id,tls) = {
 
     action get_level(pkt:stream_data) returns (level:tls.level) = {
         if bvand(pkt.value(0),0x80) ~= 0 {
-            var hdr_type := bvand(pkt.value(0),0x30);
-            if hdr_type = 0x00 {
+            var hdr_type := bvand(pkt.value(0),0x30); #  : type_bits :=  bfe[0][6](pkt.value(0)); # 
+            call show_htype(hdr_type);
+            if hdr_type = 0x00 | hdr_type = 0x30 { # | hdr_type = 0x20
                 level := 0;
             } else  { # if hdr_type = 0x20, TODO: other packet types
                 level := 2;
@@ -416,7 +419,10 @@ module quic_protection(tls_id,tls) = {
     import action show_seqnum_pos(ver:stream_pos)
     import action show_iv_size(ver:stream_pos)
     import action show_header(h:header_info)
+    import action show_htype(h:byte)
     import action show_if
+
+    import action show_encrypt_finish
     import action show_enc_level(level:tls.level)
     import action show_iff
     import action show_data(ver:stream_pos, ver2:stream_pos, ver3:stream_pos, ver4:stream_pos)

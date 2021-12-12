@@ -44,6 +44,9 @@ object quic_deser_retry = {}
         int payload_length;
         int fence;
 	    bool have_scid = false;
+        int token_count = 0;
+        int tokeni_count = 0;
+        int token_len;
     
     public:
         quic_deser_retry(const std::vector<char> &inp) : ivy_binary_deser_128(inp),state(quic_s_init) {
@@ -113,11 +116,15 @@ object quic_deser_retry = {}
                         scil = 0;
                     }
                     getn(res,scil);
-                    /*if(scil != 8) { //tricks
-                    tls_field_bytes_map["scid"] = scil;
-                    }*/
                     //std::cerr << "sourceID res " << res << std::endl;
                     data_remaining = 8;
+                    /*int128_t len;
+                    //long long len;
+                    if (long_format & ((hdr_type & 0x30) == 0x00)){
+                        get_var_int(len);
+                    }
+                    else len = 0;
+                    data_remaining = len;*/
                     std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
                     std::cerr << "scid " << res << std::endl;
                     state = quic_s_retry_token;
@@ -129,14 +136,49 @@ object quic_deser_retry = {}
                     std::cerr << "packet_size " << packet_size << std::endl;
                     int token_length = packet_size - 16 - 1 - dcil - 1 - scil - 1 - 4;
                     std::cerr << "token_length " << token_length << std::endl;
-                    getn(res,token_length);
-                    std::cerr << "token " << res << std::endl;
-                    state = quic_s_retry_integrity_tag;
+                    /*for(int i = 0; i < token_length; i++) {
+                        getn(res,1);
+                    }
+                    char str_d[100];
+                    sprintf(str_d,"%llu",res);
+                    if(setenv("RETRY_TOKEN",str_d,true) != 0) 
+                        fprintf(stderr, "setenv failed\n");*/
+
+                    char str_l[100];
+                    sprintf(str_l,"%d",token_length);
+                    if(setenv("RETRY_TOKEN_LENGTH",str_l,true) != 0) 
+                        fprintf(stderr, "setenv failed\n");
+                        
+                    //getn(res,token_length);
+                    /*std::cerr << "token " << res << std::endl;*/
+
+                    if(token_count == 0)
+                        token_len = token_length;
+
+                    std::cerr << "token_count " << token_count << std::endl;
+                    
+                    if(token_count < token_len){
+                        getn(res,1);    
+                        token_count += 1;
+                        if(token_count == token_len)
+                        state = quic_s_retry_integrity_tag;
+                        else
+                        state = quic_s_retry_token; //useless ?
+                    }
+                    else 
+                        state = quic_s_retry_integrity_tag;
                 }
                 break;
                 case quic_s_retry_integrity_tag:
                 {
+                    std::cerr << "retry_integrity_tag token_count " << tokeni_count << std::endl;
                     getn(res,16);
+                    /*if(tokeni_count < 16){
+                        getn(res,1);    
+                        tokeni_count += 1;
+                        state = quic_s_retry_integrity_tag;
+                    }*/
+                    //else */
                     std::cerr << "retry_integrity_tag " << res << std::endl;
                 }
                 break;
@@ -194,7 +236,7 @@ object quic_deser_retry = {}
                /*while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
                    pos++;  // skip padding frames
                 */
-               return (fence == 0 || pos < fence) && more(1);
+               return token_count < token_len; //(fence == 0 || pos < fence) && more(1);
             }
             if (quic_s_retry_integrity_tag) {
                 // We must use/take in count the padding frame since Picoquic client sometimes send packet
@@ -203,7 +245,7 @@ object quic_deser_retry = {}
                /*while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
                    pos++;  // skip padding frames
                 */
-               return false;
+               return  false; //more(1); //tokeni_count < 16; //more(16); //(fence == 0 || pos < fence) && 
             }
             if (state == quic_s_init)
                 return more(1);
@@ -218,10 +260,10 @@ object quic_deser_retry = {}
 
         }
         void close_list() {
-            if (state == quic_s_retry_integrity_tag) {
+            /*if (state == quic_s_retry_integrity_tag) {
                 state = quic_s_init;
                 pos += QUIC_DESER_FAKE_CHECKSUM_LENGTH; // skip the fake checksum
-            }
+            }*/
         }
         void close_list_elem() {}
 

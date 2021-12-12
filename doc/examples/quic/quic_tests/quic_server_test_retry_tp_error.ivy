@@ -162,7 +162,7 @@ instance tls_extensions : vector(tls.extension)
 after init {
     sock := net.open(endpoint_id.client,client.ep);
     sock_alt := net.open(endpoint_id.client_alt,client_alt);
-    sock_vn := sock; #net.open(endpoint_id.client_vn,client_vn);
+    sock_vn := net.open(endpoint_id.client_vn,client_vn);
     client.tls_id := 0;
     server.tls_id := 1;
     var extns := tls_extensions.empty;
@@ -291,6 +291,10 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var no_migration : disable_active_migration; #TODO update v29
     #tp.transport_parameters := tp.transport_parameters.append(no_migration);
 
+    var retry : retry_source_connection_id; #TODO update v29
+    retry.rcid := 0x5;
+    tp.transport_parameters := tp.transport_parameters.append(retry);
+
     var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
     max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
     tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
@@ -307,7 +311,6 @@ attribute radix=16
 # small bit vector enodings.
 
 interpret cid -> longbv[1][13][20]
-interpret itoken -> longbv[1][13][16]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
@@ -409,16 +412,8 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
                 require src = client.ep;
             }
         };
-        if pkt.ptype = quic_packet_type.initial {
-            pkt.dst_cid := server_cid; # TODO
-        };
         require dst = server.ep;
-        if ~retry_recv & pkt.ptype = quic_packet_type.initial {
-            require pkt.token.end = 0; 
-        } else if pkt.ptype = quic_packet_type.initial {
-            require pkt.token = retry_recv_token;
-        };
-        
+        require pkt.token.end = 0; 
     };
     if final_version = 0x00000000 {
         #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
@@ -469,17 +464,10 @@ before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) 
     if _generating {
         require scid = the_cid;
         require f.length > 0;
-        call show_crypto_length(crypto_length(scid,e));
-        if e = quic_packet_type.initial & false {
-            require f.offset = 0;
-        } else {
-            require f.offset = crypto_length(scid,e);
-        };
+        require f.offset = crypto_length(scid,e);
         require f.length = (crypto_data_end(scid,e)) - f.offset;
     }
 }
-
-
 
 # Generate ack frames only for the client. HACK: to avoid generating
 # blizzards of ACK's, we set the bit `force_new_ack` which forces
@@ -675,7 +663,6 @@ attribute frame.path_response.handle.weight = "5"
 # action with additional checks.
 
 export action _finalize = {
-    # chris TODO 
-    require conn_total_data(the_cid) > 0;
+    require is_transport_parameter_error;
 }
 

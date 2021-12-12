@@ -42,6 +42,8 @@ type cid
 
 alias aid = cid
 
+type itoken
+
 # ### Protocol verion numbers
 
 # The type `version` represents a protocol version as a 32-bit unsigned number.
@@ -60,7 +62,6 @@ type pkt_num
 # microseconds. Currently this type is uninterpreted.
 
 type microsecs
-
 
 # The type error code is a two-byte code for an error
 type error_code
@@ -85,7 +86,6 @@ object bit = {
 object role = {
     type this = {client,server}
 }
-
 
 # ### Packet type bits
 
