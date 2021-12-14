@@ -169,6 +169,16 @@ action packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 #   If a zero-length connection ID is selected, the corresponding
 #   transport parameter is included with a zero-length value.
 
+import action show_iretryb(v:stream_data)
+import action show_iretry(v:itoken)
+
+relation init_token
+
+after init {
+    init_token :=  false;
+}
+
+
 around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) {    
     # Extract the source and destination cid's and packet number from the packet.
 
@@ -183,6 +193,16 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 	    #call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
 
+    if ~ _generating  { 
+        var expected_itoken := prot.retry_integrity_tag(8,server_cid,
+                                           pkt.pversion,
+                                           scid_size_pos(true),dcid,
+                                           dcid_size_pos(true),scid,
+                                           pkt.token, last_pkt_num(dcid,quic_packet_type.initial),h_retry);
+
+        call show_iretryb(expected_itoken);
+        # TODO require expected_itoken = pkt.token;
+    };
     # Similarly, an endpoint MUST NOT reuse a connection ID when sending to
     # more than one destination address.  
     
@@ -239,7 +259,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     retry_send(dcid) := true;
     retry_token(dcid) := pkt.token;
 
-    if pkt.ptype = quic_packet_type.retry {
+    if pkt.ptype = quic_packet_type.retry & _generating {
         conn_requested(src,dst,scid) := false;
         conn_requested(src,dst,dcid) := false;
         connected(dcid) :=  false;
@@ -269,7 +289,6 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 }
 
 import action show_initial_request_retry
-
 
 action make_transport_parameters_retry returns (tp:quic_transport_parameters) = {
     var imsdbl : initial_max_stream_data_bidi_local;

@@ -45,11 +45,6 @@ module quic_protection(tls_id,tls) = {
     
     
     implement encrypt {
-        #var rt := tls.compute_retry_integrity_tag(1,0,
-        #                                        42,
-        #                                        1,1,
-        #                                        1,2,
-        #                                        random_stream_data(0,5,4));
         var h := get_header_info(pkt,false);
         var level := get_level(pkt);
         var sample_size : stream_pos := tls.iv_size(c,level);
@@ -80,7 +75,7 @@ module quic_protection(tls_id,tls) = {
 
         # call show_aead(level,pyld,new_seq,auth);
 
-        # Computing the sample position is a bit tricky. First we
+        # start l 3Computing the sample position is a bit tricky. First we
         # assume the length of the pnum is 4, which means the offset
         # of the sample withing the payload is `4 -
         # pnum_len`. However, if there are not enough bytes in the
@@ -109,16 +104,16 @@ module quic_protection(tls_id,tls) = {
         #var new_pkt := pkt;
         var new_pyld := pyld;
         if sample_pos + sample_size > pkt.end { #MC
-	    call show_if;
-	    var diff := (sample_pos + sample_size) - pyld.end;
-	    var i : stream_pos := 0;
-	    while i < diff {
-	    	new_pyld := new_pyld.append(0x00);
-		    i := i + 1
-	    };
-        #sample_pos := pyld.end - sample_size #MC shift vs padding ? #[*1*]
-	    #check with mcmillan vs maxime piraux
-	    pyld := new_pyld;  #[*2*]
+            call show_if;
+            var diff := (sample_pos + sample_size) - pyld.end;
+            var i : stream_pos := 0;
+            while i < diff {
+                new_pyld := new_pyld.append(0x00);
+                i := i + 1
+            };
+            #sample_pos := pyld.end - sample_size #MC shift vs padding ? #[*1*]
+            #check with mcmillan vs maxime piraux
+            pyld := new_pyld;  #[*2*]
         };
 	
         #call show_payload(new_pyld);
@@ -150,10 +145,9 @@ module quic_protection(tls_id,tls) = {
         }
         else {
             var pnum_pos := h.pkt_num_pos;
-
             var sample_pos := pnum_pos + 4;
             if sample_pos + sample_size > pkt.end {
-	    	call show_iff;
+	    	    call show_iff;
                 sample_pos := pkt.end - sample_size
             };
             var sample := pkt.segment(sample_pos,sample_pos+sample_size);
@@ -165,7 +159,14 @@ module quic_protection(tls_id,tls) = {
             var hdr := pkt.segment(0,pnum_pos);
             hdr := hdr.set(0,byte_xor(pkt.value(0),byte0_mask));
             var pnum_len := get_pnum_len(hdr);
-	        call show_seqnum_pos(pnum_len);
+            #var pnum_len := get_pnum_len(hdr);
+            #var pnum_len := get_pnum_len2(pkt);
+            #if h.hdr_long & bvand(h.hdr_type,0x30) = 0x00 & retry_sent  {
+                #pnum_len := get_pnum_len2(hdr);
+                #pnum_len := get_pnum_len2(pkt);
+            #};
+            call show_seqnum_pos(pnum_len);
+            var x := show_pnuml(pnum_len);
             pnum := stream_data_xor(pnum.segment(0,pnum_len),mask.segment(1,1+pnum_len));
     	    call show_seqnum_data(pnum);
             hdr := hdr.extend(pnum);
@@ -192,26 +193,23 @@ module quic_protection(tls_id,tls) = {
                                pversion: version,
                                dcil: stream_pos, dcid: cid,
                                scil: stream_pos, scid: cid,
-                               token : stream_data) returns (cipher:stream_data)
+                               token : stream_data,
+                               seq:pkt_num,h:stream_pos) returns (cipher:stream_data)
 
     implement retry_integrity_tag {
-
-        var rt := tls.compute_retry_integrity_tag(odcil, cid_to_tls_id(odcid),
+        # TODO useless, call directly  tls.compute_retry_integrity_tag
+        var rt := tls.compute_retry_integrity_tag(
+                                odcil, cid_to_us(odcid),
                                 pversion,
                                 dcil, cid_to_us(dcid),
                                 scil, cid_to_us(scid),
-                                token);
-    #     var rt := tls.compute_retry_integrity_tag(1,0,
-    #                                            42,
-    #                                            1,1,
-    #                                            1,2,
-    #                                            random_stream_data(0,5,4));
+                                token,seq,h);
          cipher := rt;
     }
 
     action cid_to_tls_id(c:cid) returns(res:tls_api.id) = {
     <<<
-    res = c.val;
+        res = c.val;
     >>>
     }
 
@@ -258,7 +256,8 @@ module quic_protection(tls_id,tls) = {
     }
 
     # FROM quic-tracker GetPacketSample
-    action get_packet_sample(header:header_info, packetByte: stream_data, pnum_pos:stream_pos,hdr_len:stream_pos,sample_size:stream_pos) 
+    action get_packet_sample(header:header_info, packetByte: stream_data, 
+                             pnum_pos:stream_pos,hdr_len:stream_pos,sample_size:stream_pos) 
     returns (sample: stream_data) = {
         #var sample_length: stream_pos := 16;
         var pn_offset : stream_pos := 0;
@@ -293,17 +292,24 @@ module quic_protection(tls_id,tls) = {
             if decrypt {
                 client_initial_scil := scil;
             };
-            var pos := 7 + dcil + scil;
+            var pos := 1 + 4 + 1 + dcil + 1 + scil; #7 + dcil + scil;
+            call show_pos(pos);
+            var x := show_offset(pos);
             if bvand(h.hdr_type,0x30) = 0x00 {
                 #Initial packet
                 var len := get_var_int_len(pkt,pos);
                 var retry_token_len := get_var_int(pkt,pos,len);
+                #call show_token_len(len);
+                call show_token_len(retry_token_len);
                 pos := pos + len + retry_token_len;
             };
             var len := get_var_int_len(pkt,pos);
+            #call show_token_len(len);
             h.payload_length := get_var_int(pkt,pos,len);
             h.payload_length_pos := pos;
             h.pkt_num_pos := pos + len;
+            call show_pos(h.pkt_num_pos);
+            x := show_offset(h.pkt_num_pos);
         }
         else {
             #todo check if good for client test too
@@ -335,12 +341,24 @@ module quic_protection(tls_id,tls) = {
 
     # Get the length of a packet number at position `pos`
 
-    action get_pnum_len(pkt:stream_data) 
+    action get_pnum_len2(pkt:stream_data) 
     returns (pnum_len:stream_pos) = {
-        var len_minus_one : stream_pos := bfe[0][1](pkt.value(0));
+        # var t := bfe[0][7](pkt.value(0));
+        call show_byte(pkt.value(0));
+        var and := bvand(pkt.value(0),0x03);
+        call show_byte(and);
+        var len_minus_one : stream_pos := bytes_to_pos(and);
+        call show_seqnum_posi(len_minus_one);
         pnum_len := len_minus_one + 1;
     }
     
+    action get_pnum_len(pkt:stream_data) 
+    returns (pnum_len:stream_pos) = {
+        var len_minus_one : stream_pos := bfe[0][1](pkt.value(0));
+        #call show_seqnum_posi(len_minus_one);
+        pnum_len := len_minus_one + 1;
+    }
+
     # Given the length of the packet number, get the number it encodes.
 
     action get_pnum(pkt:stream_data,pnum_pos:stream_pos,pnum_len:stream_pos)
@@ -392,6 +410,14 @@ module quic_protection(tls_id,tls) = {
         >>>
     }
 
+    action bytes_to_pos(b:byte) returns (val:stream_pos) = {
+    <<<
+    val = b;
+    //for (unsigned i = 0; i < bytes.size(); i++)
+    //    val = (val << 8) + bytes[i];
+    >>>
+}
+
     action bytes_to_cid(bytes:stream_data) returns (val:cid) = {
         <<<
         val.val = 0;
@@ -406,6 +432,20 @@ module quic_protection(tls_id,tls) = {
         >>>
     }
 
+    action show_pnuml(x:stream_pos) returns (z:byte) = {
+        <<<
+        std::cerr <<  "show_pnuml: " <<  x << std::endl;
+        z = 0;
+        >>>
+    }
+
+    action show_offset(x:stream_pos) returns (z:byte) = {
+        <<<
+        std::cerr <<  "show_offset: " <<  x << std::endl;
+        z = 0;
+        >>>
+    }
+
     action stream_data_xor(x:stream_data,y:stream_data) returns (x:stream_data) = {
         var idx := x.begin;
         while idx < x.end {
@@ -417,13 +457,17 @@ module quic_protection(tls_id,tls) = {
     import action show_seqnum(ver:pkt_num)
     import action show_seqnum_data(ver:stream_data)
     import action show_seqnum_pos(ver:stream_pos)
+    import action show_pos(ver:stream_pos)
+    import action show_seqnum_posi(ver:stream_pos)
     import action show_iv_size(ver:stream_pos)
+    import action show_token_len(ver:stream_pos)
     import action show_header(h:header_info)
     import action show_htype(h:byte)
     import action show_if
-
+    import action show_cool
     import action show_encrypt_finish
     import action show_enc_level(level:tls.level)
+    import action show_byte(level:byte)
     import action show_iff
     import action show_data(ver:stream_pos, ver2:stream_pos, ver3:stream_pos, ver4:stream_pos)
 }

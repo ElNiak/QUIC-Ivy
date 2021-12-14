@@ -62,20 +62,17 @@ object quic_ser_retry = {}
             break;
             case quic_s_version:
             {
-                if (long_format)
-                    setn(res,4);
+                setn(res,4);
                 state = quic_s_dcid;
             }
             break;    
             case quic_s_dcid:
             {
                 //std::cerr << "ser res dcid 1 " << res << std::endl;
-                if (long_format) {
-                    if((res != 0 && res != 1) || scid_h == 0)
-                        setn(scid_h,1);
-                    else 
-                        setn(8,1);
-                }
+                if((res != 0 && res != 1) || scid_h == 0)
+                    setn(scid_h,1);
+                else 
+                    setn(8,1);
                 if((res != 0 && res != 1) || scid_h == 0)
                     setn(res,scid_h); //scid_h
                 else 
@@ -87,10 +84,8 @@ object quic_ser_retry = {}
             case quic_s_scid:
             {
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
-                if (long_format) {
-                    setn(8,1);
-                    setn(res,8);
-                }
+                setn(8,1);
+                setn(res,8);
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token;
                 //state = quic_s_retry_token_length;
@@ -99,7 +94,6 @@ object quic_ser_retry = {}
             case quic_s_retry_token:
             {
                 setn(res,1);
-                state = quic_s_integrity_token;
             }
             break;
             case quic_s_integrity_token:
@@ -139,13 +133,13 @@ object quic_ser_retry = {}
         }
 
         void open_list(int len) {
-	        if (state == quic_s_retry_token_length) {
+	        /*if (state == quic_s_retry_token_length) {
                 if (long_format & ((hdr_type & 0x30) == 0x00)) {
                     set_var_int(len);
                     data_remaining = len;
                 }
                 state = quic_s_retry_token;
-            }
+            }*/
         }
         void close_list() {
             /*if (state ==  quic_s_supported_version) {
@@ -154,10 +148,10 @@ object quic_ser_retry = {}
             }*/
             if (state == quic_s_retry_token) {
                 payload_length_pos = this->res.size();
-                if (long_format) {
+                /*if (long_format) {
                     setn(0,2);  // will fill in correct value later
-                }
-                //state = quic_s_pkt_num;
+                }*/
+                state = quic_s_integrity_token;;
             }
         }
         void close_list_elem() {}

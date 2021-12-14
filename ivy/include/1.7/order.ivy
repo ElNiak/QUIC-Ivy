@@ -66,6 +66,62 @@ module unbounded_sequence = {
 
 }
 
+module long_unbounded_sequence = {
+    
+    
+    type this
+    alias t = this
+
+    # returns the least key greater than x
+    action next(x:t) returns (y:t)
+
+    # returns the greatest key less than x
+    action prev(x:t) returns (y:t)
+
+    relation succ(X:t,Y:t)
+
+    object spec = {
+
+	property succ(X,Z) -> (X < Z & ~(X < Y & Y < Z))
+
+	instantiate totally_ordered_with_zero(t)
+
+	after next {
+	    assert x < y & (x < Y -> y <= Y);
+	    assert succ(x,y)
+	}
+	before prev {
+	    assert 0 < x
+	}
+	after prev {
+	    assert y < x & (Y < x -> Y <= y);
+	    assert succ(y,x)
+	}
+    }
+
+    object impl = {
+
+	interpret t -> longbv[1][13][16]
+
+
+	definition succ(X,Y) = (Y = X + 1)
+
+	implement next {
+	    y := x + 1
+	}
+	implement prev {
+	    y := x - 1
+	}
+    }
+
+    isolate iso = impl,spec
+    
+    # When testing, use the integer implementation.
+
+    attribute test = impl
+
+}
+
 module bounded_sequence_spec = {
     type this
     alias t = this

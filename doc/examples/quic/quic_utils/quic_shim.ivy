@@ -63,6 +63,8 @@ var supported_versions_bv : versions_bv
 relation retry_response
 relation retry_rsp
 
+var h_retry : stream_pos
+
 after init {
     last_packet_type := quic_packet_type.initial;
     last_packet_length := 1200;
@@ -83,7 +85,8 @@ after init {
     version_not_found := false;
 
     retry_response := false;
-    retry_rsp := false
+    retry_rsp := false;
+    h_retry := 0x0;
 }
 
 action test returns (is_padding:bool) = {
@@ -144,6 +147,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             if host = endpoint_id.server 
                     & bvand(ppkt.value(0),0xf0) = 0xc0 {
                 # for client test
+                call show_ttt;
                 call tls_client_initial_response(src,dst,ppkt)
             };
             if ~ host = endpoint_id.server  
@@ -195,6 +199,8 @@ import action show_type(src:ip.endpoint,dst:ip.endpoint,v:byte)
 import action show_typed(src:ip.endpoint,dst:ip.endpoint,v:stream_data)
 import action show_version_sd(src:ip.endpoint,dst:ip.endpoint,v:stream_data)
 import action show_typp(src:ip.endpoint,dst:ip.endpoint,v:type_bits)
+
+import action show_ttt
 
 import action padding_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
 
@@ -288,8 +294,8 @@ after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream
 function client_initial_scil : stream_pos
 
 after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version) {
-    var ikm := cid_to_bytes(nonce,cid_size(nonce,retry_rsp)); 
-    client_initial_scil := cid_size_pos(nonce);
+    var ikm := cid_to_bytes(nonce,dcid_size_cl(retry_rsp)); 
+    client_initial_scil := scid_size_pos(false);
 
     call show_l(client_initial_scil);
     var salt : stream_data := stream_data.empty;
@@ -412,7 +418,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     client_initial_scid := bytes_to_cid(skm); # skm
 
     if ~tp_client_set 
-        | negocation_of_version | retry_response {
+        | negocation_of_version | (retry_response & ~init_token) {
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
 	    call export_length_cid_extension(dcil,scil);
@@ -427,7 +433,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     if client_initial_version ~= 0xff00001d {
         negocation_of_version := true;
     } else  if ~initial_keys_set 
-        | negocation_of_version | retry_response { # if ~initial_keys_set
+        | negocation_of_version | (retry_response & ~init_token) { # if ~initial_keys_set
         #TODO check value
         negocation_of_version := false;
         #var lens := spkt.value(5);
@@ -482,11 +488,13 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
             salt := salt.append(0xa8);
             salt := salt.append(0x99);
         };
+        call show_set_initial_keys(ikm);
         call tls_api.upper.set_initial_keys(0,salt,ikm);
         initial_keys_set := true;
     }
 }
 
+import action show_set_initial_keys(ik: stream_data)
 import action show_version(ver:version)
 
 # TLS client Version Negotiation response shim
@@ -597,6 +605,7 @@ import action recv_vv_pkt(src:ip.endpoint,dst:ip.endpoint,dl: stream_pos, dc:cid
 after tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
     retry_recv := true;
     retry_rsp := true;
+    h_retry := bfe[0][7](spkt.value(0));
     var dcil : stream_pos := bfe[0][7](spkt.value(5));
     var dcid := prot.bytes_to_cid(spkt.segment(6,6+dcil));
     var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
@@ -730,7 +739,7 @@ action cid_to_us(c:cid) returns(res:tls_api.id) = {
 # Tricks should remodify packet to add dcil/scil length field as in past but we would need
 # modify too much code = "unsafe"
 # TODO
-action cid_size(c:cid, cond:bool) returns(res:cid_length) = {
+action dcid_size_cl(cond:bool) returns(res:cid_length) = {
     <<<
     res = 0;
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
@@ -749,13 +758,31 @@ action cid_size(c:cid, cond:bool) returns(res:cid_length) = {
     >>>
 }
 
-action cid_size_pos(c:cid) returns(res:stream_pos) = {
+action scid_size_pos(cond:bool) returns(res:stream_pos) = {
     <<<
     res = 0;
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
-      if(strcmp(env_p2, "server") == 0) {
+      if(strcmp(env_p2, "server") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-            //std::cout << "TEST_SCIL " << env_p3 << std::endl;
+            std::cerr << "TEST_SCIL " << env_p3 << std::endl;
+	        res = atoi(env_p3);
+         } else 
+	   res = 8;
+      } else 
+	  res = 8;
+    } else 
+      res = 8;
+    //std::cerr <<  "cid_size size: " <<  res << std::endl;
+    >>>
+}
+
+action dcid_size_pos(cond:bool) returns(res:stream_pos) = {
+    <<<
+    res = 0;
+    if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
+      if(strcmp(env_p2, "server") == 0 || cond) {
+         if(const char* env_p3 = std::getenv("TEST_DCIL")) {
+            std::cerr << "TEST_DCIL " << env_p3 << std::endl;
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
@@ -794,9 +821,9 @@ action bytes_to_version(bytes:stream_data) returns (val:version) = {
 
 action bytes_to_itoken(bytes:stream_data) returns (val:itoken) = {
     <<<
-    val = 0;
+    val.val = 0;
     for (unsigned i = 0; i < bytes.size(); i++)
-        val = (val << 8) + bytes[i];
+        val.val = (val.val << 8) + bytes[i];
     >>>
 }
 

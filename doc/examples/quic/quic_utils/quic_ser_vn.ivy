@@ -63,8 +63,7 @@ object quic_ser_vn = {}
             break;
             case quic_s_version:
             {
-                if (long_format)
-                    setn(res,4);
+                setn(res,4);
                 state = quic_s_dcid;
             }
             break;    

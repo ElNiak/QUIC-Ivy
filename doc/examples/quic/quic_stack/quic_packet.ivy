@@ -184,6 +184,7 @@ relation cid_mapped(C:cid)
 
 #chris
 function cid_to_token(C:cid) : stream_data 
+function initial_token : stream_data 
 relation cid_mapped_token(C:cid)
 #chris
 
@@ -468,6 +469,11 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # Record the packet number as latest seen
 
     last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
+
+    if retry_sent {
+        call show_version_retry_resp;
+        retry_response := true;
+    };
  
     # TODO: the following should not be here
 
@@ -477,8 +483,9 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     #};
 
     if pkt.ptype = quic_packet_type.initial {
+        initial_token := pkt.token;
         # An initial packet with an unseen destination cid is a connection request.
-        if ~conn_seen(dcid) | retry_response {
+        if ~conn_seen(dcid) | (retry_response & ~init_token) {#TODO
             call show_initial_request_initial;
             call tls_client_initial_request(src,dst,dcid,pkt.pversion);
             conn_requested(src,dst,scid) := true;
@@ -493,6 +500,10 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         #}
         # cid_mapped_token(dcid) := 
         cid_to_token(dcid) := pkt.token;
+    };
+
+    if retry_response {
+        init_token := true;
     };
 
     conn_seen(scid) := true;  # [1]
@@ -566,6 +577,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 }
 
 import action show_initial_request_initial
+import action show_version_retry_resp
 
 
 
@@ -711,10 +723,10 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
         };
     };
 
-    if ~is_client_hello & retry_sent {
-        require retry_source_connection_id.is_set(trans_params(scid));
-        require retry_source_connection_id.value(trans_params(scid)).rcid = 0x5; # todo generalize
-    };
+    # if ~is_client_hello & retry_sent {
+    #     require retry_source_connection_id.is_set(trans_params(scid));
+    #     require retry_source_connection_id.value(trans_params(scid)).rcid = 0x5; # todo generalize
+    # };
     
     # [7]
     if min_ack_delay.is_set(trans_params(scid)) & max_ack_delay.is_set(trans_params(scid)) {

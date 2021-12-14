@@ -219,9 +219,9 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     odci.dcid := client_initial_dcid;
     tp.transport_parameters := tp.transport_parameters.append(odci);
 
-    var retry : retry_source_connection_id; #TODO update v29
-    retry.rcid := 0x5; # TODO
-    tp.transport_parameters := tp.transport_parameters.append(retry);
+    #var retry : retry_source_connection_id; #TODO update v29
+    #retry.rcid := 0x5; # TODO
+    #tp.transport_parameters := tp.transport_parameters.append(retry);
 }
 
 #
@@ -236,7 +236,7 @@ after init {
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-        require retry_sent; # retry_response
+        require pkt.ptype = quic_packet_type.initial -> retry_response; # retry_response retry_sent & 
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
@@ -252,6 +252,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    if pkt.long {
 	    	version_used := pkt.pversion;
 	    };
+
         initial_recv := true;
 	    call show_version(version_used);
     }
@@ -269,33 +270,36 @@ before packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
         #require pkt.dst_cid = client_initial_scid;
         pkt.dst_cid := client_initial_scid;
         #require pkt.src_cid = 0x5;
-        pkt.src_cid := 0x5;
+        pkt.src_cid := the_cid;
         require pkt.pversion = version_used;
         #pkt.token := pkt.token.append(0xaf);
         #pkt.token := pkt.token.append(0xaf);
         #pkt.token := pkt.token.append(0xaf);
-        require pkt.token.end = 3; # [1] todo
+        require pkt.token.end = 0; # [1] todo
 
 
         var rt := prot.retry_integrity_tag(client_initial_dcid_size,client_initial_dcid,
                                            version_used,
                                            client_initial_scid_size,client_initial_scid,
-                                           0x1,pkt.src_cid,
-                                           pkt.token);
+                                           0x8,pkt.src_cid,
+                                           pkt.token, last_pkt_num(pkt.dst_cid,quic_packet_type.initial),0xF6);
 
+        call show_iretryb(rt);
         pkt.integrity_token := bytes_to_itoken(rt); # [1]
+        call show_iretry(pkt.integrity_token);
         #require pkt.integrity_token.end = 1; #16 = oveflow
         retry_sent := true;
     } 
 }
 
+interpret itoken -> longbv[1][13][16]
 import action show_version_retry(v:version)
 
 before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
-	    #require ~handshake_done_send;
+	    require ~handshake_done_send;
 	    #require tls_handshake_finished; # & ~handshake_done_send;
 	    #require ;
 	    #handshake_done_send := true; #Tricks, we should wait ack and restransmit
