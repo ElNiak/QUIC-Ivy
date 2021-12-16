@@ -27,7 +27,7 @@ scdircr = os.environ.get('QUIC_IMPL_DIR',os.environ.get('HOME','') + '/TVOQE_Per
 servers = [
     ['picoquic',[scdir+'/picoquic','./picoquicdemo -l - -D -L -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlogs/picoquic']], # -b myqlog.bins _pico.log -r
     ['pquic',[scdir+'/pquic','./picoquicdemo -l - -D -L']],
-    ['quant',['..', scdir+'/quant/Debug/bin/server -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlogs/quant -l '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/tls-keys/secret.log']], # -o
+    ['quant',['..', scdir+'/quant/Debug/bin/server -x 1000 -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlogs/quant -l '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/tls-keys/secret.log']], # -o
     ['winquic',['..','true']],
     ['minq',['..','go run '+ scdir + '/go/src/github.com/ekr/minq/bin/server/main.go']],
     ['chromium',[scdircr+'/chromium/src','./out/Default/quic_server --port=4443 --quic_response_cache_dir=/tmp/quic-data/www.example.org   --certificate_file=net/tools/quic/certs/out/leaf_cert.pem --key_file=net/tools/quic/certs/out/leaf_cert.pkcs8 --quic-enable-version-99  --generate_dynamic_responses --allow_unknown_root_cert --v=1']], # --quic_versions=h3-25
@@ -96,6 +96,7 @@ server_tests = [
       ['quic_server_test_version_negociation','test_completed'],
       ['quic_server_test_version_negociation_ext','test_completed'],
       ['quic_server_test_retry','test_completed'],
+      ['quic_server_test_0rtt','test_completed'],
       ]
     ],
 ]
@@ -127,6 +128,7 @@ client_tests = [
       ['quic_client_test_new_token_error','test_completed'],
       ['quic_client_test_version_negociation','test_completed'],
       ['quic_client_test_retry','test_completed'],
+      ['quic_client_test_0rtt','test_completed'],
       ]
     ],
 ]
@@ -392,7 +394,7 @@ def main():
 		        #todo refactor
                 if "quic_server_test_retry" in test.name: 
                     if quic_name == "quant":
-                        quic_cmd = scdir+'/quant/Debug/bin/server -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlogs/quant -l '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/tls-keys/secret.log -r'
+                        quic_cmd = scdir+'/quant/Debug/bin/server -x 1000 -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlogs/quant -l '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/tls-keys/secret.log -r'
                     elif quic_name == "picoquic":
                         quic_cmd = './picoquicdemo -l - -D -L -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlog/picoquic -r' 
                     elif quic_name == "aioquic":
@@ -407,7 +409,7 @@ def main():
                         pass
                 if "quic_server_test_version_negociation" in test.name: 
                     if quic_name == "quant":
-                        quic_cmd = scdir+'/quant/Debug/bin/server -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlogs/quant -l '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/tls-keys/secret.log'
+                        quic_cmd = scdir+'/quant/Debug/bin/server -x 1000 -d . -o -c leaf_cert.pem -k leaf_cert.key -p 4443 -t 3600 -v 5 -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlogs/quant -l '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/tls-keys/secret.log'
                     elif quic_name == "picoquic":
                         quic_cmd = './picoquicdemo -l - -D -L -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlog/picoquic' 
                     elif quic_name == "quiche":

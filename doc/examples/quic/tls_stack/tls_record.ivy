@@ -45,6 +45,7 @@ object tls = {
     # |----------------------|--------------|-----|
     # | client_hello         | Client Hello | 1   |
     # | server_hello         | Client Hello | 2   |
+    # | new_session_ticket   | Client Hello | 4   |
     # | encrypted_extensions | Client Hello | 8   |
     #
     # The serialized form of `handshake` has the following four-byte prefix:
@@ -74,6 +75,47 @@ object tls = {
         variant this of extension = struct {
             etype : extension_type,
             content : stream_data
+        }
+    }
+
+    object early_data = {
+        variant this of extension = struct {
+            #etype : extension_type,
+            max_early_data_size : stream_pos
+        }
+    }
+
+    # TODO
+
+    object pre_shared_key = {
+        variant this of extension = struct {
+            #etype : extension_type,
+            #extensions : vector[offered_psk]
+            content_psk : stream_data
+        }
+    }
+
+
+    object pre_shared_key_client = {
+        variant this of extension = struct {
+            #etype : extension_type,
+            #extensions : vector[offered_psk]
+            content : stream_data
+        }
+    }
+
+    # TODO
+    object offered_psk = {
+        variant this of extension = struct {
+            #etype : extension_type,
+            extensions : vector[extension]
+        }
+    }
+
+    object pre_shared_key_server = {
+        variant this of extension = struct {
+            #etype : extension_type,
+            identity_selected : stream_pos
         }
     }
 
@@ -165,6 +207,21 @@ object tls = {
         }
     }
 
+    #uint32 ticket_lifetime;
+    #uint32 ticket_age_add;
+    #opaque ticket_nonce<0..255>;
+    #opaque ticket<1..2^16-1>;
+    #Extension extensions<0..2^16-2>;
+    object new_session_ticket = {
+        variant this of extension = struct {
+            ticket_lifetime : stream_pos,
+            ticket_age_add : stream_pos,
+            ticket_nonce : stream_data,
+            ticket : stream_data,
+            extensions : vector[extension]
+        }
+    }
+
     # The Encrypted Extensions message has the following fields:
     # 
     # - `extensions` is a sequence of extensions. In serialized form it is prefixed by a two-byte
@@ -195,6 +252,7 @@ object tls = {
             unknown_message_bytes : stream_data
         }
     }
+
     
     # ### Records
 

@@ -259,7 +259,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     retry_send(dcid) := true;
     retry_token(dcid) := pkt.token;
 
-    if pkt.ptype = quic_packet_type.retry & _generating {
+    if pkt.ptype = quic_packet_type.retry & ~_generating {
         conn_requested(src,dst,scid) := false;
         conn_requested(src,dst,dcid) := false;
         connected(dcid) :=  false;

@@ -128,6 +128,36 @@ action infer_tls_events_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_re
     };
 }
 
+action infer_tls_events_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) = {
+
+    # Stream frames on id 0 indicate that a `tls_send_event` has occurred.
+    # TODO: ignore duplicate frames.
+
+    var scid := pkt.src_cid;
+    var dcid := pkt.dst_cid;
+    
+    # If this is an initial client request, we infer the nonce choice
+
+    if pkt.ptype = quic_packet_type.zero_rtt {  #& ~conn_seen(dcid)
+        nonce_cid(scid) := dcid;
+    };
+
+    # var e := quic_packet_type.initial;
+    
+    # call set_encryption_level(src,scid,e);
+
+    # infer sender of packet has established keys for the packet
+
+    # call tls_keys_established_event(scid,e);
+
+    # Infer an app_server_open_event.
+    if conn_requested(dst,src,dcid) & ~connected(dcid) & ~connected(scid) {
+         call app_server_open_event_retry(src,dst,scid,dcid);
+         call app_server_open_event(src,dst,scid,dcid);
+    };
+}
+
+
 import action app_server_open_event_retry(src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid)
 import action app_server_open_event_vn(src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid)
 

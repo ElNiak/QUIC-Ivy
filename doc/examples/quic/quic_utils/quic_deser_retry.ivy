@@ -148,9 +148,6 @@ object quic_deser_retry = {}
                     sprintf(str_l,"%d",token_length);
                     if(setenv("RETRY_TOKEN_LENGTH",str_l,true) != 0) 
                         fprintf(stderr, "setenv failed\n");
-                        
-                    //getn(res,token_length);
-                    /*std::cerr << "token " << res << std::endl;*/
 
                     if(token_count == 0)
                         token_len = token_length;

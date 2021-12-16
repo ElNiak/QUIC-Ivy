@@ -62,6 +62,7 @@ object tls_ser_server = {}
                 int128_t bytes;
                 //long long bytes;
                 getn(bytes,length_field_bytes);
+                std::cout << "deser-open_field: flength : " << bytes << std::endl;  
                 fence.push_back(pos+bytes);
             }
             else if (fence.size() > 0) {
@@ -118,8 +119,11 @@ object tls_ser_server = {}
             } 
 
             bool is_unknow = false;
-            if(tag > 0x0f)
-                    is_unknow = true;
+            if(tag > 0x0f && tag != 0x002a && tag != 0x0029)
+                is_unknow = true;
+
+            if(tag == 0x002a || tag == 0x0029)
+                tag_size = 2;
 
             std::cout <<  "Tag size: " <<  tag_size << std::endl;
             std::cout <<  "tags[0]: " <<  tags[0] << std::endl;
@@ -127,9 +131,10 @@ object tls_ser_server = {}
             int128_t value_size = 0;
 	        //long long value_size = 0;
 
-            if(((tag_size != bytes || is_unknow || tag == 0x1010 || tag == 0x0f || tag == 0x00 || tag == 0x0d) 
-		            && tags[0] != "tls.unknown_extension" && tags[0] != "tls.client_hello"
-		            && tags[0] != "tls.server_hello")) { //|| tag == 0x0d
+            if((((tag_size != bytes || is_unknow || tag == 0x1010 || tag == 0x0f || tag == 0x00 || tag == 0x0d) 
+		            && tags[0] != "tls.client_hello" && tags[0] != "tls.unknown_extension" //&& tags[0] != "tls.early_data" && tags[0] != "tls.unknown_extension" 
+		            && tags[0] != "tls.server_hello"))
+                || tag ==0x002a || tag == 0x0029) { //|| tag == 0x0d
                 tls_tag_bytes_map["unknown_transport_parameter"] = tag_size;
                 pos -= bytes;
 
@@ -147,6 +152,12 @@ object tls_ser_server = {}
                 if(tag == 0x0f || tag == 0x00) {
                     tls_field_bytes_map["scid"] = value_size;
                 }
+                else if(tag == 0x002a) {
+                    tls_field_bytes_map["max_early_data_size"] = value_size;
+                }
+                /*else if(tag == 0x0029) {
+                    tls_field_bytes_map["content_psk"] = value_size;
+                }*/
                 else if(tag == 0x0d) {
 		            int128_t pcil = value_size - 4 - 2 -16 - 2 - 1 - 16;
                     //std::cout << "pcil: " << pcil << std::endl;     
@@ -156,7 +167,7 @@ object tls_ser_server = {}
                 else if(tag == 0x10) { // else if(tag == 0x1010) {
                     tls_field_bytes_map["rcid"] = value_size;
                 } 
-                else {
+                else if (is_unknow) {
                     tls_field_bytes_map["unknown"] = value_size;
                 }
             } else {

@@ -2,50 +2,15 @@
 
 # a fake deserializer for quic
 
-object quic_deser = {}
+object quic_deser_zerortt = {}
 
 <<< member
 
-    class `quic_deser`;
+    class `quic_deser_zerortt`;
 
 >>>
 
 <<< impl
-
-   typedef struct transport_error_struct {
-        const char *name;
-        int value;
-    } *transport_error_struct_ptr;
-
-    struct transport_error_map : hash_space::hash_map<std::string,int> {};
-    
-    struct transport_error_struct transport_error_codes[17] = {
-        {"no_error",0x0},
-        {"internal_error",0x1},
-        {"server_busy",0x2},
-        {"flow_control_error",0x3},
-        {"stream_limit_error",0x4},
-        {"stream_state_error",0x5},
-        {"final_size_error",0x6},
-        {"frame_encoding_error",0x7},
-        {"transport_parameter_error",0x8},
-        {"connection_id_limit_error",0x9},
-        {"protocol_violation",0xa},
-        {"invalid_token",0xb},
-        {"application_error",0xc},
-        {"crypto_buffer_exceeded",0xd},
-        {"crypto_error",-1},
-       {0,0}
-    };
-    transport_error_map transport_error_codes_map;
-
-    void transport_error_name_map(transport_error_struct *vals, transport_error_map &map) {
-        while (vals->name) {
-            map[vals->name] = vals->value;
-            vals++;
-        }
-    }
-
     #define QUIC_DESER_FAKE_CHECKSUM_LENGTH 0
     //TODO
     #if defined(IS_NOT_DOCKER) 
@@ -53,11 +18,9 @@ object quic_deser = {}
     #else 
         #include "/QUIC-Ivy/doc/examples/quic/quic_utils/quic_ser_deser.h"
     #endif
-    int scid_h = 8;
-    int dcid_h = 8;
 
-    class `quic_deser` : public ivy_binary_deser_128 {
-    //class `quic_deser` : public ivy_binary_deser {
+    class `quic_deser_zerortt` : public ivy_binary_deser_128 {
+    //class `quic_deser_zerortt` : public ivy_binary_deser {
         enum {quic_s_init,
               quic_s_type,
               quic_s_version,
@@ -65,7 +28,6 @@ object quic_deser = {}
 	          quic_s_scil,
               quic_s_dcid,
               quic_s_scid,
-              quic_s_retry_token_length,
               quic_s_retry_token,
 	          quic_s_payload_length,
               quic_s_pkt_num,
@@ -127,14 +89,11 @@ object quic_deser = {}
         int fence;
 	    bool have_scid = false;
         bool ecn = false;
-        int token_length;
-        int token_count = 0;
-        int token_len = 0;
 
     
     public:
-        quic_deser(const std::vector<char> &inp) : ivy_binary_deser_128(inp),state(quic_s_init) {
-        //quic_deser(const std::vector<char> &inp) : ivy_binary_deser(inp),state(quic_s_init) {
+        quic_deser_zerortt(const std::vector<char> &inp) : ivy_binary_deser_128(inp),state(quic_s_init) {
+        //quic_deser_zerortt(const std::vector<char> &inp) : ivy_binary_deser(inp),state(quic_s_init) {
             // pos = 42; // skip 42 bytes of IP and UDP header
             fence = 0;
         }
@@ -210,7 +169,7 @@ object quic_deser = {}
                 else len = 0;
                 data_remaining = len;
 		        //std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
-                state = quic_s_retry_token;
+                state = quic_s_payload_length;//quic_s_pkt_num;
             }
             break;
             case quic_s_pkt_num:
@@ -316,33 +275,6 @@ object quic_deser = {}
                 getn(res,1);
             }
             break;*/
-            case quic_s_retry_token:
-            {
-		        //std::cerr << "sourceID quic_s_retry_token 1 " <<  std::hex <<  res << std::endl;
-                ivy_binary_deser_128::getn(res,1);
-                //ivy_binary_deser::getn(res,1);
-                /*if(const char* env_p3 = std::getenv("RETRY_TOKEN_LENGTH")) {
-                        std::cout << "RETRY_TOKEN_LENGTH " << env_p3 << std::endl;
-                        token_len = atoi(env_p3);
-                    }
-                    if(token_count == 0)
-                        token_len = token_length;
-
-                    std::cerr << "token_count " << token_count << std::endl;
-                    
-                    if(token_count < token_len){
-                        getn(res,1);    
-                        token_count += 1;
-                        if(token_count == token_len)
-                        state = quic_s_pkt_num;
-                        else
-                        state = quic_s_retry_token; //useless ?
-                    }
-                    else 
-                        state = quic_s_pkt_num;*/
-		       // std::cerr << "sourceID quic_s_retry_token 2" << std::hex << res << std::endl;
-            }
-            break;
             case quic_ack_largest:
             {
                 get_var_int(res);
@@ -466,7 +398,7 @@ object quic_deser = {}
             }
             break;
             default:
-                std::cout << "quic_deser 3" << std::endl;  
+                std::cout << "quic_deser_zerortt 3" << std::endl;  
                 throw deser_err();
             }
         }
@@ -635,7 +567,7 @@ object quic_deser = {}
             //std::cout << "state          = " << state << std::endl;  
             //std::cout << "quic_s_payload = " << quic_s_payload << std::endl;
             //std::cout << "quic_s_payload == " << (quic_s_payload == state) << std::endl;
-            std::cout << "quic_deser 2" << std::endl;  
+            std::cout << "quic_deser_zerortt 2" << std::endl;  
             throw deser_err();
         }
 
@@ -655,17 +587,6 @@ object quic_deser = {}
                 return data_remaining-- > 0;
             if (state == quic_connection_close_reason)
                 return data_remaining-- > 0;
-            if (state == quic_s_retry_token)
-                return data_remaining-- > 0;
-            //if (state == quic_s_retry_token) {
-                // We must use/take in count the padding frame since Picoquic client sometimes send packet
-                // only with 1 padding frame which make fails the requirement saying that a 
-                // packet cannot be empty
-               /*while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
-                   pos++;  // skip padding frames
-                */
-               //return token_count < token_len; //(fence == 0 || pos < fence) && more(1);
-            //}
             if (state == quic_crypto_data)
                 return data_remaining-- > 0;
             if (state == quic_path_challenge_data)
@@ -684,7 +605,7 @@ object quic_deser = {}
                     return data_remaining-- > 0;
 
 
-            std::cout << "quic_deser 1" << std::endl;  
+            std::cout << "quic_deser_zerortt 1" << std::endl;  
             throw deser_err();
         }
 
@@ -701,7 +622,7 @@ object quic_deser = {}
                 state = quic_s_init;
                 pos += QUIC_DESER_FAKE_CHECKSUM_LENGTH; // skip the fake checksum
             }
-            if (state == quic_s_retry_token) {
+            if (state == quic_s_payload_length) {
                 int128_t len;
                 //long long len;
                 if (long_format) {
@@ -719,7 +640,7 @@ object quic_deser = {}
             state = quic_s_payload;
         }
 
-        ~quic_deser(){}
+        ~quic_deser_zerortt(){}
     };
 
 >>>

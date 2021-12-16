@@ -1,0 +1,278 @@
+#lang ivy1.7
+
+include quic_types
+include quic_transport_error_code
+include quic_frame
+include quic_packet
+include quic_transport_parameters
+include ip
+include quic_fsm_sending
+include quic_fsm_receiving
+include byte_stream
+
+# The packet protocol
+#
+# The packet protocol has several funcitons including establishing
+# connections and loss detection. Packets carry frames whihc implement
+# many other funcition of QUIC.
+#
+# QUIC Packets
+# ------------
+
+# This section defines the QUIC packet datatype. Packets are the basic
+# unit of communication between endpoints. A packet may be encoded in
+# either the long or the short format. There are packet types:
+# `initial`, `handshake`, `zero_rtt` and `one_rtt`. The `zero_rtt`
+# type is encoded in the short format, while others are encoded in the
+# long format.  Packets have associated source cid (long format only)
+# and destination cid, protocol version (long format only), and a
+# packet sequence number. An initial packet also has a *retry token*, which
+# is a (possibly empty) sequence of bytes.  The *payload* of the
+# packet consists of a sequence of *frames* (see frame.ivy).
+
+# TODO: retry and one_rtt packet types
+
+# ### Packet
+
+# The type `quic_packet` represents packet. 
+
+# The fields are:
+#
+# - *ptype*: the packet type [2]
+# - *pversion*: the protocol version, if long format, else 0 [3]
+# - *dst_cid*: the destination cid [4]
+# - *src_cid*: the source cid, if long format, else 0  [5]
+# - *token*: the retry token (see section 4.4.1)  [6]
+# - *seq_num*: the packet sequence number  [7]
+# - *payload*: the payload, a sequence of frames  [8]
+
+object quic_packet_0rtt = {
+    type this = struct {
+        ptype : quic_packet_type, # [2]
+        pversion : version, # [3]
+        dst_cid : cid, # [4]
+        src_cid : cid, # [5]
+        seq_num : pkt_num, # [7]
+        payload : frame.arr # [8]
+    }
+
+    instance idx : unbounded_sequence
+    instance arr : array(idx,this)
+
+    #Hamid
+    instance retired_cids : array(idx, cid_seq)
+    #Hamid
+
+    action long(pkt:this) returns(res:bool) = {
+        res := pkt.ptype ~= quic_packet_type.one_rtt;
+    }
+}
+
+# Note: Short header are considered to have scid of 0 so it is quite important to use this value
+
+# Packet protocol events
+# -----------------------
+
+# The packet event
+# ================
+#
+# This event corresponds to transmission of a QUIC packet.
+#
+# Parameters
+# ----------
+#
+# - `src`: the source endpoint
+# - `dst`: the destination endpoint
+# - `pkt` : the packet contents
+
+action packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) = {}
+
+# Packet protocol state
+# ---------------------
+
+# This section defines the history variables that track the state of
+# the packet protocol. Some of these variables are shared between
+# protocol layers, so that the allowed interleavings of events at
+# different layers can be specified.
+#
+
+# Packet protocol state
+# ---------------------
+
+# Packet event specification
+# --------------------------
+
+# A packet event represents the transmision of a QUIC packet `pkt`
+# from source endpoint `src` to a QUIC destination endpoint `dst`
+# containing a sequence of queued frames.
+#
+# ### Requirements
+#
+# - The packet payload may not be empty [7].
+#
+# - A sender may not re-use a packet number on a given connection [4].
+#
+# - A packet containing only ack frames and padding is *ack-only*.
+#   For a given cid, the number of ack-only packets sent from src to dst
+#   must not be greater than the number of non-ack-only packets sent
+#   from dst to src [5].
+#
+# - For a given connection, a server must only send packets to an
+#   address that at one time in the past sent the as packet with
+#   the highest packet numer thus far received. See notes below on
+#   migration and path challenge. [10]
+
+#   - Token Length:  A variable-length integer specifying the length of the
+#      Token field, in bytes.  This value is zero if no token is present.
+#      Initial packets sent by the server MUST set the Token Length field
+#      to zero; clients that receive an Initial packet with a non-zero
+#      Token Length field MUST either discard the packet or generate a
+#      connection error of type PROTOCOL_VIOLATION. [11]
+
+# Upon receiving the client's Initial packet, the server can request address validation 
+# by sending a Retry packet (Section 17.2.5) containing a token. This token MUST be 
+# repeated by the client in all Initial packets it sends for that connection after it 
+# receives the Retry packet.
+
+# ### Effects
+#
+# - The `conn_seen` and `sent_pkt` relations are updated to reflect
+#   the observed packet [1].
+# - The `last_pkt_num` function is updated to indicate the observed
+#   packets as most recent for the packet's source and cid.
+#   
+#
+# ### Notes
+#
+# - In the low-level packet encoding, the packet number may be encoded using
+#   a small number of bytes, in a way that loses information.
+#   At this layer of the protocol, however, the packets contain the original full
+#   packet number.
+#
+# - On seeing a packet form a new address with the highest packect
+#   number see thus far, the server detects migration of the
+#   client. It begins sending packets to this address and initiates
+#   path validation for this address. Until path validation succeeds,
+#   the server limits data sent to the new address. Currently we
+#   cannot specify this limit because we don't know the byte size of
+#   packets or the timings of packets. 
+
+#   An endpoint MUST treat the following as a connection error of type
+#   TRANSPORT_PARAMETER_ERROR or PROTOCOL_VIOLATION:
+#   *  absence of the retry_source_connection_id transport parameter from
+#      the server after receiving a Retry packet, [1]
+#   *  presence of the retry_source_connection_id transport parameter
+#      when no Retry packet was received, or [3]
+#   *  a mismatch between values received from a peer in these transport
+#      parameters and the value sent in the corresponding Destination or
+#      Source Connection ID fields of Initial packets. [2]
+#   If a zero-length connection ID is selected, the corresponding
+#   transport parameter is included with a zero-length value.
+
+
+
+around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {    
+    # Extract the source and destination cid's and packet number from the packet.
+
+    var dcid := pkt.dst_cid;
+    var scid := pkt.src_cid;
+    if cid_mapped(dcid) {
+	    dcid := cid_to_aid(dcid);
+    };
+
+    if src = client_alt | dst = client_alt {
+	    migration_done := true;
+	    #call net.close(endpoint_id.client,sock);	# destroy connection ?
+    };
+
+    require num_queued_frames(scid) > 0;  # [7]
+
+    # The payload must exactly match the queued frames.
+
+    require pkt.payload = queued_frames(scid);
+
+  
+    # Similarly, an endpoint MUST NOT reuse a connection ID when sending to
+    # more than one destination address.  
+    
+
+    # require retry_source_connection_id.is_set(trans_params(dcid));
+    
+    # The destination cid must represent an existing connection,
+    # except in the case of a client initial packet, when the
+    # destination cid may be the nonce cid chosen by the client for
+    # the given source cid.
+
+    #require pkt.ptype = quic_packet_type.retry & is_client(scid) & dcid = nonce_cid(scid);
+
+    #call show_pstats(scid,pkt.ptype,pkt.seq_num);
+    #call show_pstats(scid,queued_level(scid),pkt.seq_num);
+
+    # The packet type must match the encryption level of the queued
+    # frames at the source. 
+
+    # require pkt.ptype = queued_level(scid);
+
+    # require conn_seen(scid) & pkt.long & is_client(scid) -> conn_requested(src,dst,scid);
+
+    # Packet must be sent to the endpoint from which the highest numbered
+    # packet has been received. ~queued_challenge(dcid) & 
+    # call show_probing(dcid ,hi_non_probing(dcid));
+    # require  conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
+
+
+    # QUESTION: THis sentence is from draft-18 section 13.1: "An
+    #   endpoint MUST NOT send a packet containing only an ACK frame
+    #   in response to a packet containing only ACK or PADDING frames,
+    #   even if there are packet gaps which precede the received
+    #   packet." Do we interpret this to mean that an ack-only packet
+    #   cannot ack *only* ack-only packets?  Or that an ack-only
+    #   packet cannot ack *any* ack-only packets?
+
+    ...
+
+    # Here, we have the updates to the packet protocol state.
+
+    # TEMPORARY: The following are repeated because currently locals defined in
+    # the "before" section cannot be accessed in the "after" section.
+
+    var dcid := pkt.dst_cid;
+    var scid := pkt.src_cid if pkt.long else connected_to(dcid);
+
+    if cid_mapped(dcid) {
+	    dcid := cid_to_aid(dcid);
+    };
+
+    # TODO: the following should not be here
+
+    if pkt.ptype = quic_packet_type.zero_rtt & ~_generating & false {
+        conn_requested(src,dst,scid) := false;
+        conn_requested(src,dst,dcid) := false;
+        connected(dcid) :=  false;
+        connected(scid) :=  false;
+        
+        conn_seen(dcid) := false;
+        conn_seen(scid) := false;
+        conn_seen(server_cid) := false;
+        conn_seen(the_cid) := false;
+
+        #the_cid := server_cid; # 0x0;
+        server_cid := scid; # 0x1;
+
+        connected(the_cid) :=  false;
+        connected(server_cid) :=  false;
+
+        var extns := tls_extensions.empty;
+        extns := extns.append(make_transport_parameters);
+        call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
+        call show_initial_request_retry;
+        #call tls_client_initial_request(src,dst,server_cid,final_version); #TODO 
+        #call tls_client_initial_response(src,dst,spkt);
+        conn_requested(src,dst,the_cid) := true;
+    };
+
+    conn_seen(scid) := true;  # [1]
+}
+
+
+

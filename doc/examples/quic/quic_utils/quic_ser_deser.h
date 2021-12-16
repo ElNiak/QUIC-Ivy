@@ -106,13 +106,17 @@ std::string quic_params[18] = {
     "loss_bits"
 };
 
-struct tls_name_struct tls_field_length_bytes[36] = {
+struct tls_name_struct tls_field_length_bytes[42] = {
     {"fragment", 2},
     {"content", 2},
+    {"content_psk",2},
     {"tls.client_hello", 3},
     {"tls.server_hello", 3},
+    {"tls.new_session_ticket", 3},
     {"tls.encrypted_extensions", 3},
     {"tls.finished", 3},
+    {"tls.early_data", 2},
+    {"tls.pre_shared_key", 2},
     {"unknown_message_bytes", 3},
     {"session_id", 1},
     {"cipher_suites", 2},
@@ -144,9 +148,11 @@ struct tls_name_struct tls_field_length_bytes[36] = {
     {"version_information", 1},
     {"unknown_transport_parameter", 1},
     {"unknown_ignore", 1},
+    {"ticket_nonce", 1},
+    {"ticket_nonce", 1},
     {0, 0}};
 tls_name_map tls_field_length_bytes_map;
-struct tls_name_struct tls_field_bytes[33] = {
+struct tls_name_struct tls_field_bytes[39] = {
     {"version", 2},
     {"client_version", 2}, //0x0303 = 2 bytes
     {"server_version", 2},
@@ -154,11 +160,12 @@ struct tls_name_struct tls_field_bytes[33] = {
     {"mtype", 1},
     {"gmt_unix_time", 4},
     {"cipher_suites", 2},
-    {"the_cipher_suite", 2},
+    {"the_cipher_suite", 2},    
     {"compression_methods", 1},
     {"the_compression_method", 1},
     {"session_id", 1},
     {"content", 1},
+    {"content_psk",1},
     {"initial_version", 4},
     {"stream_pos_32", -1},
     {"unknown", 0},
@@ -180,10 +187,15 @@ struct tls_name_struct tls_field_bytes[33] = {
     {"ip6_port", 2},
     {"pref_token", 16},
     {"pcid_len", 1},
+    {"max_early_data_size", 4},
+    {"ticket_lifetime", 4},
+    {"ticket_age_add", 4},
+    {"ticket_nonce", 0},
+    {"ticket", -1},
     {0, 0}};
 tls_name_map tls_field_bytes_map;
 //TODO check old version
-struct tls_name_struct tls_tags[34] = {
+struct tls_name_struct tls_tags[37] = {
     {"tls.handshake_record", 22},
     {"tls.application_data_record", 23},
     {"tls.change_cipher_spec", 20},
@@ -191,6 +203,9 @@ struct tls_name_struct tls_tags[34] = {
     {"tls.server_hello", 2},
     {"tls.encrypted_extensions", 0x08},
     {"tls.finished", 20},
+    {"tls.early_data", 0x002a},
+    {"tls.pre_shared_key", 0x0029},
+    {"tls.new_session_ticket", 4},
     {"tls.unknown_message", -1},
     {"tls.unknown_extension", -1},
     {"quic_transport_parameters", 0xffa5},
@@ -220,8 +235,10 @@ struct tls_name_struct tls_tags[34] = {
     {"unknown_ignore", 0x4042},
     {0, 0}};
 tls_name_map tls_tags_map;
-struct tls_name_struct tls_tag_bytes[26] = {
+struct tls_name_struct tls_tag_bytes[28] = {
     {"tls.unknown_extension", 2},
+    {"tls.early_data", 2},
+    {"tls.pre_shared_key", 2},
     {"quic_transport_parameters", 2},
     {"initial_max_stream_data_bidi_local", 1},
     {"initial_max_data", 1},

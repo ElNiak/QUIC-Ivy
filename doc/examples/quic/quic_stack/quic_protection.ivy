@@ -22,6 +22,7 @@ module quic_protection(tls_id,tls) = {
         dcid : cid,                        # destination cid
         scid : cid,                        # source cid (for long format only)
         payload_length : stream_pos,       # payload lenght (for long format only)
+        token_length : stream_pos,         # token lenght (for long format only)
         payload_length_pos : stream_pos,   # position in packet of length field, if present
         pkt_num_pos : stream_pos           # position in packet of sequence number
     }
@@ -144,33 +145,87 @@ module quic_protection(tls_id,tls) = {
             res.ok := false;
         }
         else {
-            var pnum_pos := h.pkt_num_pos;
-            var sample_pos := pnum_pos + 4;
+            var pnum_pos := h.pkt_num_pos; #+ h.token_length;
+            var sample_pos := pnum_pos + 4; # + h.token_length;
+
+            var pnum_len2 := get_pnum_len2(pkt);
+            var y := show_pnum1(pnum_len2);
+
+            pnum_len2 := get_pnum_len3(pkt);
+            y := show_pnum1(pnum_len2);
+            
+            pnum_len2 := get_pnum_len4(pkt);
+            y := show_pnum1(pnum_len2);
+
+            pnum_len2 := get_pnum_len5(pkt);
+            y := show_pnum1(pnum_len2);
+
             if sample_pos + sample_size > pkt.end {
 	    	    call show_iff;
                 sample_pos := pkt.end - sample_size
             };
+            
             var sample := pkt.segment(sample_pos,sample_pos+sample_size);
             var pnum := pkt.segment(pnum_pos,pnum_pos+4);
             var mask := stream_data.empty;
+            
             # tricky: this encrypts with the receiving cipher
+            # mask = header_protection(hp_key, sample)
             mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,true);
+
+            # if (packet[0] & 0x80) == 0x80:
+                # Long header: 4 bits masked
+            #     packet[0] ^= mask[0] & 0x0f
+            # else:
+                # Short header: 5 bits masked
+            #     packet[0] ^= mask[0] & 0x1f
             var byte0_mask := bvand(mask.value(0), 0x0f if h.hdr_long else 0x1f);
+            
             var hdr := pkt.segment(0,pnum_pos);
-            hdr := hdr.set(0,byte_xor(pkt.value(0),byte0_mask));
+            hdr := hdr.set(0,byte_xor(hdr.value(0),byte0_mask));
+            
             var pnum_len := get_pnum_len(hdr);
+
+            #if h.hdr_long & bvand(h.hdr_type,0x30) = 0x00 & retry_sent  {
+                pnum_len2 := get_pnum_len5(hdr);
+                y := show_pnum1(pnum_len2);
+                pnum_len2 := get_pnum_len3(hdr);
+                y := show_pnum1(pnum_len2);
+                pnum_len2 := get_pnum_len4(hdr);
+                y := show_pnum1(pnum_len2);
+                pnum_len2 := get_pnum_len2(hdr);
+                y := show_pnum1(pnum_len2);
+
+                pnum_len2 := get_pnum_len5(pkt);
+                y := show_pnum1(pnum_len2);
+                pnum_len2 := get_pnum_len3(pkt);
+                y := show_pnum1(pnum_len2);
+                pnum_len2 := get_pnum_len4(pkt);
+                y := show_pnum1(pnum_len2);
+                pnum_len2 := get_pnum_len2(pkt);
+                y := show_pnum1(pnum_len2);
+            #};
+
             #var pnum_len := get_pnum_len(hdr);
             #var pnum_len := get_pnum_len2(pkt);
             #if h.hdr_long & bvand(h.hdr_type,0x30) = 0x00 & retry_sent  {
-                #pnum_len := get_pnum_len2(hdr);
+            #    pnum_len := get_pnum_len2(pkt);
                 #pnum_len := get_pnum_len2(pkt);
             #};
+
             call show_seqnum_pos(pnum_len);
-            var x := show_pnuml(pnum_len);
+            var x := show_pnum2(pnum_len);
+
+            # pn_offset is the start of the Packet Number field.
+            # packet[pn_offset:pn_offset+pn_length] ^= mask[1:1+pn_length]
             pnum := stream_data_xor(pnum.segment(0,pnum_len),mask.segment(1,1+pnum_len));
+
     	    call show_seqnum_data(pnum);
+            y := show_pnum(pnum);
+            
             hdr := hdr.extend(pnum);
             var new_seq := get_pnum(pnum,0,pnum_len);
+            y := show_corrected_pnum(new_seq); 
     	    call show_seqnum(new_seq);
             new_seq := correct_pnum(seq,new_seq,pnum_len);
     	    call show_seqnum(new_seq);
@@ -299,11 +354,16 @@ module quic_protection(tls_id,tls) = {
                 #Initial packet
                 var len := get_var_int_len(pkt,pos);
                 var retry_token_len := get_var_int(pkt,pos,len);
+                h.token_length := retry_token_len;
                 #call show_token_len(len);
                 call show_token_len(retry_token_len);
                 pos := pos + len + retry_token_len;
+            } else {
+                h.token_length := 0;
             };
+            x := show_p(h.token_length);
             var len := get_var_int_len(pkt,pos);
+            #x := show_p(len);
             #call show_token_len(len);
             h.payload_length := get_var_int(pkt,pos,len);
             h.payload_length_pos := pos;
@@ -343,9 +403,36 @@ module quic_protection(tls_id,tls) = {
 
     action get_pnum_len2(pkt:stream_data) 
     returns (pnum_len:stream_pos) = {
-        # var t := bfe[0][7](pkt.value(0));
+        var t : stream_pos := bfe[0][8](pkt.value(0));
         call show_byte(pkt.value(0));
-        var and := bvand(pkt.value(0),0x03);
+        var and := bvand(0x3,pos_to_byte(t));#pkt.value(0));
+        call show_byte(and);
+        var len_minus_one : stream_pos := bytes_to_pos(and);
+        call show_seqnum_posi(len_minus_one);
+        pnum_len := len_minus_one + 1;
+    }
+
+    action get_pnum_len3(pkt:stream_data) 
+    returns (pnum_len:stream_pos) = {
+        call show_byte(pkt.value(0));
+        var and := bvand(0x3,pkt.value(0));#pkt.value(0));
+        call show_byte(and);
+        var len_minus_one : stream_pos := bytes_to_pos(and);
+        call show_seqnum_posi(len_minus_one);
+        pnum_len := len_minus_one + 1;
+    }
+
+    action get_pnum_len5(pkt:stream_data) 
+    returns (pnum_len:stream_pos) = {
+        <<<
+        pnum_len = (pkt[0] & 0x3) + 1;
+        >>>
+    }
+
+    action get_pnum_len4(pkt:stream_data) 
+    returns (pnum_len:stream_pos) = {
+        call show_byte(pkt.value(0));
+        var and := bvand(pkt.value(0),0x3);#pkt.value(0));
         call show_byte(and);
         var len_minus_one : stream_pos := bytes_to_pos(and);
         call show_seqnum_posi(len_minus_one);
@@ -416,7 +503,15 @@ module quic_protection(tls_id,tls) = {
     //for (unsigned i = 0; i < bytes.size(); i++)
     //    val = (val << 8) + bytes[i];
     >>>
-}
+    }
+
+    action pos_to_byte(b:stream_pos) returns (val:byte) = {
+    <<<
+    val = b;
+    //for (unsigned i = 0; i < bytes.size(); i++)
+    //    val = (val << 8) + bytes[i];
+    >>>
+    }
 
     action bytes_to_cid(bytes:stream_data) returns (val:cid) = {
         <<<
@@ -432,9 +527,38 @@ module quic_protection(tls_id,tls) = {
         >>>
     }
 
-    action show_pnuml(x:stream_pos) returns (z:byte) = {
+    action show_pnum1(x:stream_pos) returns (z:byte) = {
         <<<
-        std::cerr <<  "show_pnuml: " <<  x << std::endl;
+        std::cerr <<  "show_pnuml 1: " <<  x << std::endl;
+        z = 0;
+        >>>
+    }
+
+    action show_p(x:stream_pos) returns (z:byte) = {
+        <<<
+        std::cerr <<  "show_p 1: " <<  x << std::endl;
+        z = 0;
+        >>>
+    }
+
+    action show_pnum2(x:stream_pos) returns (z:byte) = {
+        <<<
+        std::cerr <<  "show_pnuml 2: " <<  x << std::endl;
+        z = 0;
+        >>>
+    }
+
+
+    action show_pnum(x:stream_data) returns (z:byte) = {
+        <<<
+        std::cerr <<  "show pnum: " <<  x << std::endl;
+        z = 0;
+        >>>
+    }
+
+    action show_corrected_pnum(x:pkt_num) returns (z:byte) = {
+        <<<
+        std::cerr <<  "show corrected pnum: " <<  x << std::endl;
         z = 0;
         >>>
     }

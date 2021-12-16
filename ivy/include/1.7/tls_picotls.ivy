@@ -406,6 +406,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ctx->cipher_suites = picotls_cipher_suites; 
         ctx->send_change_cipher_spec = 0;
         // ctx->hkdf_label_prefix = QUIC_LABEL_QUIC_BASE;
+        
         ctx->hkdf_label_prefix__obsolete = NULL;
         ctx->update_traffic_key = new ptls_update_traffic_key_t;
         ctx->update_traffic_key->cb = quic_update_traffic_key_callback;
@@ -414,6 +415,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ctx->require_dhe_on_psk = 1;
         ctx->max_early_data_size = 0xFFFFFFFF;
         ctx->omit_end_of_early_data = 1;
+        
         ptls_handshake_properties_t *handshake_properties = new ptls_handshake_properties_t; 
         memset(handshake_properties, 0, sizeof(ptls_handshake_properties_t));
         handshake_properties->collect_extension = tls_collect_extensions_cb;
@@ -434,8 +436,13 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         handshake_properties->client.negotiated_protocols.list  = alpn_vec;
 
         // add the extensions
+        int add = 1;
+        if(const char* env_p = std::getenv("ZERORTT_TEST")) { 
+            std::cerr << "ZERORTT_TEST " << env_p << std::endl;
+            add = 3;
+        }
 
-        ptls_raw_extension_t *ptls_exts = new ptls_raw_extension_t[e.size()+1];
+        ptls_raw_extension_t *ptls_exts = new ptls_raw_extension_t[e.size()+add];
         for (unsigned i = 0; i < e.size(); i++) {
             `exten_ser` ser;
 	        //std::cout << "etype =" << std::endl;  
@@ -445,9 +452,9 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             unsigned char *data = new unsigned char[ser.res.size()-4];
             std::copy(ser.res.begin()+4,ser.res.end(),data);
             ptls_exts[i].type = etype;
-            //std::cout << "etype =" << etype << std::endl;  
+            //std::cerr << "etype =" << etype << std::endl;  
             ptls_exts[i].data.base = data;
-            //std::cout << "data =" << data << std::endl;  
+            //std::cerr << "data =" << data << std::endl;  
             ptls_exts[i].data.len = len;
             //std::cout << "len =" << len << std::endl;  
             // int eres = gnutls_session_ext_register (session, "ext_name", etype,
@@ -458,15 +465,45 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             //     exit(1);
             // }
         }
-        ptls_exts[e.size()].type = 0xffff;
-        ptls_exts[e.size()].data.base = NULL;
-        ptls_exts[e.size()].data.len = 0;
+
+        if(const char* env_p = std::getenv("ZERORTT_TEST")) { 
+            //early_data
+            ptls_exts[e.size()].type = 0x2A;
+            ptls_exts[e.size()].data.base = NULL;
+            ptls_exts[e.size()].data.len = 0;
+
+            //psk
+            ptls_exts[e.size()+1].type = 0x29;
+            unsigned char data [] =  {
+                0x00, 0x6c, 0x00, 0x66, 0x00, 0xff, 0x35, 0x5f, 0x0e, 0x8b, 0x50, 0xe8, 0xcc, 0xb2, 0x94, 0x66,
+                0x13, 0xb6, 0x42, 0x93, 0x40, 0x41, 0x43, 0x9c, 0x58, 0x9f, 0xb9, 0x41, 0xed, 0xa7, 0xef, 0xfe,
+                0x2f, 0xc0, 0xcc, 0xfb, 0x9f, 0xd8, 0x8b, 0x47, 0x72, 0xb0, 0x74, 0x35, 0xa3, 0x5b, 0x4d, 0xb4,
+                0xae, 0xd7, 0xad, 0x57, 0xf6, 0x3a, 0xff, 0x1b, 0xce, 0x1f, 0x37, 0xb2, 0xb4, 0xdd, 0x25, 0xee,
+                0xbc, 0xd1, 0xc1, 0x7e, 0x07, 0x8b, 0xee, 0x0d, 0x34, 0xd1, 0xe8, 0xfb, 0x99, 0xc4, 0x29, 0x3e,
+                0xdb, 0x20, 0xbd, 0x3b, 0x0e, 0xa3, 0xbe, 0x4c, 0xe4, 0x1c, 0x63, 0x55, 0x3f, 0xc6, 0x2a, 0xc7,
+                0xb3, 0x78, 0x90, 0x6d, 0x3a, 0x5a, 0x4b, 0x4a, 0xac, 0xaa, 0x44, 0xae, 0x1c, 0x58, 0x00, 0x21,
+                0x20, 0xda, 0x01, 0xaa, 0xa6, 0x02, 0xdd, 0x87, 0xee, 0x2f, 0x9d, 0x5f, 0x66, 0xe5, 0xb9, 0xff,
+                0xf6, 0x1f, 0x2b, 0x25, 0xa3, 0xd5, 0x91, 0x28, 0xe7, 0xd1, 0x1c, 0x84, 0xc8, 0xaa, 0x54, 0x9a,
+                0x17
+            };
+            ptls_exts[e.size()+1].data.base = data;
+            ptls_exts[e.size()+1].data.len = 145;
+            
+            ptls_exts[e.size()+2].type = 0xffff;
+            ptls_exts[e.size()+2].data.base = NULL;
+            ptls_exts[e.size()+2].data.len = 0;
+        } else {
+            ptls_exts[e.size()].type = 0xffff;
+            ptls_exts[e.size()].data.base = NULL;
+            ptls_exts[e.size()].data.len = 0;
+        }
+
         //std::cerr << "ptls_exts =" << ptls_exts << std::endl;  
-        /*for (unsigned i = 0; i < e.size(); i++) {
+        for (unsigned i = 0; i < e.size(); i++) {
             std::cerr << "ptls_exts[i].type = " << ptls_exts[i].type << std::endl;  
             std::cerr << "ptls_exts[i].base = " << ptls_exts[i].data.base << std::endl;
             std::cerr << "ptls_exts[i].len = " << ptls_exts[i].data.len << std::endl;
-        }*/
+        }
         handshake_properties->additional_extensions = ptls_exts;
 
         // Read the certificate, if we are a server
@@ -567,12 +604,17 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         std::cerr << "encrypt_cipher iv " << iv << "\n";
 	    picotls_connection *s = `cid_map`[c];
         ptls_cipher_context_t *pn_enc;
-        if (recv) pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);
-        else pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_enc);
-        std::cerr << "encrypt_cipher pn_enc " << pn_enc << "\n";
+        if (recv) {
+            pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_dec);
+            std::cerr << "encrypt_cipher pn_dec " << pn_enc << "\n";
+        } 
+        else {
+            pn_enc = (ptls_cipher_context_t *)(s->crypto_context[l].pn_enc);
+            std::cerr << "encrypt_cipher pn_enc " << pn_enc << "\n";
+        }
 	    if(pn_enc != 0)
         	encrypt_symm(pn_enc,clear,iv,cipher);
-        std::cerr << "encrypt_cipher end " << "\n";
+        std::cerr << "encrypt_cipher end " << cipher << "\n";
         >>>
     }
 
@@ -671,12 +713,14 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             std::cerr << std::to_string(pushed) << " ";
             ad.push_back(pushed); 
         }
+        
         std::cerr << "\n";
         std::cerr << "compute_retry_integrity_tag token size: " << token.size()  << "\n";
         for (unsigned i = 0; i < token.size(); i++) {
             std::cerr << std::hex << token[i] << ' ';
             ad.push_back(token[i]);
         }
+
         std::cerr << "\n";
         //std::copy(token.begin(),token.end(),ad.end());
 

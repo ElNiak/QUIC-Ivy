@@ -215,7 +215,7 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
 	    dcid := cid_to_aid(dcid);
     };
 
-    if pkt.ptype = quic_packet_type.version_negociation & _generating  {
+    if pkt.ptype = quic_packet_type.version_negociation & ~_generating  {
         conn_requested(src,dst,scid) := false;
         conn_requested(src,dst,dcid) := false;
         connected(dcid) :=  false;
