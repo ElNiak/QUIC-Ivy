@@ -106,7 +106,7 @@ std::string quic_params[18] = {
     "loss_bits"
 };
 
-struct tls_name_struct tls_field_length_bytes[42] = {
+struct tls_name_struct tls_field_length_bytes[41] = {
     {"fragment", 2},
     {"content", 2},
     {"content_psk",2},
@@ -116,7 +116,7 @@ struct tls_name_struct tls_field_length_bytes[42] = {
     {"tls.encrypted_extensions", 3},
     {"tls.finished", 3},
     {"tls.early_data", 2},
-    {"tls.pre_shared_key", 2},
+    //{"tls.pre_shared_key", 2},
     {"unknown_message_bytes", 3},
     {"session_id", 1},
     {"cipher_suites", 2},
@@ -152,7 +152,7 @@ struct tls_name_struct tls_field_length_bytes[42] = {
     {"ticket_nonce", 1},
     {0, 0}};
 tls_name_map tls_field_length_bytes_map;
-struct tls_name_struct tls_field_bytes[39] = {
+struct tls_name_struct tls_field_bytes[38] = {
     {"version", 2},
     {"client_version", 2}, //0x0303 = 2 bytes
     {"server_version", 2},
@@ -165,7 +165,7 @@ struct tls_name_struct tls_field_bytes[39] = {
     {"the_compression_method", 1},
     {"session_id", 1},
     {"content", 1},
-    {"content_psk",1},
+    //{"content_psk",1}, //1 108 145
     {"initial_version", 4},
     {"stream_pos_32", -1},
     {"unknown", 0},
@@ -195,7 +195,7 @@ struct tls_name_struct tls_field_bytes[39] = {
     {0, 0}};
 tls_name_map tls_field_bytes_map;
 //TODO check old version
-struct tls_name_struct tls_tags[37] = {
+struct tls_name_struct tls_tags[36] = {
     {"tls.handshake_record", 22},
     {"tls.application_data_record", 23},
     {"tls.change_cipher_spec", 20},
@@ -204,7 +204,7 @@ struct tls_name_struct tls_tags[37] = {
     {"tls.encrypted_extensions", 0x08},
     {"tls.finished", 20},
     {"tls.early_data", 0x002a},
-    {"tls.pre_shared_key", 0x0029},
+    //{"tls.pre_shared_key", 0x0029},
     {"tls.new_session_ticket", 4},
     {"tls.unknown_message", -1},
     {"tls.unknown_extension", -1},
@@ -235,10 +235,10 @@ struct tls_name_struct tls_tags[37] = {
     {"unknown_ignore", 0x4042},
     {0, 0}};
 tls_name_map tls_tags_map;
-struct tls_name_struct tls_tag_bytes[28] = {
+struct tls_name_struct tls_tag_bytes[27] = {
     {"tls.unknown_extension", 2},
     {"tls.early_data", 2},
-    {"tls.pre_shared_key", 2},
+    //{"tls.pre_shared_key", 2},
     {"quic_transport_parameters", 2},
     {"initial_max_stream_data_bidi_local", 1},
     {"initial_max_data", 1},

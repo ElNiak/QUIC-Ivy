@@ -226,7 +226,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
         gnutls_session_t session;
         if (gnutls_init (& session, (is_server ? GNUTLS_SERVER : GNUTLS_CLIENT) | GNUTLS_NONBLOCK) != GNUTLS_E_SUCCESS) {
-            std::cout << "gnutls_init failed\n";
+            std::cerr << "gnutls_init failed\n";
             exit(1);
         }
         gnutls_connection *s = new gnutls_connection(c,session,*`cb`);

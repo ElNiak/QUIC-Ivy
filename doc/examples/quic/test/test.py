@@ -292,8 +292,14 @@ class IvyTest(Test):
         timeout_cmd = '' if platform.system() == 'Windows' else 'timeout {} '.format(time)
         randomSeed = random.randint(0,1000)
         random.seed(datetime.now())
-        return ' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,self.name,randomSeed,0,'' if is_client else 'server_cid={} client_port={} client_port_alt={}'.format(1,2*test_command+4987,2*test_command+4988))] + extra_args)
-
+        if "quic_server_test_0rtt" in self.name: # TODO build quic_server_test_stream
+            return "unset ZERORTT_TEST; " + (' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,"quic_server_test_stream",randomSeed,0,'' 
+            if is_client else 'server_cid={} client_port={} client_port_alt={}'.format(1,2*test_command+4987,2*test_command+4988))] + extra_args)) + ";export ZERORTT_TEST=true;" +' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,self.name,randomSeed,0,'' 
+            if is_client else 'server_cid={} client_port={} client_port_alt={}'.format(1,2*test_command+4987,2*test_command+4988))] + extra_args)
+        else:
+            return ' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,self.name,randomSeed,0,'' 
+            if is_client else 'server_cid={} client_port={} client_port_alt={}'.format(1,2*test_command+4987,2*test_command+4988))] + extra_args)
+        
 def get_tests(cls,arr):
     for checkd in arr:
         dir,checkl = checkd

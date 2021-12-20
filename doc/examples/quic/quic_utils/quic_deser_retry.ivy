@@ -136,13 +136,6 @@ object quic_deser_retry = {}
                     std::cerr << "packet_size " << packet_size << std::endl;
                     int token_length = packet_size - 16 - 1 - dcil - 1 - scil - 1 - 4;
                     std::cerr << "token_length " << token_length << std::endl;
-                    /*for(int i = 0; i < token_length; i++) {
-                        getn(res,1);
-                    }
-                    char str_d[100];
-                    sprintf(str_d,"%llu",res);
-                    if(setenv("RETRY_TOKEN",str_d,true) != 0) 
-                        fprintf(stderr, "setenv failed\n");*/
 
                     char str_l[100];
                     sprintf(str_l,"%d",token_length);
@@ -181,7 +174,7 @@ object quic_deser_retry = {}
                 break;
                 default: 
                 {
-                    std::cout << "quic_deser_retry 3" << std::endl;  
+                    std::cerr << "quic_deser_retry 3" << std::endl;  
                     throw deser_err();
                 }
             }
@@ -221,7 +214,7 @@ object quic_deser_retry = {}
         }
 
         virtual int open_tag(const std::vector<std::string> &tags) {
-            std::cout << "quic_deser_retry 6" << std::endl;    
+            std::cerr << "quic_deser_retry 6" << std::endl;    
             throw deser_err();
         }
 
@@ -246,10 +239,7 @@ object quic_deser_retry = {}
             }
             if (state == quic_s_init)
                 return more(1);
-
-            //if (state == quic_crypto_data)
-            //    return data_remaining-- > 0;
-            std::cout << "quic_deser_retry 1" << std::endl;  
+            std::cerr << "quic_deser_retry 1" << std::endl;  
             throw deser_err();
         }
 

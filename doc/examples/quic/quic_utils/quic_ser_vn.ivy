@@ -70,7 +70,7 @@ object quic_ser_vn = {}
             case quic_s_dcid:
             {
                 if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-                    std::cout << "TEST_SCIL_VN " << env_p3 << std::endl;
+                    std::cerr << "TEST_SCIL_VN " << env_p3 << std::endl;
                     scid_vn = atoi(env_p3);
                 }
                 std::cerr << "ser res dcid 1 " << res << std::endl;
@@ -92,7 +92,7 @@ object quic_ser_vn = {}
             case quic_s_scid:
             {
                 if(const char* env_p3 = std::getenv("TEST_DCIL")) {
-                    std::cout << "TEST_DCIL_VN " << env_p3 << std::endl;
+                    std::cerr << "TEST_DCIL_VN " << env_p3 << std::endl;
                     dcid_vn = atoi(env_p3);
                 }
 		        std::cerr << "ser res scid_h 1 " << res << std::endl;
@@ -117,7 +117,7 @@ object quic_ser_vn = {}
             }
             break;
             default:
-            std::cout << "quic_ser_vn 2" << std::endl;  
+            std::cerr << "quic_ser_vn 2" << std::endl;  
             throw deser_err();
             }
         }
@@ -140,7 +140,7 @@ object quic_ser_vn = {}
         }
 
         virtual void open_tag(int tag, const std::string &) {
-            std::cout << "quic_ser_vn 1" << std::endl;  
+            std::cerr << "quic_ser_vn 1" << std::endl;  
             throw deser_err();
         }
 

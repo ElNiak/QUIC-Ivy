@@ -22,7 +22,17 @@ object quic_ser_zerortt = {}
     
     class `quic_ser_zerortt` : public ivy_binary_ser_128 {
     //class `quic_ser_zerortt` : public ivy_binary_ser {
-        enum {quic_s_init,
+        enum {
+              quic_s_version_z,
+	          quic_s_dcil_z,
+	          quic_s_scil_z,
+              quic_s_dcid_z,
+              quic_s_scid_z,
+	          quic_s_payload_length_z,
+              quic_s_pkt_num_z,
+              quic_s_payload_z,
+
+              quic_s_init,
               quic_s_version,
 	          quic_s_dcil,
 	          quic_s_scil,
@@ -86,9 +96,11 @@ object quic_ser_zerortt = {}
         //long long ack_blocks_expected;
         //long long ack_block_count;
         int payload_length_pos;
+        int payload_length_pos_z;
         int fence;
         int tcount = 0;
         bool done = false;
+        bool is_rtt = false;
 
     public:
         quic_ser_zerortt() : state(quic_s_init) {
@@ -96,14 +108,65 @@ object quic_ser_zerortt = {}
         virtual void  set(int128_t res) {
         //virtual void  set(long long res) {
             switch (state) {
+            case quic_s_version_z:
+            {
+                setn(res,4);
+                state = quic_s_dcid_z;
+            }
+            break;    
+            case quic_s_dcid_z:
+            {
+                std::cerr << "ser res dcid 1 rtt " << std::endl;
+                if((res != 0 && res != 1) || scid_h == 0)
+                    setn(scid_h,1);
+                else 
+                    setn(8,1);
+                if((res != 0 && res != 1) || scid_h == 0)
+                    setn(res,scid_h); //scid_h
+                else 
+                    setn(res,8); 
+                //std::cerr << "ser res dcid 2 " << res << std::endl;
+                state = quic_s_scid_z;
+            }
+            break;
+            case quic_s_scid_z:
+            {
+		        std::cerr << "ser res scid_h 1 rtt"  << std::endl;
+                if((res == 0 || res == 1) && scid_h != 0){
+                    setn(8,1);
+                    setn(res,8);
+                } else {
+                	setn(dcid_h,1);
+			        setn(res,dcid_h);
+	            }
+		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+                payload_length_pos_z = this->res.size();
+                state = quic_s_pkt_num_z;
+            }
+            break;
+            case quic_s_pkt_num_z:
+            {   
+                std::cerr << "ser res quic_s_pkt_num_z rtt 1 " << payload_length_pos_z << std::endl;
+                set_pkt_num(res);
+                state = quic_s_payload_z;
+            }
+            break;
             case quic_s_init:
             {
-                //std::cerr << "ser res init " << res << std::endl;
-                long_format = res != 3;
-                hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
-		        //setn(hdr_type | (long_format ? 0x80 : 0), 1);
-                setn(213, 1);
-                state = quic_s_version;
+                if(!is_rtt) {
+                    std::cerr << "ser res init " << res << std::endl;
+                    long_format = res != 3;
+                    hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
+                    setn(hdr_type | (long_format ? 0x80 : 0), 1);
+                    state = quic_s_version;
+                } else {
+                    std::cerr << "ser res init_z " << res << std::endl;
+                    long_format = res != 3;
+                    hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
+                    //setn(hdr_type | (long_format ? 0x80 : 0), 1);
+                    setn(213, 1);
+                    state = quic_s_version_z;
+                }
             }
             break;
             case quic_s_version:
@@ -115,7 +178,7 @@ object quic_ser_zerortt = {}
             break;    
             case quic_s_dcid:
             {
-                //std::cerr << "ser res dcid 1 " << res << std::endl;
+                std::cerr << "ser res dcid 1 "  << std::endl;
                 if (long_format) {
                     if((res != 0 && res != 1) || scid_h == 0)
                         setn(scid_h,1);
@@ -143,7 +206,7 @@ object quic_ser_zerortt = {}
 		            }
                 }
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
-                state = quic_s_payload_length; //quic_s_retry_token_length;
+                state = quic_s_retry_token_length;
             }
             break;
             case quic_s_pkt_num:
@@ -194,18 +257,7 @@ object quic_ser_zerortt = {}
             break;
             case quic_crypto_offset:
             {
-                std::cout << "ser: quic_crypto_offset   = " << res << std::endl;
-                if(const char* env_p4 = std::getenv("RETRY_TOKEN_LENGTH")) {
-                    std::cout << "RETRY_TOKEN_LENGTH 1 " << env_p4 << std::endl;
-                    if(!done)
-                        set_var_int(0);
-                    else
-                        set_var_int(res);
-                } else {
-                    set_var_int(res);
-                }
-
-                //set_var_int(res);
+                set_var_int(res);
                 state = quic_crypto_length;
             }
             break;
@@ -227,27 +279,27 @@ object quic_ser_zerortt = {}
             case quic_ack_frequency: //TODO
             /*{
                 set_var_int(res);
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
+		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
                 state = quic_ack_frequency_packet_tolerence;
             }
             break;
             case quic_ack_frequency_packet_tolerence:
             {
                 set_var_int(res);
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
+		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
                 state = quic_ack_frequency_update_max_ack_delay;
             }
             break;
             case quic_ack_frequency_update_max_ack_delay: 
             {
                 set_var_int(res);
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
+		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
                 state = quic_ack_frequency_ignore_order;
             }
             break;
             case quic_ack_frequency_ignore_order: 
             {
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
+		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
                 setn(res,1);
             }
             break;*/
@@ -260,17 +312,17 @@ object quic_ser_zerortt = {}
                // std::cerr << "quic_s_retry_token ser "  << tcount << std::endl;
                // tcount += 1; 
                /* if (const char* env_p3 = std::getenv("RETRY_TOKEN")) {
-                    std::cout << "ser: quic_s_retry_token   = " << res << std::endl; 
+                    std::cerr << "ser: quic_s_retry_token   = " << res << std::endl; 
                     if(const char* env_p4 = std::getenv("RETRY_TOKEN_LENGTH")) {
-                        std::cout << "RETRY_TOKEN " << env_p3 << std::endl;
-                        std::cout << "RETRY_TOKEN_LENGTH " << env_p4 << std::endl;
+                        std::cerr << "RETRY_TOKEN " << env_p3 << std::endl;
+                        std::cerr << "RETRY_TOKEN_LENGTH " << env_p4 << std::endl;
                         setn(res,1);
                         tls_field_bytes_map["dcid"] = atoi(env_p3);
                     }
                 }
                 else 
                 if(const char* env_p4 = std::getenv("RETRY_TOKEN_LENGTH") && false) {
-                    std::cout << "RETRY_TOKEN_LENGTH 1 " << env_p4 << std::endl;
+                    std::cerr << "RETRY_TOKEN_LENGTH 1 " << env_p4 << std::endl;
                     setn(res,atoi(env_p4));
                 } else {
                 setn(res,1);
@@ -279,6 +331,18 @@ object quic_ser_zerortt = {}
                 setn(res,1);
             }
             break;
+            /*case quic_s_retry_token_length:
+            {   
+               if (const char* env_p3 = std::getenv("RETRY_TOKEN")) {
+                    std::cerr << "ser: quic_s_retry_token   = " << res << std::endl; 
+                    if(const char* env_p4 = std::getenv("RETRY_TOKEN_LENGTH")) {
+                        std::cerr << "RETRY_TOKEN_LENGTH 2" << env_p4 << std::endl;
+                        setn(atoi(env_p3),1);
+                        state = quic_s_retry_token;
+                    }
+                }
+            }
+            break;*/
             case quic_ack_largest:
             {
                 set_var_int(res);
@@ -402,7 +466,7 @@ object quic_ser_zerortt = {}
             }
             break;
             default:
-            std::cout << "quic_ser_zerortt 2" << std::endl;  
+            std::cerr << "quic_ser_zerortt 2" << std::endl;  
             throw deser_err();
             }
         }
@@ -535,13 +599,124 @@ object quic_ser_zerortt = {}
                     frame_type = 0x00;
                 }*/
 	            else {
-                    std::cout << "saw frame tag " << tag << std::endl;  
+                    std::cerr << "saw frame tag " << tag << std::endl;  
+                    throw deser_err();
+	            }
+                setn(frame_type,sz);
+                return;
+            } else if (state == quic_s_payload_z) {
+                int sz = 1;
+                if (tag == 0) {
+                    frame_type = 0x01;
+                    state = quic_ping;
+                }
+                else if (tag == 1) {
+                    state = quic_ack_largest;
+                    frame_type = 0x02;
+                }
+                else if (tag == 2) {
+                    state = quic_ack_largest;
+                    frame_type = 0x03;
+                }
+                else if (tag == 3) {
+                    state = quic_reset_stream_id;
+                    frame_type = 0x04;
+                }
+                else if (tag == 4) {
+                    state = quic_stop_sending_id;
+                    frame_type = 0x05;
+                }
+                else if (tag == 6) {
+                    frame_type = 0x07;
+                    state = quic_crypto_length;  // new token equivalent to this
+                }
+                else if (tag == 7) {
+		            frame_type = 0x08;
+                    state = quic_stream_off;
+                    return;
+                }
+                else if (tag == 8) {
+                    frame_type = 0x10;  // max_data
+                    state = quic_reset_final_offset;
+                }
+                else if (tag == 9) {
+                    state = quic_max_stream_data_id;
+                    frame_type = 0x11;
+                }
+                else if (tag == 10) {
+                    state = quic_reset_stream_id; // max_stream_id state equivalent to this
+                    frame_type = 0x12;
+                }
+                else if (tag == 11) {
+                    state = quic_reset_stream_id; // max_stream_id state equivalent to this
+                    frame_type = 0x13;
+                }
+                else if (tag == 12) {
+                    state = quic_reset_final_offset;
+                    frame_type = 0x14;
+                }
+                else if (tag == 13) {
+                    state = quic_max_stream_data_id;
+                    frame_type = 0x15;
+                }
+                else if (tag == 14) {
+                    state = quic_reset_final_offset;
+                    frame_type = 0x16;
+                }
+                else if (tag == 15) {
+                    state = quic_reset_final_offset;
+                    frame_type = 0x17;
+                }
+                else if (tag == 16) {
+                    frame_type = 0x18;
+                    state = quic_new_connection_id_seq_num;
+                }
+                else if (tag == 17) {
+                    state = quic_retire_connection_id_seq_num;
+                    frame_type = 0x19;
+                }
+                else if (tag == 18) {
+                    frame_type = 0x1a;
+                    state = quic_path_challenge_data;
+                }
+                else if (tag == 19) {
+                    frame_type = 0x1b;
+                    state = quic_path_challenge_data;
+                }
+                else if (tag == 20) {
+                    state = quic_connection_close_err_code;
+                    frame_type = 0x1c;
+                }
+                else if (tag == 21) {
+                    frame_type = 0x1d;
+                    state = quic_application_close_err_code;
+                }    
+                else if (tag == 22) {
+                    state = quic_handshake_done;
+                    frame_type = 0x1e;
+                }
+                else if (tag == 23) {
+                    state = quic_ack_frequency;
+                    frame_type = 0x40AF; // 0100 0000 AF
+                    sz = 2;
+                }
+                else if (tag == 24) {
+                    state = quic_unknow;
+                    frame_type = 0x4042; 
+                    sz = 2;                
+                }
+                /*else if (tag == 25) {
+                    state = quic_padding;
+                    frame_type = 0x00;
+                }*/
+	            else {
+                    std::cerr << "saw frame tag " << tag << std::endl;  
                     throw deser_err();
 	            }
                 setn(frame_type,sz);
                 return;
             }
-            std::cout << "quic_ser_zerortt 1" << std::endl;  
+            std::cerr << "quic_ser_zerortt 1" << std::endl;  
             throw deser_err();
         }
 
@@ -554,13 +729,37 @@ object quic_ser_zerortt = {}
                 set_var_int(ack_blocks_expected - 1); // block count doesn't include first
                 ack_block_count = 0;
                 state = quic_ack_gap;
-            } 
+            } else if (state == quic_s_retry_token_length) {
+                if (long_format & ((hdr_type & 0x30) == 0x00)) {
+                    std::cerr << "open_list len " << len << std::endl;
+                    set_var_int(len);
+                    data_remaining = len;
+                }
+                state = quic_s_retry_token;
+            }
         }
         void close_list() {
             if (state == quic_s_payload) {
-                if (long_format && (hdr_type & 0x30) == 0x00)
+                if (long_format && (hdr_type & 0x30) == 0x00) {
+                    is_rtt = true;
+                    //while (res.size() < 1200)
+                    // /    res.push_back(0);  // pad initial packet to 1200 bytes
+                }
+                for(unsigned i = 0; i < 26; i++)
+                    res.push_back(0);
+                if (long_format) {
+                    int len = res.size() - (payload_length_pos+2); // + 26;
+                    std::cerr << "quic_ser_zerortt close_list len " <<  (0x40 | ((len >> 8) & 0x3f)) <<  std::endl;  
+                    res[payload_length_pos] = 0x40 | ((len >> 8) & 0x3f);
+                    res[payload_length_pos+1] = len & 0xff;
+                    state = quic_s_init;
+                }
+            }
+            if (state == quic_s_payload_z) {
+                //if ((long_format && (hdr_type & 0x30) == 0x00) || true) {
                     while (res.size() < 1200)
                         res.push_back(0);  // pad initial packet to 1200 bytes
+                //}
                 /*else if ((hdr_type & 0x30) == 0x20){
                             while (res.size() < 2000)
                                 res.push_back(0);  // pad initial packet to 1200 bytes
@@ -568,13 +767,14 @@ object quic_ser_zerortt = {}
                 for(unsigned i = 0; i < 16; i++)
                     res.push_back(0);
                 if (long_format) {
-                    int len = res.size() - (payload_length_pos+2) ;
-                    res[payload_length_pos] = 0x40 | ((len >> 8) & 0x3f);
-                    res[payload_length_pos+1] = len & 0xff;
+                    int len = res.size() - (payload_length_pos_z+2);
+                    std::cerr << "quic_ser_zerortt close_list2 len " <<  (0x40 | ((len >> 8) & 0x3f)) <<  std::endl;  
+                    res[payload_length_pos_z] = 0x40 | ((len >> 8) & 0x3f);
+                    res[payload_length_pos_z+1] = len & 0xff;
                     state = quic_s_init;
                 }
             }
-            else if (state == quic_s_payload_length) {
+            else if (state == quic_s_retry_token) {
                 payload_length_pos = this->res.size();
                 if (long_format) {
                     setn(0,2);  // will fill in correct value later
@@ -585,7 +785,10 @@ object quic_ser_zerortt = {}
         void close_list_elem() {}
 
         virtual void close_tag() {
-            state = quic_s_payload;
+            if (!is_rtt)
+                state = quic_s_payload;
+            else 
+                state = quic_s_payload_z;
         }
 
         ~quic_ser_zerortt(){}

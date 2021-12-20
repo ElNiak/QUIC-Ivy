@@ -72,6 +72,8 @@ module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
 
     action create(c:cid, is_server : bool, e : extens)
 
+    action create_0rtt(c:cid, is_server : bool, e : extens)
+
     # Destroy an existing connection
 
     action destroy(c:cid)
@@ -82,6 +84,8 @@ module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
     # initial destination connection id.
 
     action set_initial_keys(c:cid,salt:bytes,ikm:bytes)
+
+    action set_0rtt_keys(c:cid)
 
     # Get the size of the cipher initial value for a given level.
 

@@ -226,7 +226,7 @@ object quic_deser_vn = {}
         }
 
         virtual int open_tag(const std::vector<std::string> &tags) {
-            std::cout << "quic_deser_vn 6" << std::endl;    
+            std::cerr << "quic_deser_vn 6" << std::endl;    
             throw deser_err();
         }
 
@@ -245,7 +245,7 @@ object quic_deser_vn = {}
 
             //if (state == quic_crypto_data)
             //    return data_remaining-- > 0;
-            std::cout << "quic_deser_vn 1" << std::endl;  
+            std::cerr << "quic_deser_vn 1" << std::endl;  
             throw deser_err();
         }
 

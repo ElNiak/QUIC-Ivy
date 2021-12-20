@@ -3,8 +3,8 @@
 include collections
 include order
 include quic_stream
-include quic_fsm_sending
-include quic_fsm_receiving
+#include quic_fsm_sending
+#include quic_fsm_receiving
 include quic_transport_error_code
 
 # The frame protocol
@@ -525,12 +525,15 @@ relation max_stream_set(C:cid,K:stream_kind)
 function max_stream(C:cid,K:stream_kind) : stream_id 
 #function max_stream_id(C:cid,K:stream_kind) : cid
 function queued_frames(C:cid) : frame.arr
+function queued_frames_rtt(C:cid) : frame.arr
 function queued_level(C:cid) : quic_packet_type
+function queued_level_rtt(C:cid) : quic_packet_type
 relation queued_non_probing(C:cid)
 relation queued_non_ack(C:cid)
 relation queued_challenge(C:cid)
 relation queued_close(C:cid)
 function num_queued_frames(C:cid) : frame.idx
+function num_queued_frames_rtt(C:cid) : frame.idx
 relation path_challenge_pending(C:cid,D:stream_data)
 function conn_total_data(C:cid) : stream_pos
 #Hamid
@@ -651,13 +654,14 @@ object frame = {
             require connected(dcid) & connected_to(dcid) = scid;
             if _generating  {
             	require ~(e = quic_packet_type.initial) & ~(e = quic_packet_type.handshake); #& ~(e = quic_packet_type.handshake)
+                require ~conn_closed(scid);
             };
 
             require e = quic_packet_type.handshake -> established_handshake_keys(scid);  # [4]
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);  # [4]
             #Chris
             #TODO ECN
-            #require ~(e = quic_packet_type.version_negociation) & ~(e = quic_packet_type.retry);
+            require ~(e = quic_packet_type.version_negociation) & ~(e = quic_packet_type.retry) & ~(e = quic_packet_type.zero_rtt);
             #Chris
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             var idx : frame.ack.range.idx := 0;
@@ -693,11 +697,11 @@ object frame = {
             }
 	    ...
             force_new_ack := false;
-            if _generating {
-                call handle_sending_ack(f.largest_acked);
-            } else {
-                call handle_receiving_ack(seq_num);
-            };
+            # if _generating {
+            #     call handle_sending_ack(f.largest_acked);
+            # } else {
+            #     call handle_receiving_ack(seq_num);
+            # };
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -755,11 +759,11 @@ object frame = {
             }
 	    ...
             force_new_ack := false;
-            if _generating {
-                call handle_sending_ack(f.largest_acked);
-            } else {
-                call handle_receiving_ack(seq_num);
-            };
+            # if _generating {
+            #     call handle_sending_ack(f.largest_acked);
+            # } else {
+            #     call handle_receiving_ack(seq_num);
+            # };
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -818,18 +822,35 @@ object frame = {
         action handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
+            call show_enc_level(e);
+            # if  e = quic_packet_type.one_rtt { #  & established_0rtt_keys(scid)
+            #     require connected(dcid) & connected_to(dcid) = scid;
+            #     require e = quic_packet_type.one_rtt & established_1rtt_keys(scid); #  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid) 
+            #     require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            # } else {
+            #     call show_enc_level(e);
+            #     require num_queued_frames_rtt(scid) > 0 -> e = queued_level_rtt(scid); # TODO
+            # };
+
             require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);  # [11]
+            require (e = quic_packet_type.one_rtt) & established_1rtt_keys(scid); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid) 
+            #require e = quic_packet_type.zero_rtt -> established_0rtt_keys(scid);  # [11]
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            require num_queued_frames_rtt(scid) > 0 -> e = queued_level_rtt(scid); # TODO
+
+            # [11] (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)
+            #require e = quic_packet_type.zero_rtt -> established_0rtt_keys(scid);  # [11]
+            #require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
+
             require ~conn_closed(scid);  # [8]
 
             var offset := f.offset if f.off else 0;
 
-            call show_offset(offset);
-            call show_offset(f.length);
-            call show_offset(((offset) + (f.length)));
-            call show_offset(stream_max_data(dcid,f.id));
-            call show_offset(stream_app_data_end(dcid,f.id));
+            # call show_offset(offset);
+            # call show_offset(f.length);
+            # call show_offset(((offset) + (f.length)));
+            # call show_offset(stream_max_data(dcid,f.id));
+            # call show_offset(stream_app_data_end(dcid,f.id));
 
             require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
             #call show_offset_length(offset,f.length); #todo import 
@@ -853,17 +874,17 @@ object frame = {
 	        #remove for stream limit test
             require stream_id_allowed(dcid,f.id);  # [6]
 	        ...
-            count_stream_frame(f.id,f.offset,f.length,f.data) := count_stream_frame(f.id,f.offset,f.length,f.data) + 1;
-            if count_stream_frame(f.id,f.offset,f.length,f.data) > 1 {
-                stream_frame_restransmitted(f.id) := true;
-            };
-            call show_stream_retransmission(f.id,f.offset,f.length,f.data,count_stream_frame(f.id,f.offset,f.length,f.data));
+            # count_stream_frame(f.id,f.offset,f.length,f.data) := count_stream_frame(f.id,f.offset,f.length,f.data) + 1;
+            # if count_stream_frame(f.id,f.offset,f.length,f.data) > 1 {
+            #     stream_frame_restransmitted(f.id) := true;
+            # };
+            # call show_stream_retransmission(f.id,f.offset,f.length,f.data,count_stream_frame(f.id,f.offset,f.length,f.data));
             stream_seen(scid,f.id) := true;
-            if ~_generating {
-                call handle_sending_send(f.id,seq_num);
-            } else {
-                call handle_receiving_recv(f.id,seq_num);
-            };
+            # if ~_generating {
+            #     call handle_sending_send(f.id,seq_num);
+            # } else {
+            #     call handle_receiving_recv(f.id,seq_num);
+            # };
             var offset := f.offset if f.off else 0;
             var length := offset + f.length;
 
@@ -875,13 +896,14 @@ object frame = {
             };
             if f.fin {
                 stream_finished(dcid,f.id) := true;
-                if ~_generating {
-                    call handle_sending_dataSent(f.id,seq_num);
-                } else {
-                    call handle_receiving_sizeKnown(f.id,seq_num);
-                };
+                # if ~_generating {
+                #     call handle_sending_dataSent(f.id,seq_num);
+                # } else {
+                #     call handle_receiving_sizeKnown(f.id,seq_num);
+                # };
             };
             call enqueue_frame(scid,f,e,false);
+            call enqueue_frame_rtt(scid,f,e,false);
         }
     }
 }
@@ -913,17 +935,18 @@ object frame = {
 	        #};
             require ~conn_closed(scid);  # [1]
             #chris
-            require ~(e = quic_packet_type.zero_rtt);  # [4]
+            #require e ~= quic_packet_type.zero_rtt;  # [4]
             #chris
 	        #if  ~is_crypto_limit_test | ~_generating { #For crypto limit test
                 require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
                 require f.data = crypto_data(scid,e).segment(f.offset,f.offset+f.length);  # [2]
 	        #};
             ...
+            #require e ~= quic_packet_type.zero_rtt;  # [4]
             var length := f.offset + f.length;
             if crypto_length(scid,e) < length {
                 crypto_length(scid,e) := length;   # [3]
-                call show_crypto_length(crypto_length(scid,e));
+                #call show_crypto_length(crypto_length(scid,e));
             };
             var idx := f.offset;
             while idx < f.offset + f.length {
@@ -992,20 +1015,20 @@ object frame = { ...
             if ~_generating {
                 call handle_transport_error(f.err_code);
             };
-            count_reset_frame(f.id,f.err_code,f.final_offset) := count_reset_frame(f.id,f.err_code,f.final_offset) + 1;
-            if count_reset_frame(f.id,f.err_code,f.final_offset) > 1 {
-                reset_frame_restransmitted(f.id) := true;
-            };
-            if ~_generating {
-                call handle_sending_resetSent(f.id,seq_num);
-                #   A STOP_SENDING frame requests that the receiving endpoint send a
-                #   RESET_STREAM frame.  An endpoint that receives a STOP_SENDING frame
-                #   MUST send a RESET_STREAM frame if the stream is in the Ready or Send
-                #   state. 
-                # require sending_ready(f.id)
-            } else {
-                call handle_receiving_resetRecvd(f.id,seq_num);
-            };
+            # count_reset_frame(f.id,f.err_code,f.final_offset) := count_reset_frame(f.id,f.err_code,f.final_offset) + 1;
+            # if count_reset_frame(f.id,f.err_code,f.final_offset) > 1 {
+            #     reset_frame_restransmitted(f.id) := true;
+            # };
+            # if ~_generating {
+            #     call handle_sending_resetSent(f.id,seq_num);
+            #     #   A STOP_SENDING frame requests that the receiving endpoint send a
+            #     #   RESET_STREAM frame.  An endpoint that receives a STOP_SENDING frame
+            #     #   MUST send a RESET_STREAM frame if the stream is in the Ready or Send
+            #     #   state. 
+            #     # require sending_ready(f.id)
+            # } else {
+            #     call handle_receiving_resetRecvd(f.id,seq_num);
+            # };
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -1045,23 +1068,23 @@ object frame = { ...
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require ~conn_closed(scid);  # [5]
             require connected(scid) & connected_to(scid) = dcid;
-	    if ~_generating { # For tests
-            	require stream_seen(dcid,f.id);  # [8]
-            	require stream_id_allowed(dcid,f.id);  # [4]
-	    };
+            if ~_generating { # For tests
+                require stream_seen(dcid,f.id);  # [8]
+                require stream_id_allowed(dcid,f.id);  # [4]
+            };
 	    ...
             if ~_generating {
                 call handle_transport_error(f.err_code);
             };
-            if ~_generating {
-                #   A STOP_SENDING frame requests that the receiving endpoint send a
-                #   RESET_STREAM frame.  An endpoint that receives a STOP_SENDING frame
-                #   MUST send a RESET_STREAM frame if the stream is in the Ready or Send
-                #   state. 
-                if sending_ready(f.id) | sending_send(f.id) {
-                    stop_sending_in_bad_state := true;
-                };
-            };
+            # if ~_generating {
+            #     #   A STOP_SENDING frame requests that the receiving endpoint send a
+            #     #   RESET_STREAM frame.  An endpoint that receives a STOP_SENDING frame
+            #     #   MUST send a RESET_STREAM frame if the stream is in the Ready or Send
+            #     #   state. 
+            #     if sending_ready(f.id) | sending_send(f.id) {
+            #         stop_sending_in_bad_state := true;
+            #     };
+            # };
             stream_seen(scid,f.id) := true;
             #receiving_ready := true;
             call enqueue_frame(scid,f,e,false);
@@ -1204,9 +1227,16 @@ object frame = { ...
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require connected(scid) & connected_to(scid) = dcid;
             require f.reason_phrase_length = f.reason_phrase.end;
+            if _generating {
+                require e = quic_packet_type.one_rtt;
+                require ~conn_closed(scid);
+            };
             conn_closed(scid) := true;
             call handle_transport_error(f.err_code);
 	    ...
+            if _generating {
+                call _finalize;
+            };
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -1253,6 +1283,7 @@ object frame = { ...
             require connected(scid) & connected_to(scid) = dcid;
             require f.reason_phrase_length = f.reason_phrase.end;
             conn_closed(scid) := true;
+            call handle_transport_error(f.err_code);
 	    ...
             call enqueue_frame(scid,f,e,false);
         }
@@ -1323,15 +1354,15 @@ object frame = { ...
             require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
 	    ...
-            count_sdb_frame(f.id,f.pos) := count_sdb_frame(f.id,f.pos) + 1;
-            if count_sdb_frame(f.id,f.pos) > 1 {
-                sdb_frame_restransmitted(f.id) := true;
-            };
-            if ~_generating {
-                call handle_sending_send(f.id,seq_num);
-            } else {
-                call handle_receiving_recv(f.id,seq_num);
-            };
+            # count_sdb_frame(f.id,f.pos) := count_sdb_frame(f.id,f.pos) + 1;
+            # if count_sdb_frame(f.id,f.pos) > 1 {
+            #     sdb_frame_restransmitted(f.id) := true;
+            # };
+            # if ~_generating {
+            #     call handle_sending_send(f.id,seq_num);
+            # } else {
+            #     call handle_receiving_recv(f.id,seq_num);
+            # };
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -1533,7 +1564,7 @@ object frame = { ...
                 #};
                 ...
             if _generating & ~handshake_done_send {
-                    handshake_done_send := true;
+                handshake_done_send := true;
             };
             call enqueue_frame(scid,f,e,false);
         }
@@ -1807,9 +1838,15 @@ action enqueue_frame(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
     };
 #Hamid
     if ~(f isa frame.ack) & ~(f isa frame.connection_close){ #& ~(f isa frame.padding){
-	queued_ack_eliciting(scid) := true;
+	    queued_ack_eliciting(scid) := true;
     };
 #Hamid
+}
+
+action enqueue_frame_rtt(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
+    queued_frames_rtt(scid) := queued_frames_rtt(scid).append(f);
+    num_queued_frames_rtt(scid) := queued_frames_rtt(scid).end;
+    queued_level_rtt(scid) := e;
 }
 
 #

@@ -31,9 +31,9 @@ module deserializer(index,bytes,datatype,deser) = {
             `deser` ds(buf);
 
             try { 
-                std::cout << x << std::endl;
-                std::cout << pos << std::endl;
-                std::cout << std::endl;
+                std::cerr << x << std::endl;
+                std::cerr << pos << std::endl;
+                std::cerr << std::endl;
                __deser(ds,res.value);
                res.pos = pos + ds.pos;
             }

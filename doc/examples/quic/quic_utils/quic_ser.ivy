@@ -193,9 +193,9 @@ object quic_ser = {}
             break;
             case quic_crypto_offset:
             {
-                std::cout << "ser: quic_crypto_offset   = " << res << std::endl;
+                std::cerr << "ser: quic_crypto_offset   = " << res << std::endl;
                 if(const char* env_p4 = std::getenv("RETRY_TOKEN_LENGTH")) {
-                    std::cout << "RETRY_TOKEN_LENGTH 1 " << env_p4 << std::endl;
+                    std::cerr << "RETRY_TOKEN_LENGTH 1 " << env_p4 << std::endl;
                     if(!done)
                         set_var_int(0);
                     else
@@ -226,27 +226,27 @@ object quic_ser = {}
             case quic_ack_frequency: //TODO
             /*{
                 set_var_int(res);
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
+		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
                 state = quic_ack_frequency_packet_tolerence;
             }
             break;
             case quic_ack_frequency_packet_tolerence:
             {
                 set_var_int(res);
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
+		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
                 state = quic_ack_frequency_update_max_ack_delay;
             }
             break;
             case quic_ack_frequency_update_max_ack_delay: 
             {
                 set_var_int(res);
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
+		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
                 state = quic_ack_frequency_ignore_order;
             }
             break;
             case quic_ack_frequency_ignore_order: 
             {
-		        //std::cout << "ser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
+		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
                 setn(res,1);
             }
             break;*/
@@ -259,17 +259,17 @@ object quic_ser = {}
                // std::cerr << "quic_s_retry_token ser "  << tcount << std::endl;
                // tcount += 1; 
                /* if (const char* env_p3 = std::getenv("RETRY_TOKEN")) {
-                    std::cout << "ser: quic_s_retry_token   = " << res << std::endl; 
+                    std::cerr << "ser: quic_s_retry_token   = " << res << std::endl; 
                     if(const char* env_p4 = std::getenv("RETRY_TOKEN_LENGTH")) {
-                        std::cout << "RETRY_TOKEN " << env_p3 << std::endl;
-                        std::cout << "RETRY_TOKEN_LENGTH " << env_p4 << std::endl;
+                        std::cerr << "RETRY_TOKEN " << env_p3 << std::endl;
+                        std::cerr << "RETRY_TOKEN_LENGTH " << env_p4 << std::endl;
                         setn(res,1);
                         tls_field_bytes_map["dcid"] = atoi(env_p3);
                     }
                 }
                 else 
                 if(const char* env_p4 = std::getenv("RETRY_TOKEN_LENGTH") && false) {
-                    std::cout << "RETRY_TOKEN_LENGTH 1 " << env_p4 << std::endl;
+                    std::cerr << "RETRY_TOKEN_LENGTH 1 " << env_p4 << std::endl;
                     setn(res,atoi(env_p4));
                 } else {
                 setn(res,1);
@@ -281,9 +281,9 @@ object quic_ser = {}
             /*case quic_s_retry_token_length:
             {   
                if (const char* env_p3 = std::getenv("RETRY_TOKEN")) {
-                    std::cout << "ser: quic_s_retry_token   = " << res << std::endl; 
+                    std::cerr << "ser: quic_s_retry_token   = " << res << std::endl; 
                     if(const char* env_p4 = std::getenv("RETRY_TOKEN_LENGTH")) {
-                        std::cout << "RETRY_TOKEN_LENGTH 2" << env_p4 << std::endl;
+                        std::cerr << "RETRY_TOKEN_LENGTH 2" << env_p4 << std::endl;
                         setn(atoi(env_p3),1);
                         state = quic_s_retry_token;
                     }
@@ -413,7 +413,7 @@ object quic_ser = {}
             }
             break;
             default:
-            std::cout << "quic_ser 2" << std::endl;  
+            std::cerr << "quic_ser 2" << std::endl;  
             throw deser_err();
             }
         }
@@ -546,13 +546,13 @@ object quic_ser = {}
                     frame_type = 0x00;
                 }*/
 	            else {
-                    std::cout << "saw frame tag " << tag << std::endl;  
+                    std::cerr << "saw frame tag " << tag << std::endl;  
                     throw deser_err();
 	            }
                 setn(frame_type,sz);
                 return;
             }
-            std::cout << "quic_ser 1" << std::endl;  
+            std::cerr << "quic_ser 1" << std::endl;  
             throw deser_err();
         }
 
@@ -567,7 +567,7 @@ object quic_ser = {}
                 state = quic_ack_gap;
             } else if (state == quic_s_retry_token_length) {
                 if (long_format & ((hdr_type & 0x30) == 0x00)) {
-                    std::cout << "open_list len " << len << std::endl;
+                    std::cerr << "open_list len " << len << std::endl;
                     set_var_int(len);
                     data_remaining = len;
                 }

@@ -99,7 +99,7 @@ module tcp_host(endpoint,data) = {
        bool dequeue_swap(std::vector<char> &buf) {
            while(true) {
                sem.down();
-               // std::cout << "DEQUEUEING" << closed << std::endl;
+               // std::cerr << "DEQUEUEING" << closed << std::endl;
                mutex.lock();
                if (closed) {
                    if (reported_closed) {
@@ -108,7 +108,7 @@ module tcp_host(endpoint,data) = {
                    }
                    reported_closed = true;
                    mutex.unlock();
-                   // std::cout << "REPORTING CLOSED" << std::endl;
+                   // std::cerr << "REPORTING CLOSED" << std::endl;
                    return true;
                }
                if (bufs.size() > 0) {
@@ -225,7 +225,7 @@ module tcp_host(endpoint,data) = {
         // This is called in a loop by the task thread.
 
         virtual void read() {
-//            std::cout << "RECEIVING\n";
+//            std::cerr << "RECEIVING\n";
 
             buf.resize(2048);
             int newbytes;
@@ -288,7 +288,7 @@ module tcp_host(endpoint,data) = {
             // if queue has been closed asynchrononously, close the socket. 
 
             if (qclosed) {
-                // std::cout << "CLOSING " << sock << std::endl;
+                // std::cerr << "CLOSING " << sock << std::endl;
                 ::close(sock);
                 connected = false;
                 return;
@@ -298,7 +298,7 @@ module tcp_host(endpoint,data) = {
 
             int bytes = send(sock,&buf[0],buf.size(),MSG_NOSIGNAL);
         
-            // std::cout << "SENT\n";
+            // std::cerr << "SENT\n";
 
             // if not all bytes sent, channel has failed, close the queue
 
@@ -310,7 +310,7 @@ module tcp_host(endpoint,data) = {
 
             // Get the address of the other from the configuration
 
-            // std::cout << "ENTERING CONNECT " << sock << std::endl;
+            // std::cerr << "ENTERING CONNECT " << sock << std::endl;
 
             ivy -> __lock();               // can be asynchronous, so must lock ivy!
             struct sockaddr_in myaddr;
@@ -320,7 +320,7 @@ module tcp_host(endpoint,data) = {
 
             // Call connect to make connection
 
-            // std::cout << "CONNECTING sock=" << sock << "other=" << other << std::endl;
+            // std::cerr << "CONNECTING sock=" << sock << "other=" << other << std::endl;
 
             int res = ::connect(sock,(sockaddr *)&myaddr,sizeof(myaddr));
 
@@ -328,12 +328,12 @@ module tcp_host(endpoint,data) = {
             
             ivy->__lock();
             if (res >= 0) {
-                // std::cout << "CONNECT SUCCEEDED " << sock << std::endl;
+                // std::cerr << "CONNECT SUCCEEDED " << sock << std::endl;
                 cb.ccb(sock);
                 connected = true;
             }
             else {
-                // std::cout << "CONNECT FAILED " << sock << std::endl;
+                // std::cerr << "CONNECT FAILED " << sock << std::endl;
                 fail_close();
             }
             ivy->__unlock();
@@ -347,7 +347,7 @@ module tcp_host(endpoint,data) = {
             // might open another socket, and we don't want to build up
             // zombie sockets.
 
-            // std::cout << "CLOSING ON FAILURE " << sock << std::endl;
+            // std::cerr << "CLOSING ON FAILURE " << sock << std::endl;
             ::close(sock);
             cb.fcb(sock);
             connected = false;
@@ -380,7 +380,7 @@ module tcp_host(endpoint,data) = {
         // the the tcp interface specification.
 
         virtual void read() {
-            // std::cout << "ACCEPTING\n";
+            // std::cerr << "ACCEPTING\n";
 
             // Call accept to get an incoming connection request. May block.
             sockaddr_in other_addr;
@@ -469,13 +469,13 @@ module tcp_host(endpoint,data) = {
         <<< impure
             tcp_listener *r = new tcp_listener(*`cb`,this);
             s = r->fdes();
-            // std::cout << "SOCKET " << s << std::endl;
+            // std::cerr << "SOCKET " << s << std::endl;
             struct sockaddr_in myaddr;
             myaddr.sin_family = AF_INET;
             myaddr.sin_addr.s_addr = htonl(addr.addr);
             // myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
             myaddr.sin_port = htons(addr.port);
-            // std::cout << "binding id: " << " addr: " << ntohl(myaddr.sin_addr.s_addr) << " port: " << ntohs(myaddr.sin_port) << std::endl;
+            // std::cerr << "binding id: " << " addr: " << ntohl(myaddr.sin_addr.s_addr) << " port: " << ntohs(myaddr.sin_port) << std::endl;
             if (::bind(s, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0)
                 { perror("bind failed"); exit(1); }
             // Start lisetning on the socket
@@ -519,7 +519,7 @@ module tcp_host(endpoint,data) = {
     action connect(other:endpoint) returns (s:socket) = {
         <<< impure
             s = make_tcp_socket();
-            // std::cout << "SOCKET " << s << std::endl;
+            // std::cerr << "SOCKET " << s << std::endl;
 
             // create a send queue for this socket, if needed, along with
             // its thread. if the queue exists, it must be closed, so
@@ -545,7 +545,7 @@ module tcp_host(endpoint,data) = {
                 std::vector<char> buf;
                 buf.resize(p.size());
                 std::copy(p.begin(),p.end(),buf.begin());
-//                std::cout << "SENDING\n";
+//                std::cerr << "SENDING\n";
 
                 // if the send queue for this sock doesn's exist, it isn't open,
                 // so the client has violated the precondition. we do the bad client

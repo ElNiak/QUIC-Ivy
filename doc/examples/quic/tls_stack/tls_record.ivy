@@ -87,37 +87,37 @@ object tls = {
 
     # TODO
 
-    object pre_shared_key = {
-        variant this of extension = struct {
-            #etype : extension_type,
-            #extensions : vector[offered_psk]
-            content_psk : stream_data
-        }
-    }
+    # object pre_shared_key = {
+    #     variant this of extension = struct {
+    #         #etype : extension_type,
+    #         #extensions : vector[offered_psk]
+    #         content_psk : stream_data
+    #     }
+    # }
 
 
-    object pre_shared_key_client = {
-        variant this of extension = struct {
-            #etype : extension_type,
-            #extensions : vector[offered_psk]
-            content : stream_data
-        }
-    }
+    # object pre_shared_key_client = {
+    #     variant this of extension = struct {
+    #         #etype : extension_type,
+    #         #extensions : vector[offered_psk]
+    #         content : stream_data
+    #     }
+    # }
 
-    # TODO
-    object offered_psk = {
-        variant this of extension = struct {
-            #etype : extension_type,
-            extensions : vector[extension]
-        }
-    }
+    # # TODO
+    # object offered_psk = {
+    #     variant this of extension = struct {
+    #         #etype : extension_type,
+    #         extensions : vector[extension]
+    #     }
+    # }
 
-    object pre_shared_key_server = {
-        variant this of extension = struct {
-            #etype : extension_type,
-            identity_selected : stream_pos
-        }
-    }
+    # object pre_shared_key_server = {
+    #     variant this of extension = struct {
+    #         #etype : extension_type,
+    #         identity_selected : stream_pos
+    #     }
+    # }
 
     # ##### Client and Server Hello
     #

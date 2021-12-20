@@ -32,6 +32,8 @@ module quic_protection(tls_id,tls) = {
 
     action encrypt(c:tls_id,seq:pkt_num,pkt:stream_data) returns (pkt:stream_data)
 
+    action encrypt_rtt(c:tls_id,seq:pkt_num,pkt:stream_data) returns (pkt:stream_data)
+
     # Protect a packet, given the TLS session and the actual (not
     # compressed) highest sequence number of any packet received so
     # far. The latter is used to guess the real sequence number of the
@@ -44,7 +46,9 @@ module quic_protection(tls_id,tls) = {
 
     action decrypt(c:tls_id,seq:pkt_num,pkt:stream_data) returns (res:tls.decrypt_result)
     
-    
+    import action show_pkt_length(l:stream_pos)
+    import action show_pkt(l:stream_data)
+
     implement encrypt {
         var h := get_header_info(pkt,false);
         var level := get_level(pkt);
@@ -135,9 +139,205 @@ module quic_protection(tls_id,tls) = {
         call show_encrypt_finish;
     }
 
+    implement encrypt_rtt {
+        call show_pkt_length(pkt.end);
+        var h := get_header_info(pkt,false);
+        var pkt_rtt := pkt.segment(h.payload_length,pkt.end);
+        var pkt_init := pkt.segment(0,h.payload_length);
+        var h_rtt := get_header_info(pkt_rtt,false);
+        call show_header(h);
+        call show_header(h_rtt);
+
+        # ----------------------------------------------------------------------
+       
+        var sample_size_rtt : stream_pos := tls.iv_size(c,3);
+        var pnum_pos_rtt := h_rtt.pkt_num_pos;
+        var pnum_len_rtt := get_pnum_len(pkt_rtt);
+        var hdr_len_rtt := pnum_pos_rtt + pnum_len_rtt;
+        
+        # Tricky: before encrypting the payload, we need to adjust the length field
+        # so that it includes the AEAD checksum. Of course, we don't know what
+        # that actually is. Here we assume it is 16 bytes. Even worse, the length of
+        # the length field could grow. Here, we assume the length field format is
+        # always two bytes. 
+        if h_rtt.hdr_long {
+            var new_len := to_var_int_16(h_rtt.payload_length+16);
+            pkt_rtt := pkt_rtt.set(pnum_pos_rtt-2,new_len.value(0));
+            pkt_rtt := pkt_rtt.set(pnum_pos_rtt-1,new_len.value(1));
+        };
+
+        var hdr_rtt  := pkt_rtt.segment(0,pnum_pos_rtt);
+        var pnum_rtt := pkt_rtt.segment(pnum_pos_rtt,hdr_len_rtt);
+
+        var pyld_rtt := pkt_rtt.segment(hdr_len_rtt,pkt_rtt.end);
+
+        var auth_rtt := pkt_rtt.segment(0,hdr_len_rtt);
+#        var seq := get_pnum(pnum,0,pnum_len);
+        var new_seq_rtt := get_pnum(pnum_rtt,0,pnum_len_rtt);
+        new_seq_rtt := correct_pnum(seq,new_seq_rtt,pnum_len_rtt);
+        pyld_rtt := tls.encrypt_aead(c,3,pyld_rtt,new_seq_rtt,auth_rtt);
+
+
+        # call show_aead(level,pyld,new_seq,auth);
+
+        # start l 3Computing the sample position is a bit tricky. First we
+        # assume the length of the pnum is 4, which means the offset
+        # of the sample withing the payload is `4 -
+        # pnum_len`. However, if there are not enough bytes in the
+        # payload, we change it to `payld.end - sample`. Note,
+        # however, that we are using natural numbers, so if the
+        # position would be negative, it saturates to zero. This is
+        # consistent with the statement that you should never sample
+        # any bytes from the packet number itself. This leaves the
+        # possibility that there are not enough bytes to sample, that
+        # is, in the sample, there will be some trailing
+        # zeros. Nonetheless, the spec says that the sample size will
+        # never be larger than the smallest encrypted payload, so we
+        # should be OK.
+
+        var pn_offset_rtt : stream_pos := 0;
+        if h_rtt.hdr_long {
+            pn_offset_rtt := hdr_len_rtt - pnum_pos_rtt;
+        } else {
+            pn_offset_rtt := 1 + 4;
+        };
+	
+	    #call show_payload(pyld);
+        #var sample_pos : stream_pos :=  4 + pnum_pos; #- pnum_len; #pnum_pos; # skipped payload size
+        var sample_pos_rtt : stream_pos :=  4 - pnum_len_rtt;  #- pnum_len;
+        call show_data(sample_pos_rtt,sample_size_rtt,sample_pos_rtt + sample_size_rtt,pyld_rtt.end);
+        #var new_pkt := pkt;
+        var new_pyld_rtt := pyld_rtt;
+        if sample_pos_rtt + sample_size_rtt > pkt_rtt.end  { #MC CHECK
+            call show_if;
+            var diff := (sample_pos_rtt + sample_size_rtt) - pyld_rtt.end;
+            var i : stream_pos := 0;
+            while i < diff {
+                new_pyld_rtt := new_pyld_rtt.append(0x00);
+                i := i + 1
+            };
+            #sample_pos := pyld.end - sample_size #MC shift vs padding ? #[*1*]
+            #check with mcmillan vs maxime piraux
+            pyld_rtt := new_pyld_rtt;  #[*2*]
+        };
+	
+        #call show_payload(new_pyld);
+        #var s := get_packet_sample(h,pkt,pnum_pos,hdr_len,sample_size);
+        #call show_payload(s);
+        #var sample_offset : stream_pos := pn_offset + 4; #pn_offset +
+        #var sample := s.segment(sample_offset,sample_offset+16); 
+        #var sample := pkt.segment(sample_pos,sample_pos+sample_size); 
+        var sample_rtt := pyld_rtt.segment(sample_pos_rtt,sample_pos_rtt+sample_size_rtt); 
+        var mask_rtt := stream_data.empty;
+	    call show_enc_level(3);
+        mask_rtt := tls.encrypt_cipher(c,3,mask_rtt.resize(5,0),sample_rtt,false); # TODO
+        var byte0_mask_rtt := bvand(mask_rtt.value(0), 0x0f if h_rtt.hdr_long else 0x1f);
+        hdr_rtt := hdr_rtt.set(0,byte_xor(pkt_rtt.value(0),byte0_mask_rtt));
+        pnum_rtt := stream_data_xor(pkt_rtt.segment(pnum_pos_rtt,pnum_pos_rtt+pnum_len_rtt),mask_rtt.segment(1,1+pnum_len_rtt));        
+        pkt_rtt := hdr_rtt.extend(pnum_rtt).extend(pyld_rtt);
+        #pkt := pkt.extend(pkt_rtt); #.extend([0x0])
+        #pkt := pkt_init;
+        #pkt := hdr.extend(pnum).extend(pyld_i); #.extend(hdr_rtt).extend(pnum_rtt).extend(pyld_rtt);
+
+        # ----------------------------------------------------------
+
+        var level := get_level(pkt_init);
+        var sample_size : stream_pos := tls.iv_size(c,level);        
+        var pnum_pos := h.pkt_num_pos;
+        var pnum_len := get_pnum_len(pkt_init);
+        var hdr_len := pnum_pos + pnum_len;
+
+        # Tricky: before encrypting the payload, we need to adjust the length field
+        # so that it includes the AEAD checksum. Of course, we don't know what
+        # that actually is. Here we assume it is 16 bytes. Even worse, the length of
+        # the length field could grow. Here, we assume the length field format is
+        # always two bytes. 
+        if h.hdr_long {
+            var new_len := to_var_int_16(h.payload_length+16);
+            pkt_init := pkt_init.set(pnum_pos-2,new_len.value(0));
+            pkt_init := pkt_init.set(pnum_pos-1,new_len.value(1));
+        };
+
+        var hdr  := pkt_init.segment(0,pnum_pos);
+        var pnum := pkt_init.segment(pnum_pos,hdr_len);
+        #var pyld := pkt.segment(hdr_len,pkt.end);
+        var pyld_i := pkt_init.segment(hdr_len,pkt.end); 
+
+        var auth := pkt_init.segment(0,hdr_len);
+#        var seq := get_pnum(pnum,0,pnum_len);
+        var new_seq := get_pnum(pnum,0,pnum_len);
+        new_seq := correct_pnum(seq,new_seq,pnum_len);
+        pyld_i := tls.encrypt_aead(c,level,pyld_i,new_seq,auth);
+
+
+        # call show_aead(level,pyld,new_seq,auth);
+
+        # start l 3Computing the sample position is a bit tricky. First we
+        # assume the length of the pnum is 4, which means the offset
+        # of the sample withing the payload is `4 -
+        # pnum_len`. However, if there are not enough bytes in the
+        # payload, we change it to `payld.end - sample`. Note,
+        # however, that we are using natural numbers, so if the
+        # position would be negative, it saturates to zero. This is
+        # consistent with the statement that you should never sample
+        # any bytes from the packet number itself. This leaves the
+        # possibility that there are not enough bytes to sample, that
+        # is, in the sample, there will be some trailing
+        # zeros. Nonetheless, the spec says that the sample size will
+        # never be larger than the smallest encrypted payload, so we
+        # should be OK.
+
+        var pn_offset : stream_pos := 0;
+        if h.hdr_long {
+            pn_offset := hdr_len - pnum_pos;
+        } else {
+            pn_offset := 1 + 4;
+        };
+	
+	    #call show_payload(pyld);
+        #var sample_pos : stream_pos :=  4 + pnum_pos; #- pnum_len; #pnum_pos; # skipped payload size
+        var sample_pos : stream_pos :=  4 - pnum_len;  #- pnum_len;
+        call show_data(sample_pos,sample_size,sample_pos + sample_size,pyld_i.end);
+        #var new_pkt := pkt;
+        var new_pyld := pyld_i;
+        if sample_pos + sample_size > pkt_init.end { #MC
+            call show_if;
+            var diff := (sample_pos + sample_size) - pyld_i.end;
+            var i : stream_pos := 0;
+            while i < diff {
+                new_pyld := new_pyld.append(0x00);
+                i := i + 1
+            };
+            #sample_pos := pyld.end - sample_size #MC shift vs padding ? #[*1*]
+            #check with mcmillan vs maxime piraux
+            pyld_i := new_pyld;  #[*2*]
+        };
+	
+        #call show_payload(new_pyld);
+        #var s := get_packet_sample(h,pkt,pnum_pos,hdr_len,sample_size);
+        #call show_payload(s);
+        #var sample_offset : stream_pos := pn_offset + 4; #pn_offset +
+        #var sample := s.segment(sample_offset,sample_offset+16); 
+        #var sample := pkt.segment(sample_pos,sample_pos+sample_size); 
+        var sample := pyld_i.segment(sample_pos,sample_pos+sample_size); 
+        var mask := stream_data.empty;
+	    call show_enc_level(level);
+        mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,false);
+        var byte0_mask := bvand(mask.value(0), 0x0f if h.hdr_long else 0x1f);
+        hdr := hdr.set(0,byte_xor(pkt_init.value(0),byte0_mask));
+        pnum := stream_data_xor(pkt_init.segment(pnum_pos,pnum_pos+pnum_len),mask.segment(1,1+pnum_len));        
+        pkt_init := hdr.extend(pnum).extend(pyld_i);
+
+        pkt := pkt_init.extend(pkt_rtt);
+        #pkt := pkt_rtt.extend(pkt_init);
+        #pkt := pkt_init;
+        #pkt := pkt_rtt;
+        call show_encrypt_finish;
+    }
+
     implement decrypt {
         var h := get_header_info(pkt,true);
-	    call show_header(h);
+	    #call show_header(h);
         var level := get_level(pkt);
         var sample_size := tls.iv_size(c,level);
 	    call show_iv_size(sample_size);
@@ -302,7 +502,12 @@ module quic_protection(tls_id,tls) = {
             call show_htype(hdr_type);
             if hdr_type = 0x00 | hdr_type = 0x30 { # | hdr_type = 0x20
                 level := 0;
-            } else  { # if hdr_type = 0x20, TODO: other packet types
+            } 
+            else if hdr_type = 0x10 {
+                # 0RTT
+               level := 1;
+            } 
+            else  { # if hdr_type = 0x20, TODO: other packet types
                 level := 2;
             }
         } else {
@@ -690,7 +895,7 @@ object quic_prot_deser = {}
                 unsigned len = get_var_int_len(pnum_pos);
                 unsigned pyld_len = get_var_int(pnum_pos,len);
                 data_remaining = (pnum_pos-pos) + len + pyld_len;
-                //std::cout << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
+                //std::cerr << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
             }
             else {
                 data_remaining = 0x7fffffff;

@@ -43,7 +43,7 @@ object tls_ser_server = {}
         }
     
         virtual void open_field(const std::string &name) {
-            std::cout << "deser-open_field: name : " << name << std::endl;  
+            std::cerr << "deser-open_field: name : " << name << std::endl;  
             if (name == "random_bytes") { //28 bytes tls1.2, 32bytes tls1.3
                 fence.push_back(pos+28);
                 field_bytes = 1;
@@ -62,12 +62,12 @@ object tls_ser_server = {}
                 int128_t bytes;
                 //long long bytes;
                 getn(bytes,length_field_bytes);
-                std::cout << "deser-open_field: flength : " << bytes << std::endl;  
+                std::cerr << "deser-open_field: flength : " << bytes << std::endl;  
                 fence.push_back(pos+bytes);
             }
             else if (fence.size() > 0) {
                 unsigned b = fence.back();
-                //std::cout << "4) pkt-pos =  " << b << std::endl; 
+                //std::cerr << "4) pkt-pos =  " << b << std::endl; 
                 fence.push_back(b);
             } 
             if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
@@ -86,8 +86,8 @@ object tls_ser_server = {}
         }
 
         virtual int open_tag(const std::vector<std::string> &tags) {
-            //std::cout << std::endl; 
-	        //std::cout << "open_tag : " << tags << std::endl;  
+            //std::cerr << std::endl; 
+	        //std::cerr << "open_tag : " << tags << std::endl;  
             int bytes = 1;
             if (tls_tag_bytes_map.find(tags[0]) != tls_tag_bytes_map.end())   {
                 bytes = tls_tag_bytes_map[tags[0]];
@@ -100,7 +100,7 @@ object tls_ser_server = {}
             //unsigned long long tag_final;
 	        long long mask;
             getn(tag,bytes);
-            std::cout << "tag v1: " << tag << std::endl;  
+            std::cerr << "tag v1: " << tag << std::endl;  
 
 	        u_int tag_int = (u_int) tag;  //TODO change could be dangerous
             int tag_size = (tag_int >> 6) & ((1 << 2) -1);
@@ -125,8 +125,8 @@ object tls_ser_server = {}
             if(tag == 0x002a || tag == 0x0029)
                 tag_size = 2;
 
-            std::cout <<  "Tag size: " <<  tag_size << std::endl;
-            std::cout <<  "tags[0]: " <<  tags[0] << std::endl;
+            std::cerr <<  "Tag size: " <<  tag_size << std::endl;
+            std::cerr <<  "tags[0]: " <<  tags[0] << std::endl;
 
             int128_t value_size = 0;
 	        //long long value_size = 0;
@@ -144,10 +144,16 @@ object tls_ser_server = {}
                 //unsigned long long tag_intt = (uint128_t) tag_new; 
                 uint128_t tag_intt = (uint128_t) tag_new; 
                 tag_final = (tag_intt & mask);
-                
-                getn(value_size,1);                
-                pos -= 1;
-                std::cout << "tag: " << tag << std::endl;  
+                if(tag == 0x0029) {
+                    getn(value_size,2);
+                    pos -= 2;
+                } else {
+                    getn(value_size,1);
+                    pos -= 1;
+                }
+                                
+                std::cerr << "tag: " << tag << std::endl; 
+                std::cerr << "value_size: " << value_size << std::endl;  
 
                 if(tag == 0x0f || tag == 0x00) {
                     tls_field_bytes_map["scid"] = value_size;
@@ -157,11 +163,12 @@ object tls_ser_server = {}
                 }
                 /*else if(tag == 0x0029) {
                     tls_field_bytes_map["content_psk"] = value_size;
+                    //tls_field_bytes_map["tls.pre_shared_key"] = value_size;
                 }*/
                 else if(tag == 0x0d) {
 		            int128_t pcil = value_size - 4 - 2 -16 - 2 - 1 - 16;
-                    //std::cout << "pcil: " << pcil << std::endl;     
-                    //std::cout << "pref_add: " << (pcil+4+2+16+2+1+16) << std::endl;   
+                    //std::cerr << "pcil: " << pcil << std::endl;     
+                    //std::cerr << "pref_add: " << (pcil+4+2+16+2+1+16) << std::endl;   
                     tls_field_bytes_map["pcid"] = pcil;
                 }
                 else if(tag == 0x10) { // else if(tag == 0x1010) {
@@ -175,8 +182,8 @@ object tls_ser_server = {}
             }
 
 
-	    //std::cout << "value_size: " << value_size << std::endl;
-            //std::cout << "tag v2: " << tag_final << std::endl;
+	    //std::cerr << "value_size: " << value_size << std::endl;
+            //std::cerr << "tag v2: " << tag_final << std::endl;
   
             for (int i = 0; i < tags.size(); i++) {
                 if (tag_final == tls_tags_map[tags[i]]) {
@@ -197,7 +204,7 @@ object tls_ser_server = {}
                     return i;
                 }
             }
-            std::cout << "error tls_desert 1" << std::endl;  
+            std::cerr << "error tls_desert 1" << std::endl;  
             throw deser_err();
         }
 
@@ -262,11 +269,13 @@ object tls_ser_server = {}
           */
         virtual void open_field(const std::string &name) {
             int flb = 0;
-            std::cout << "ser-open_field: name 1: " << name << std::endl;  
+            std::cerr << "ser-open_field: name 1: " << name << std::endl;  
             if (name == "random_bytes") {
                 field_bytes = 1;
             }
-            else if (name == "versions") {
+            else if (name == "content_psk") {
+                field_bytes = 2;
+            } else if (name == "versions") {
                 field_bytes = 4;
                 if (in_encrypted_extensions) {
                     flb = 1;
@@ -275,7 +284,7 @@ object tls_ser_server = {}
             }
             else if (tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
                 flb = tls_field_length_bytes_map[name];
-		        //std::cout << "ser-open_field: flb : " << flb << std::endl;
+		        std::cerr << "ser-open_field: flb : " << flb << std::endl;
                 res.resize(res.size() + flb);
             }
 
@@ -283,14 +292,14 @@ object tls_ser_server = {}
             field_length_bytes.push_back(flb);
             if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
                 field_bytes = tls_field_bytes_map[name];
-		        //std::cout << "ser-open_field: name_field_bytes 1: " << field_bytes << std::endl;
-            }   //else 
-		        //std::cout << "ser-open_field: name_field_bytes 2: " << field_bytes << std::endl;
+		        std::cerr << "ser-open_field: name_field_bytes 1: " << field_bytes << std::endl;
+            }   else 
+		        std::cerr << "ser-open_field: name_field_bytes 2: " << field_bytes << std::endl;
             if (name == "tls.encrypted_extensions") {
                 in_encrypted_extensions = field_start.size();
             }
-            //std::cout << "ser-open_field: field_bytes: " << field_bytes << std::endl;
-            //std::cout << "ser-open_field: res.size() : " << res.size() << std::endl;
+            //std::cerr << "ser-open_field: field_bytes: " << field_bytes << std::endl;
+            //std::cerr << "ser-open_field: res.size() : " << res.size() << std::endl;
         }
         //TODO [xx]
         virtual void close_field() {
@@ -303,10 +312,10 @@ object tls_ser_server = {}
             std::vector<char> temp;
             temp.swap(res);
             int len = end-start;
-            //std::cout << "ser-close_field: start : " << start << std::endl;
-            //std::cout << "ser-close_field: end : " << end << std::endl;
-            //std::cout << "ser-close_field: len : " << len << std::endl;
-            //std::cout << "ser-close_field: flb : " << flb << std::endl;
+            //std::cerr << "ser-close_field: start : " << start << std::endl;
+            //std::cerr << "ser-close_field: end : " << end << std::endl;
+            //std::cerr << "ser-close_field: len : " << len << std::endl;
+            //std::cerr << "ser-close_field: flb : " << flb << std::endl;
             setn(len,flb);
             temp.swap(res); //[xx] remove
             std::copy(temp.begin(),temp.end(),res.begin()+start-flb); // [xx] remove
@@ -325,18 +334,18 @@ object tls_ser_server = {}
 	        if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
                 // because it seralize directly so we dont know the scid/dcid length
                 // TODO maybe change and put the value directly in envvar
-                std::cout << "TEST_TYPE " << env_p2 << std::endl;
+                std::cerr << "TEST_TYPE " << env_p2 << std::endl;
                 if(strcmp(env_p2, "client") == 0) {
                     if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-                        std::cout << "TEST_SCIL " << env_p3 << std::endl;
+                        std::cerr << "TEST_SCIL " << env_p3 << std::endl;
                         //tls_field_bytes_map["scid"] = atoi(env_p3);
                     }
                     if(const char* env_p3 = std::getenv("TEST_DCIL")) {
-                        std::cout << "TEST_DCIL " << env_p3 << std::endl;
+                        std::cerr << "TEST_DCIL " << env_p3 << std::endl;
                         tls_field_bytes_map["dcid"] = atoi(env_p3);
                     }
                     if(const char* env_p3 = std::getenv("TEST_PCIL")) {
-                        std::cout << "TEST_PCIL " << env_p3 << std::endl;
+                        std::cerr << "TEST_PCIL " << env_p3 << std::endl;
                         tls_field_bytes_map["pcid"] = atoi(env_p3);
                     }
                 }

@@ -213,6 +213,7 @@ function crypto_pos(C:cid,L:quic_packet_type) : stream_pos
 function crypto_handler_pos(C:cid,L:quic_packet_type) : stream_pos
 function conn_enc_level(E:ip.endpoint,C:cid) : quic_packet_type
 relation established_1rtt_keys(C:cid)
+relation established_0rtt_keys(C:cid)
 relation established_handshake_keys(C:cid)
 
 
@@ -220,6 +221,7 @@ after init {
     crypto_handler_pos(C,L) := 0;
     conn_enc_level(E,C) := quic_packet_type.zero_rtt;
     established_1rtt_keys(C:cid) := false;
+    established_0rtt_keys(C:cid) := false;
     established_handshake_keys(C:cid) := false;
 }
 
@@ -324,6 +326,8 @@ after tls_keys_established_event {
         established_handshake_keys(scid) := true
     } else if e = quic_packet_type.one_rtt {
         established_1rtt_keys(scid) := true
+    } else if e = quic_packet_type.zero_rtt {
+        established_0rtt_keys(scid) := true
     }
 }
 

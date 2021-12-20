@@ -207,6 +207,7 @@ function retry_token(C:cid) : stream_data
 relation tls_handshake_finished
 relation migration_done
 
+relation first_initial_send
 
 #function cid_ip_mapped(D:ip.endpoint) :cid
 #relation cid_ip_mapped(D:ip.endpoint)
@@ -244,6 +245,7 @@ after init {
     num_conn(C) := 1; 
     migration_done := false;
     tls_handshake_finished := false;
+    first_initial_send := false;
     #chris
 }
 
@@ -319,7 +321,7 @@ after init {
 
 around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     #call show_connected(connected(the_cid), connected_to(the_cid));
-    require pkt.token.end ~= 0 -> (pkt.ptype = quic_packet_type.initial);
+    require pkt.token.end ~= 0 -> (pkt.ptype = quic_packet_type.initial & retry_recv);
 
     # TEMPORARY: Do not allow zero_rtt packets
 
@@ -422,13 +424,13 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     # Packet must be sent to the endpoint from which the highest numbered
     # packet has been received. ~queued_challenge(dcid) & 
-    call show_probing(dcid ,hi_non_probing(dcid));
+    #call show_probing(dcid ,hi_non_probing(dcid));
     require  conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
 
     # TEMPORARY: do not apply ack-only rule to generated packets
     # This can be removed when we have a frame queue per encryption level
 
-    call show_ack_credit(scid, ack_credit(scid), queued_ack_eliciting(scid), queued_non_ack(scid), pkt.seq_num);
+    #call show_ack_credit(scid, ack_credit(scid), queued_ack_eliciting(scid), queued_non_ack(scid), pkt.seq_num);
     require ~_generating & ~queued_non_ack(scid) -> ack_credit(scid) > 0;  # [5]
 
     #Hamid - This is wrong, because if there is no ack credits, it prevents from sending a packet 
@@ -471,7 +473,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
 
     if retry_sent {
-        call show_version_retry_resp;
+        #call show_version_retry_resp;
         retry_response := true;
     };
  
@@ -486,19 +488,13 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         initial_token := pkt.token;
         # An initial packet with an unseen destination cid is a connection request.
         if ~conn_seen(dcid) | (retry_response & ~init_token) {#TODO
-            call show_initial_request_initial;
+            #call show_initial_request_initial;
             call tls_client_initial_request(src,dst,dcid,pkt.pversion);
             conn_requested(src,dst,scid) := true;
             if retry_response {
                 retry_rsp := false;
-                #crypto_length(scid,pkt.ptype) := 0x0;
-                #crypto_length(dcid,pkt.ptype) := 0x0;
             };
         };
-        #if retry_send(dcid) {
-        #    require pkt.token = retry_token(dcid);
-        #}
-        # cid_mapped_token(dcid) := 
         cid_to_token(dcid) := pkt.token;
     };
 
@@ -562,6 +558,13 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     #    require ~_generating & ~(pkt.token.end = 0) -> is_invalid_token;
     #};
 
+
+    if pkt.ptype = quic_packet_type.initial & ~first_initial_send & zero_rtt_allowed {
+        first_initial_send := true;
+        queued_level(the_cid) := quic_packet_type.zero_rtt;
+    } else {
+        first_initial_send := false;
+    };
     #call show_connected(connected(the_cid), connected_to(the_cid));
 
     # The queued frames are deleted
@@ -649,7 +652,6 @@ action handle_tls_extensions
         var ext := exts.value(idx);
             
         # For every `quic_transport_parameters` extension...
-
         if some (tps:quic_transport_parameters) ext *> tps {
             call handle_client_transport_parameters(src,dst,scid,tps,is_client_hello);
             trans_params_set(scid) := true;
@@ -744,9 +746,8 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
 
 # import client_transport_parameters_event
 
-# action show_enc_level(e:quic_packet_type)
 
-# import show_enc_level
+import action show_enc_level(e:quic_packet_type)
 
 # import action show_offset_length(offset:stream_pos,length:stream_pos)
 

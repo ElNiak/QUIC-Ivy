@@ -67,7 +67,7 @@ before show_packet {
 
 import action show_bytes(bytes:stream_data)
 action round_trip_packet(pkt:quic_packet) = { <<<
-    std::cout << pkt << std::endl;
+    std::cerr << pkt << std::endl;
     >>> }
 
 export show_packet

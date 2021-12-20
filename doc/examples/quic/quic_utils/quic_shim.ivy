@@ -808,7 +808,7 @@ action dcid_size_cl(cond:bool) returns(res:cid_length) = {
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "client") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_DCIL")) {
-            //std::cout << "TEST_DCIL " << env_p3 << std::endl;
+            //std::cerr << "TEST_DCIL " << env_p3 << std::endl;
 	        res = atoi(env_p3);
          } 
          else 

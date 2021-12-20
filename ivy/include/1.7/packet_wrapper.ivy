@@ -44,7 +44,7 @@ module packet_wrapper(pkt,ifnum,macaddr) = {
 		return sock;
 	    }
 	    virtual void read() {
-		//std::cout << "RECEIVING\n";
+		//std::cerr << "RECEIVING\n";
 	        int len=0;
                 socklen_t lenlen=4;
 #ifdef _WIN32
@@ -68,12 +68,12 @@ module packet_wrapper(pkt,ifnum,macaddr) = {
 		ivy->__unlock();
 	    }
 	    virtual void write(`pkt` pkt, `ifnum` idx, `macaddr` mac) {
-//	        std::cout << "mac: " << std::hex << mac << std::endl;
+//	        std::cerr << "mac: " << std::hex << mac << std::endl;
 	        std::vector<char> buf;
                 buf.resize(pkt.size());
                 std::copy(pkt.begin(),pkt.end(),buf.begin());
-//                std::cout << "sending to: " << (int)buf[16] << "." << (int)buf[17] << "." << (int)buf[18] << "." << (int)buf[19] << std::endl;
-		//std::cout << "SENDING\n";
+//                std::cerr << "sending to: " << (int)buf[16] << "." << (int)buf[17] << "." << (int)buf[18] << "." << (int)buf[19] << std::endl;
+		//std::cerr << "SENDING\n";
 		struct sockaddr_ll dstaddr;
 		memset((char *)&dstaddr, 0, sizeof(dstaddr));
 		dstaddr.sll_family = AF_PACKET;
@@ -82,10 +82,10 @@ module packet_wrapper(pkt,ifnum,macaddr) = {
 		dstaddr.sll_halen = 6; // ethernet address only!
 	        for (int i = 0; i < 6; i++)
 		    dstaddr.sll_addr[i] = (mac >> (8*(5-i))) & 0xff;
-//	        std::cout << "index: " << dstaddr.sll_ifindex << std::endl;
-//	        std::cout << "addr: ";
-//	    for (int i = 0; i < 6; i++) std::cout << std::hex <<  (((int)dstaddr.sll_addr[i]) & 0xff) << "::" ;
-//	    std::cout << std::endl;
+//	        std::cerr << "index: " << dstaddr.sll_ifindex << std::endl;
+//	        std::cerr << "addr: ";
+//	    for (int i = 0; i < 6; i++) std::cerr << std::hex <<  (((int)dstaddr.sll_addr[i]) & 0xff) << "::" ;
+//	    std::cerr << std::endl;
 	        if (sendto(sock,&buf[0],buf.size(),0,(sockaddr *)&dstaddr,sizeof(sockaddr_ll)) < 0)
 	        // if (send(sock,&buf[0],buf.size(),0) < 0) 
 #ifdef _WIN32

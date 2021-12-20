@@ -260,22 +260,22 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     }
 }
 
-before packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
-    if _generating {
-        call show_version_retry(version_used);
-        #require version_used ~= 0xff00001d; 
-        #require initial_recv;
-        require client.ep.addr ~= 0;  # must have a client address to send to
-        require src = server.ep;
-        require dst = client.ep;
-        #require pkt.dst_cid = client_initial_scid;
-        pkt.dst_cid := client_initial_scid;
-        #require pkt.src_cid = 0x5;
-        pkt.src_cid := the_cid;
-        require pkt.pversion = version_used;
-        #require pkt.token.end = 0; # [1] todo
-    } 
-}
+# before packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
+#     if _generating {
+#         call show_version_retry(version_used);
+#         #require version_used ~= 0xff00001d; 
+#         #require initial_recv;
+#         require client.ep.addr ~= 0;  # must have a client address to send to
+#         require src = server.ep;
+#         require dst = client.ep;
+#         #require pkt.dst_cid = client_initial_scid;
+#         pkt.dst_cid := client_initial_scid;
+#         #require pkt.src_cid = 0x5;
+#         pkt.src_cid := the_cid;
+#         require pkt.pversion = version_used;
+#         #require pkt.token.end = 0; # [1] todo
+#     } 
+# }
 
 interpret itoken -> longbv[1][13][16]
 import action show_version_retry(v:version)
@@ -346,6 +346,7 @@ before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) 
 #        call show_level_offset_length(e,crypto_length(scid,e),crypto_data_end(src,scid,e))
         require f.offset = crypto_length(scid,e);
         require f.length = (crypto_data_end(scid,e)) - f.offset;
+        require e ~= quic_packet_type.zero_rtt;
         require e = quic_packet_type.handshake -> crypto_length(scid,quic_packet_type.initial) = crypto_data_end(scid,quic_packet_type.initial);  # [1]
         require e = quic_packet_type.one_rtt -> crypto_length(scid,quic_packet_type.initial) = crypto_data_end(scid,quic_packet_type.initial);  # [1]
         require e = quic_packet_type.one_rtt -> crypto_length(scid,quic_packet_type.handshake) = crypto_data_end(scid,quic_packet_type.handshake);  # [1]

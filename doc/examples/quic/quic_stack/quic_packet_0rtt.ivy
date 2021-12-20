@@ -47,7 +47,17 @@ include byte_stream
 # - *payload*: the payload, a sequence of frames  [8]
 
 object quic_packet_0rtt = {
+    # coalesed
     type this = struct {
+        # Initial packet
+        ptype_i : quic_packet_type, # [2]
+        pversion_i : version, # [3]
+        dst_cid_i : cid, # [4]
+        src_cid_i : cid, # [5]
+        token_i : stream_data, # [6]
+        seq_num_i : pkt_num, # [7]
+        payload_i : frame.arr, # [8]
+        # 0rtt packet
         ptype : quic_packet_type, # [2]
         pversion : version, # [3]
         dst_cid : cid, # [4]
@@ -174,6 +184,16 @@ action packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) =
 around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {    
     # Extract the source and destination cid's and packet number from the packet.
 
+    require pkt.src_cid = pkt.src_cid_i;
+    require pkt.dst_cid = pkt.dst_cid_i;
+    require pkt.seq_num = pkt.seq_num_i;
+    
+    var dcid_i := pkt.dst_cid_i;
+    var scid_i := pkt.src_cid_i;
+    if cid_mapped(dcid_i) {
+	    dcid_i := cid_to_aid(dcid_i);
+    };
+
     var dcid := pkt.dst_cid;
     var scid := pkt.src_cid;
     if cid_mapped(dcid) {
@@ -185,11 +205,70 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
 	    #call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
 
-    require num_queued_frames(scid) > 0;  # [7]
+    require pkt.token_i.end ~= 0 -> (pkt.ptype_i = quic_packet_type.initial & retry_recv);
+
+    # TEMPORARY: Do not allow zero_rtt packets
+
+    require pkt.ptype_i ~= quic_packet_type.zero_rtt;
+
+    require connected(dcid_i) |
+        pkt.ptype_i = quic_packet_type.initial
+        & is_client(scid_i)
+        & dcid_i = nonce_cid(scid_i);
+
+    if pkt.long {
+        require connected(dcid_i) -> connected_to(dcid_i) = scid_i;
+    }
+    else {
+        scid_i := connected_to(dcid_i);
+    };
+
+    require pkt.ptype_i = queued_level(scid_i);
+
+    if  _generating {
+        require pkt.seq_num_i <= last_pkt_num(scid_i,pkt.ptype_i) + 0x15;
+    	require pkt.seq_num_i > last_pkt_num(scid_i,pkt.ptype_i);
+    };
+    require ~sent_pkt(scid_i,pkt.ptype_i,pkt.seq_num_i);  # [4]
+    sent_pkt(scid_i,pkt.ptype_i,pkt.seq_num_i) := true;  # [1]
+
+    require num_queued_frames(scid_i) > 0;  # [7]
 
     # The payload must exactly match the queued frames.
 
-    require pkt.payload = queued_frames(scid);
+    require pkt.payload_i = queued_frames(scid_i);
+
+    # TEMPORARY: don't allow client migration during handshake
+
+    require conn_seen(scid_i) & pkt.long & is_client(scid_i) -> conn_requested(src,dst,scid_i);
+
+    require  conn_seen(dcid_i) -> hi_non_probing_endpoint(dcid_i,dst);  # [10]
+
+    # TEMPORARY: do not apply ack-only rule to generated packets
+    # This can be removed when we have a frame queue per encryption level
+
+    #call show_ack_credit(scid, ack_credit(scid), queued_ack_eliciting(scid), queued_non_ack(scid), pkt.seq_num);
+    require ~_generating & ~queued_non_ack(scid_i) -> ack_credit(scid_i) > 0;  # [5]
+
+    if conn_draining(scid_i) {
+        require ~draining_pkt_sent(scid_i) & queued_close(scid_i);
+    };
+
+    # =================================================
+
+    #require pkt.ptype = queued_level(scid);
+    #require queued_level(scid) = quic_packet_type.zero_rtt;
+    require pkt.ptype = quic_packet_type.zero_rtt;
+    established_1rtt_keys(scid) := true;
+
+    #require pkt.ptype = quic_packet_type.one_rtt;
+    #queued_level_rtt(scid) := quic_packet_type.zero_rtt;
+
+    #require num_queued_frames_rtt(scid) > 0;  # [7]
+
+    # The payload must exactly match the queued frames.
+
+    require pkt.payload = queued_frames_rtt(scid);
 
   
     # Similarly, an endpoint MUST NOT reuse a connection ID when sending to
@@ -211,9 +290,13 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
     # The packet type must match the encryption level of the queued
     # frames at the source. 
 
-    # require pkt.ptype = queued_level(scid);
+    #if _generating {
+    #    call tls_api.upper.set_0rtt_keys(0,ikm);
+    #};
 
-    # require conn_seen(scid) & pkt.long & is_client(scid) -> conn_requested(src,dst,scid);
+    #require pkt.ptype = quic_packet_type.zero_rtt | pkt.ptype = quic_packet_type.one_rtt; # tODO
+    require connected(dcid) -> connected_to(dcid) = scid;
+    require conn_seen(scid) & pkt.long & is_client(scid) -> conn_requested(src,dst,scid);
 
     # Packet must be sent to the endpoint from which the highest numbered
     # packet has been received. ~queued_challenge(dcid) & 
@@ -241,6 +324,22 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
 
     if cid_mapped(dcid) {
 	    dcid := cid_to_aid(dcid);
+    };
+
+    var dcid_i := pkt.dst_cid_i;
+    var scid_i := pkt.src_cid_i if pkt.long else connected_to(dcid_i);
+
+    if cid_mapped(dcid_i) {
+	    dcid_i := cid_to_aid(dcid_i);
+    };
+
+    # Record the packet number as latest seen
+
+    last_pkt_num(scid_i,pkt.ptype_i) := pkt.seq_num_i;
+
+    if retry_sent {
+        #call show_version_retry_resp;
+        retry_response := true;
     };
 
     # TODO: the following should not be here
@@ -271,7 +370,112 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
         conn_requested(src,dst,the_cid) := true;
     };
 
-    conn_seen(scid) := true;  # [1]
+    if _generating{
+        zero_rtt_sent := true;
+    };
+
+    queued_frames_rtt(scid) := frame.arr.empty;
+    queued_non_probing(scid) := false;
+    queued_non_ack(scid) := false;
+    queued_close(scid) := false;
+    num_queued_frames_rtt(scid) := 0;
+#Hamid
+    queued_ack_eliciting(scid) := false;
+#Hamid
+# =============================================================
+    if pkt.ptype_i = quic_packet_type.initial {
+        initial_token := pkt.token_i;
+        # An initial packet with an unseen destination cid is a connection request.
+        if ~conn_seen(dcid_i) | (retry_response & ~init_token) {#TODO
+            #call show_initial_request_initial;
+            call tls_client_initial_request(src,dst,dcid_i,pkt.pversion_i);
+            conn_requested(src,dst,scid_i) := true;
+            if retry_response {
+                retry_rsp := false;
+            };
+        };
+        cid_to_token(dcid_i) := pkt.token_i;
+    };
+
+    if retry_response {
+        init_token := true;
+    };
+
+    conn_seen(scid_i) := true;  # [1]
+
+    # Update the ack credits. A non-ack packet sent to a destination
+    # increases the destination's ack credit. An ack packet decreases
+    # the sender's ack credit.
+
+#Hamid
+
+#    if queued_non_ack(scid) {
+#	ack_credit(dcid) := ack_credit(dcid) + 1;
+#    } else {
+#	ack_credit(scid) := ack_credit(scid) - 1;
+#    };
+
+    if queued_ack_eliciting(scid_i) {
+       ack_credit(dcid) := ack_credit(dcid) + 1;
+    };
+    if ~queued_non_ack(scid_i) {
+       ack_credit(scid_i) := ack_credit(scid_i) - 1;
+    };
+
+#Hamid
+
+    # If this is a non-probing packet, update the highest non-probing
+    # packet number seen on from this aid.
+    # QUESTION: what if two different paths send the same packet number?
+    # QUESTION: how do you compare packet numbers with different encryption levels?
+
+    if queued_non_probing(scid_i) {
+        if pkt.ptype_i = quic_packet_type.one_rtt {
+            if pkt.seq_num_i >= hi_non_probing(scid_i) {
+                hi_non_probing(scid_i) := pkt.seq_num_i;
+                hi_non_probing_endpoint(scid_i,src) := true;
+            }
+        } else {
+            hi_non_probing_endpoint(scid_i,src) := true;
+        }
+    };
+
+    # If the packet contains a close frame, then set `pkt_has_close`
+
+    if queued_close(scid_i) {
+        pkt_has_close(scid_i,pkt.ptype_i,pkt.seq_num_i) := true;
+    };
+
+    # If the sender is in the draining state, this is the draining packet.
+
+    if conn_draining(scid_i) {
+        draining_pkt_sent(scid_i) := true
+    };
+
+    # [11] In test directly now
+    #if pkt.ptype = quic_packet_type.initial {
+    #    require ~_generating & ~(pkt.token.end = 0) -> is_invalid_token;
+    #};
+
+
+    if pkt.ptype_i = quic_packet_type.initial & ~first_initial_send & zero_rtt_allowed {
+        first_initial_send := true;
+        queued_level(the_cid) := quic_packet_type.zero_rtt;
+    } else {
+        first_initial_send := false;
+    };
+    #call show_connected(connected(the_cid), connected_to(the_cid));
+
+    # The queued frames are deleted
+    
+    queued_frames(scid_i) := frame.arr.empty;
+    queued_non_probing(scid_i) := false;
+    queued_non_ack(scid_i) := false;
+    queued_close(scid_i) := false;
+    num_queued_frames(scid_i) := 0;
+#Hamid
+    queued_ack_eliciting(scid_i) := false;
+#Hamid
 }
 
 

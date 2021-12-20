@@ -44,7 +44,7 @@ module ip_wrapper(pkt,protocol) = {
 		return sock;
 	    }
 	    virtual void read() {
-		//std::cout << "RECEIVING\n";
+		//std::cerr << "RECEIVING\n";
 	        int len=0;
                 socklen_t lenlen=4;
 #ifdef _WIN32
@@ -69,8 +69,8 @@ module ip_wrapper(pkt,protocol) = {
 	        std::vector<char> buf;
                 buf.resize(pkt.size());
                 std::copy(pkt.begin(),pkt.end(),buf.begin());
-//                std::cout << "sending to: " << (int)buf[16] << "." << (int)buf[17] << "." << (int)buf[18] << "." << (int)buf[19] << std::endl;
-		//std::cout << "SENDING\n";
+//                std::cerr << "sending to: " << (int)buf[16] << "." << (int)buf[17] << "." << (int)buf[18] << "." << (int)buf[19] << std::endl;
+		//std::cerr << "SENDING\n";
 		struct sockaddr_in dstaddr;
 		memset((char *)&dstaddr, 0, sizeof(dstaddr));
 		dstaddr.sin_family = AF_INET;

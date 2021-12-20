@@ -102,8 +102,8 @@ parameter max_stream_data : stream_pos = 0x2000
 
 # Mandatory for longbv else truncated
 after init {
-    the_cid := 0x1; # 0x0;
-    server_cid := 0x2; # 0x1;
+    the_cid := 0x1; # 0x3; # 0x0;
+    server_cid := 0x2; # 0x4; # 0x1;
 }
 
 # We use this type as a host id. There are two client host ids so we
@@ -167,7 +167,8 @@ after init {
     server.tls_id := 1;
     var extns := tls_extensions.empty;
     extns := extns.append(make_transport_parameters);
-    call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
+    call tls_api.upper.create_0rtt(0,false,extns);  # false means this instance of tls is not a server
+    #call tls_api.upper.set_0rtt_keys(0);
 }
 
 # Here we have a bunch of conversions that map between cid's, IP
@@ -290,7 +291,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(icid);
 
     var no_migration : disable_active_migration; #TODO update v29
-    #tp.transport_parameters := tp.transport_parameters.append(no_migration);
+    tp.transport_parameters := tp.transport_parameters.append(no_migration);
 
     var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
     max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
@@ -391,10 +392,13 @@ after init {
     allowed_migration := false;
     version_negociated := false;
     initial_version := 0xff00001d;
+    zero_rtt_allowed := true;
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
+        #require ~first_initial_send;
+        require zero_rtt_sent;
         var tp := trans_params(the_cid);
         if version_negociated {
             require src = client_vn;
@@ -412,7 +416,12 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         };
         require dst = server.ep;
         require pkt.token.end = 0; 
-        
+        #require pkt.ptype = quic_packet_type.handshake -> zero_rtt_sent;
+        #require pkt.ptype = quic_packet_type.one_rtt -> zero_rtt_sent;
+        #if pkt.ptype = quic_packet_type.initial {
+            #call packet_event_0rtt(src,dst);
+            #established_0rtt_keys(the_cid) := true;
+        #};
     };
     if final_version = 0x00000000 {
         #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
@@ -426,6 +435,10 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
 before packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
     if _generating {
+        #require established_0rtt_keys(the_cid); # := true;
+        #require pkt.ptype ~= quic_packet_type.initial;
+        #require pkt.ptype ~= quic_packet_type.handshake;
+        established_0rtt_keys(the_cid) := true;
         require ~zero_rtt_sent;
         var tp := trans_params(the_cid);
         if version_negociated {
@@ -443,14 +456,17 @@ before packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
             }
         };
         require dst = server.ep;
+        require pkt.token_i.end = 0; 
     };
     if final_version = 0x00000000 {
         #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
         #require pkt.long -> pkt.pversion = 0xff000020  #version 32
         #require pkt.long -> pkt.pversion = 0xff00001e  #version 30
-        require pkt.long -> pkt.pversion = initial_version  #version 30
+        require pkt.long -> pkt.pversion = initial_version;  #version 30
+        require pkt.long -> pkt.pversion_i = initial_version;  #version 30
     } else {
-        require pkt.long -> pkt.pversion = final_version
+        require pkt.long -> pkt.pversion = final_version;
+        require pkt.long -> pkt.pversion_i = final_version;
     };
 }
 
@@ -491,6 +507,7 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
 
 before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
+        require e ~= quic_packet_type.zero_rtt;
         require scid = the_cid;
         require f.length > 0;
         call show_crypto_length(crypto_length(scid,e));
@@ -565,9 +582,12 @@ before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,d
 
 before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
+        require conn_total_data(the_cid) > 40; # tricks
         require scid = the_cid;
+        require f.err_code = 0;
     } else {
-        require is_no_error
+        require is_no_error;
+        call _finalize;
     }
 }
 
@@ -576,6 +596,9 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
 before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
+    } else {
+        require is_no_error;
+        call _finalize;
     }
 }
 
@@ -652,7 +675,7 @@ around client_send_event {
     };
 
     require dst = server.ep;
-    require connected(the_cid) & dcid = connected_to(the_cid);
+    #require connected(the_cid) & dcid = connected_to(the_cid);
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);
     require stream_length(dcid,s) < end & end <= http_request.end;
     require current_stream < 60;
@@ -679,14 +702,14 @@ export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
 export packet_event
-#export packet_event_0rtt
+export packet_event_0rtt
 export client_send_event
 export tls_recv_event
 #export frame.new_connection_id.handle
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
 #export frame.max_stream_id.handle
-#export frame.connection_close.handle
+export frame.connection_close.handle
 #export frame.max_stream_data.handle
 #export frame.max_data.handle
 attribute frame.crypto.handle.weight = "5"
@@ -701,6 +724,7 @@ attribute frame.path_response.handle.weight = "5"
 
 export action _finalize = {
     # chris TODO 
+    require is_no_error;
     require conn_total_data(the_cid) > 0;
 }
 
