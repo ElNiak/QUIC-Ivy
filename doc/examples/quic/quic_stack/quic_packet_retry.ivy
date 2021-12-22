@@ -172,7 +172,9 @@ action packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 import action show_iretryb(v:stream_data)
 import action show_iretry(v:itoken)
 
+
 relation init_token
+function rscid : cid
 
 after init {
     init_token :=  false;
@@ -184,6 +186,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 
     var dcid := pkt.dst_cid;
     var scid := pkt.src_cid;
+    rscid := scid;
     if cid_mapped(dcid) {
 	    dcid := cid_to_aid(dcid);
     };
@@ -278,14 +281,23 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
+        call tls_api.upper.destroy(0);
         call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
         call show_initial_request_retry;
-        #call tls_client_initial_request(src,dst,server_cid,final_version); #TODO 
+        call tls_client_initial_request(src,dst,server_cid,final_version); #TODO 
         #call tls_client_initial_response(src,dst,spkt);
         conn_requested(src,dst,the_cid) := true;
     };
 
     conn_seen(scid) := true;  # [1]
+
+    if retry_sent {
+        conn_requested(src,dst,pkt.dst_cid) := false;
+        conn_requested(src,dst,the_cid) := false;
+
+        conn_seen(pkt.dst_cid) := false;
+        conn_seen(the_cid) := false;
+    };
 }
 
 import action show_initial_request_retry

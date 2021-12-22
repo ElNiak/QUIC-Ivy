@@ -37,6 +37,14 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
         nonce_cid(scid) := dcid;
     };
 
+    if pkt.ptype = quic_packet_type.initial & retry_sent {
+        nonce_cid(scid) := dcid;
+        conn_seen(dcid) := false;
+        # nonce_cid(pkt.dst_cid) := pkt.src_cid;
+        # call show_cid(pkt.src_cid);
+        # call show_cid(pkt.dst_cid);
+    };
+
     var e := pkt.ptype;
     
     call set_encryption_level(src,scid,e);

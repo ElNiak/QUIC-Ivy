@@ -192,9 +192,10 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         const char * is_zrtt = getenv("ZERORTT_TEST");
 	    FILE *fp;
         FILE *fp_0rtt;
+        const char *secret_label = log_labels[ptls_is_server(tls) == is_enc][epoch];
+        std::cerr << "quic_update_traffic_key_callback "<< secret_label <<"\n";
         if(keylogfile != NULL) {
             fp = fopen(keylogfile,"a");
-            const char *secret_label = log_labels[ptls_is_server(tls) == is_enc][epoch];
             fprintf(fp, "%s ", secret_label);
             ptls_iovec_t crandom = ptls_get_client_random(tls);
             for (int i = 0 ; i < crandom.len ; i++) {
@@ -244,7 +245,6 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         if(keylogfile_0rtt != NULL && is_zrtt == NULL) {
             fclose(fp_0rtt);
         }
-
         return 0;
     }
 
@@ -560,8 +560,12 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         handshake_properties->client.negotiated_protocols.list  = alpn_vec;
 
         // add the extensions
-        int add = 2;
-        if(const char* env_p = std::getenv("ZERORTT_TEST")) { 
+        int add = 1;
+        const char* env_p = std::getenv("ZERORTT_TEST");
+        if (!is_server) {
+            add = 2;
+        } 
+        if(env_p != NULL && !is_server) { 
             std::cerr << "ZERORTT_TEST " << env_p << std::endl;
             add = 3;
         }
@@ -589,8 +593,8 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             //     exit(1);
             // }
         }
-
-        if(const char* env_p = std::getenv("ZERORTT_TEST")) { 
+        
+        if(env_p != NULL  && !is_server) { 
             //early_data
             ptls_exts[e.size()].type = 0x2A;
             ptls_exts[e.size()].data.base = NULL;
@@ -616,8 +620,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             ptls_exts[e.size()+2].type = 0xffff;
             ptls_exts[e.size()+2].data.base = NULL;
             ptls_exts[e.size()+2].data.len = 0;
-        } else {
-
+        } else if (!is_server) {
             //psk
             ptls_exts[e.size()].type = 0x29;
             unsigned char data [] =  {
@@ -638,6 +641,10 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             ptls_exts[e.size()+1].type = 0xffff;
             ptls_exts[e.size()+1].data.base = NULL;
             ptls_exts[e.size()+1].data.len = 0;
+        } else {
+            ptls_exts[e.size()].type = 0xffff;
+            ptls_exts[e.size()].data.base = NULL;
+            ptls_exts[e.size()].data.len = 0;
         }
 
         //std::cerr << "ptls_exts =" << ptls_exts << std::endl;  
@@ -743,7 +750,8 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
 
         // add the extensions
         int add = 1;
-        if(const char* env_p = std::getenv("ZERORTT_TEST")) { 
+        const char* env_p = std::getenv("ZERORTT_TEST");
+        if(env_p != NULL && !is_server) { 
             std::cerr << "ZERORTT_TEST " << env_p << std::endl;
             add = 3;
         }
@@ -772,7 +780,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             // }
         }
 
-        if(const char* env_p = std::getenv("ZERORTT_TEST")) { 
+        if(env_p != NULL && !is_server) { 
             //early_data
             ptls_exts[e.size()].type = 0x2A;
             ptls_exts[e.size()].data.base = NULL;
@@ -1162,7 +1170,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     implement lower.recv(c:cid,data:bytes,lev:lower.level) {
         <<< impure
         picotls_connection *s = `cid_map`[c];
-            std::vector<char> &input = s->input;
+        std::vector<char> &input = s->input;
         for (unsigned i = 0; i < data.size(); i++) {
             input.push_back(data[i]);
         }

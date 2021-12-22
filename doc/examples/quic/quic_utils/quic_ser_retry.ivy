@@ -83,9 +83,16 @@ object quic_ser_retry = {}
             break;
             case quic_s_scid:
             {
-		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        std::cerr << "ser res scid_h 1 " << res << std::endl;
                 setn(8,1);
                 setn(res,8);
+                // if((res == 0 || res == 1) && scid_h != 0){
+                //      setn(8,1);
+                //      setn(res,8);
+                // } else {
+                //  	setn(dcid_h,1);
+	    	    //     setn(res,dcid_h);
+		        // }
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token;
                 //state = quic_s_retry_token_length;

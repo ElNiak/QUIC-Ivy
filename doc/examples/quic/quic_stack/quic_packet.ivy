@@ -321,7 +321,7 @@ after init {
 
 around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     #call show_connected(connected(the_cid), connected_to(the_cid));
-    require pkt.token.end ~= 0 -> (pkt.ptype = quic_packet_type.initial & retry_recv);
+    require pkt.token.end ~= 0 -> (retry_sent | retry_recv);
 
     # TEMPORARY: Do not allow zero_rtt packets
 
@@ -370,11 +370,23 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # packet contains an ACK frame, or a CRYPTO frame that is
     # reponsive to a server FRAME. This is trick to check, however,
     # and the actual servers do not seem to check it.
+    
+
+    call show_cond(connected(dcid));
+    call show_cond(pkt.ptype = quic_packet_type.initial
+        & is_client(scid)
+        & dcid = nonce_cid(scid));
+    call show_cond(is_client(scid));
+    call show_cond(dcid = nonce_cid(scid));
+    call show_cid(dcid);
+    call show_cid(scid);
+    call show_cid(nonce_cid(scid));
 
     require connected(dcid) |
         pkt.ptype = quic_packet_type.initial
         & is_client(scid)
         & dcid = nonce_cid(scid);
+    
 
     # On long headers, both cids are given. If the destination cid is
     # connected, it must be connected to the source cid (otherwise it
@@ -488,7 +500,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         initial_token := pkt.token;
         # An initial packet with an unseen destination cid is a connection request.
         if ~conn_seen(dcid) | (retry_response & ~init_token) {#TODO
-            #call show_initial_request_initial;
+            call show_initial_request_initial;
             call tls_client_initial_request(src,dst,dcid,pkt.pversion);
             conn_requested(src,dst,scid) := true;
             if retry_response {
@@ -728,10 +740,10 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
         };
     };
 
-    # if ~is_client_hello & retry_sent {
-    #     require retry_source_connection_id.is_set(trans_params(scid));
-    #     require retry_source_connection_id.value(trans_params(scid)).rcid = 0x5; # todo generalize
-    # };
+    if ~is_client_hello & retry_recv {
+        require retry_source_connection_id.is_set(trans_params(scid));
+        require retry_source_connection_id.value(trans_params(scid)).rcid = rscid; # todo generalize
+    };
     
     # [7]
     if min_ack_delay.is_set(trans_params(scid)) & max_ack_delay.is_set(trans_params(scid)) {
@@ -748,6 +760,9 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
 
 
 import action show_enc_level(e:quic_packet_type)
+
+import action show_cond(e:bool)
+import action show_cid(e:cid)
 
 # import action show_offset_length(offset:stream_pos,length:stream_pos)
 

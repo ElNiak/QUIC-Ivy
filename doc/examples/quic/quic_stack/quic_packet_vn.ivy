@@ -164,6 +164,22 @@ action packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) = {}
 #   If a zero-length connection ID is selected, the corresponding
 #   transport parameter is included with a zero-length value.
 
+#  An endpoint MUST NOT send a Version Negotiation packet
+#      in response to receiving a Version Negotiation packet. [1c]
+
+# A client that supports only this version of QUIC MUST abandon the
+#    current connection attempt if it receives a Version Negotiation
+#    packet, with the following two exceptions.  
+
+# A client MUST discard any
+#    Version Negotiation packet if it has received and successfully
+#    processed any other packet, including an earlier Version Negotiation
+#    packet.  
+
+# A client MUST discard a Version Negotiation packet that
+#    lists the QUIC version selected by the client.
+
+
 around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
         # Extract the source and destination cid's and packet number from the packet.
 
@@ -201,6 +217,8 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
     # frames at the source. 
 
     require pkt.ptype = quic_packet_type.version_negociation;
+
+    require ~negocation_of_version_send_recv;  #[1c]
 
     # TEMPORARY: don't allow client migration during handshake
 
@@ -242,6 +260,7 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
     # Record the packet number as latest see
 
     conn_seen(scid) := true;  # [1]
+    negocation_of_version_send_recv := true;
 
 }
 

@@ -216,6 +216,8 @@ relation established_1rtt_keys(C:cid)
 relation established_0rtt_keys(C:cid)
 relation established_handshake_keys(C:cid)
 
+relation crypto_reset
+
 
 after init {
     crypto_handler_pos(C,L) := 0;
@@ -223,6 +225,7 @@ after init {
     established_1rtt_keys(C:cid) := false;
     established_0rtt_keys(C:cid) := false;
     established_handshake_keys(C:cid) := false;
+    crypto_reset := false;
 }
 
 # Event specifications
@@ -254,10 +257,25 @@ after init {
 before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data : stream_data,
                       pos : stream_pos, e:quic_packet_type) {
     var jdx := data.begin;
+    if retry_sent & ~crypto_reset {
+        crypto_handler_pos(C,L) := 0;
+        #conn_enc_level(E,C) := quic_packet_type.zero_rtt;
+        #established_1rtt_keys(C:cid) := false;
+        #established_0rtt_keys(C:cid) := false;
+        #established_handshake_keys(C:cid) := false;
+        crypto_data(scid,e) := stream_data.empty;
+        while jdx < data.end {
+            var cpos := pos+jdx;
+            crypto_data_present(scid,e,cpos) := false;
+            jdx := jdx.next
+        };
+        crypto_reset := true;
+    };
     var end := pos + data.end;
     if end > crypto_data(scid,e).end {
         crypto_data(scid,e) := crypto_data(scid,e).resize(end,0);
     };
+    jdx := data.begin;
     while jdx < data.end {
         var cpos := pos+jdx;
         var byte := data.value(jdx);

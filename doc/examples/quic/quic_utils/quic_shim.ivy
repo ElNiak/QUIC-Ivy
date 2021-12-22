@@ -64,6 +64,7 @@ var final_version : version
 var supported_versions_bv : versions_bv
 relation retry_response
 relation retry_rsp
+relation retry_client_test
 
 var h_retry : stream_pos
 
@@ -89,6 +90,8 @@ after init {
     retry_response := false;
     retry_rsp := false;
     h_retry := 0x0;
+
+    retry_client_test := false;
 }
 
 action test returns (is_padding:bool) = {
@@ -133,15 +136,13 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         
         # var h : header_info := get_header_info(ppkt,true);
         # call show_type(src,dst,ppkt.value(0));
-        # call show_type(src,dst,bfe[7][8](ppkt.value(0)));
-        
+        # call show_type(src,dst,bfe[7][8](ppkt.value(0))); 
 
         # call show_typp(src,dst,typ);
         # call show_typp(src,dst,typ_retry);
         # call show_typp(src,dst,bfe[6][7](ppkt.value(0)));
         
         # Check if packet is only padding
-        #var is_pad := is_padding_packet(ppkt); # For quic-go and quand client
         #var is_rand_pad := is_random_padding_packet(ppkt);
         #var rnum := reference_pkt_num(ppkt,true);
         
@@ -149,8 +150,10 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             if host = endpoint_id.server 
                     & bvand(ppkt.value(0),0xf0) = 0xc0 {
                 # for client test
-                call show_ttt;
-                call tls_client_initial_response(src,dst,ppkt)
+                #if (retry_client_test -> retry_sent) {
+                    call show_ttt;
+                    call tls_client_initial_response(src,dst,ppkt)
+                #};
             };
             if ~ host = endpoint_id.server  
                     & (version = vn_version & is_long) | version_not_found { 
@@ -164,28 +167,33 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                 #for server test, Retry packet
                 call tls_client_retry_response(src,dst,ppkt);
             }       
-            #else if is_pad { #is_pad | is_rand_pad
-            #    call padding_packet_event(src,dst,ppkt);
-            #} 
+            # else if is_pad { #is_pad | is_rand_pad
+            #     call padding_packet_event(src,dst,ppkt); # For quic-go and quand  client
+            # } 
             else { 
                 var rnum := reference_pkt_num(ppkt,true);
                 var res := prot.decrypt(tls_id,rnum,ppkt);
                 if res.ok {
-                    var pkt := pkt_serdes.from_bytes(res.data);
-                    pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
-                    call recv_packet(src,dst,pkt);
-                    call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
-                    call packet_event(src,dst,pkt);       # also an inferred event
-                    # if zero_rtt_allowed & ~zero_rtt_sent 
-                    #     & ~host = endpoint_id.server {
-                    #     call packet_event_0rtt(src,dst,pkt);       # also an inferred event
-                    #     zero_rtt_sent := true;
-                    # };
-                    if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
-                        # for client test
-                        call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
-                        call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
-                    }
+                    var is_pad := is_padding_packet(res.payload); # For picoquic  client
+                    if is_pad { #is_pad | is_rand_pad
+                        call padding_packet_event(src,dst,ppkt);
+                    } else {
+                        var pkt := pkt_serdes.from_bytes(res.data);
+                        pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
+                        call recv_packet(src,dst,pkt);
+                        call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
+                        call packet_event(src,dst,pkt);       # also an inferred event
+                        # if zero_rtt_allowed & ~zero_rtt_sent 
+                        #     & ~host = endpoint_id.server {
+                        #     call packet_event_0rtt(src,dst,pkt);       # also an inferred event
+                        #     zero_rtt_sent := true;
+                        # };
+                        if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
+                            # for client test
+                            call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
+                            call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
+                        }
+                    };
                 } else {
                     call undecryptable_packet_event(src,dst,ppkt);
                 };
@@ -303,7 +311,7 @@ function client_initial_scil : stream_pos
 after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version) {
     var ikm := cid_to_bytes(nonce,dcid_size_cl(retry_rsp)); 
     client_initial_scil := scid_size_pos(false);
-
+    call show_set_initial_keys(ikm);
     call show_l(client_initial_scil);
     var salt : stream_data := stream_data.empty;
 
@@ -384,6 +392,7 @@ function client_initial_version : version
 
 relation client_present_scid
 relation negocation_of_version
+relation negocation_of_version_send_recv
 relation zero_rtt_allowed
 relation zero_rtt_sent
 
@@ -395,6 +404,7 @@ after init {
     negocation_of_version:=  false;
     zero_rtt_allowed := false;
     zero_rtt_sent := false;
+    negocation_of_version_send_recv := false;
 }
 
 after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
@@ -428,6 +438,12 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     client_initial_dcid := bytes_to_cid(ikm);
     client_initial_scid := bytes_to_cid(skm); # skm
 
+    # if retry_client_test -> ~retry_sent {
+    #     client_initial_dcid := bytes_to_cid(skm);
+    # };
+
+    call export_length_cid(dcil,scil);
+
     if ~tp_client_set 
         | negocation_of_version | (retry_response & ~init_token) {
         var extns := tls_extensions.empty;
@@ -441,13 +457,21 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         tp_client_set := true;
 	}; 
 
+    # if retry_client_test -> ~retry_sent {
+    #     client_initial_dcid := bytes_to_cid(ikm);
+    # };
+
+    if retry_sent & ~initial_keys_set {
+        call export_length_cid_extension(dcil,scil);
+    };
+
     client_initial_version := ver;
     call show_version(client_initial_version);
 
     if client_initial_version ~= 0xff00001d {
         negocation_of_version := true;
-    } else  if ~initial_keys_set 
-        | negocation_of_version | (retry_response & ~init_token) { # if ~initial_keys_set
+    } else  if (~initial_keys_set & retry_client_test -> retry_sent)
+        | negocation_of_version | (retry_response & ~init_token)  { # if ~initial_keys_set
         #TODO check value
         negocation_of_version := false;
         #var lens := spkt.value(5);
@@ -502,8 +526,14 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
             salt := salt.append(0xa8);
             salt := salt.append(0x99);
         };
-        call show_set_initial_keys(ikm);
-        call tls_api.upper.set_initial_keys(0,salt,ikm);
+        # if retry_sent {
+        #     call show_set_initial_keys(ikm);
+        #     call tls_api.upper.set_initial_keys(0,salt,ikm);
+        # } else {
+            call show_set_initial_keys(ikm);
+            call tls_api.upper.set_initial_keys(0,salt,ikm);
+        #};
+        
         initial_keys_set := true;
     }
 }
@@ -898,6 +928,7 @@ action bytes_to_itoken(bytes:stream_data) returns (val:itoken) = {
 action export_length_cid_extension(dcil:stream_pos,scil:stream_pos) = {
     <<<
 
+    std::cerr <<  "export_length_cid_extension"  << std::endl;
 	char str_d[20];
 	sprintf(str_d,"%llu",dcil);
 	if(setenv("TEST_DCIL",str_d,true) != 0) 
@@ -913,5 +944,12 @@ action export_length_cid_extension(dcil:stream_pos,scil:stream_pos) = {
 	if(setenv("TEST_PCIL",str_p,true) != 0) 
 		fprintf(stderr, "setenv failed\n");
 
+    >>>
+}
+
+action export_length_cid(dcil:stream_pos,scil:stream_pos) = {
+    <<<
+    scid_h = scil;
+    dcid_h = dcil;
     >>>
 }

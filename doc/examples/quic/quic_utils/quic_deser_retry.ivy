@@ -247,10 +247,10 @@ object quic_deser_retry = {}
 
         }
         void close_list() {
-            /*if (state == quic_s_retry_integrity_tag) {
+            if (state == quic_s_retry_integrity_tag) {
                 state = quic_s_init;
                 pos += QUIC_DESER_FAKE_CHECKSUM_LENGTH; // skip the fake checksum
-            }*/
+            }
         }
         void close_list_elem() {}
 

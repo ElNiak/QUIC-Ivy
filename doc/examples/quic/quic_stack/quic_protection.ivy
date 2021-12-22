@@ -343,22 +343,13 @@ module quic_protection(tls_id,tls) = {
 	    call show_iv_size(sample_size);
         if sample_size = 0 {
             res.ok := false;
-        }
+        } 
         else {
             var pnum_pos := h.pkt_num_pos; #+ h.token_length;
             var sample_pos := pnum_pos + 4; # + h.token_length;
 
-            var pnum_len2 := get_pnum_len2(pkt);
-            var y := show_pnum1(pnum_len2);
-
-            pnum_len2 := get_pnum_len3(pkt);
-            y := show_pnum1(pnum_len2);
-            
-            pnum_len2 := get_pnum_len4(pkt);
-            y := show_pnum1(pnum_len2);
-
-            pnum_len2 := get_pnum_len5(pkt);
-            y := show_pnum1(pnum_len2);
+            call show_sample_pos(sample_pos);
+            var tt := show_sample_p(sample_pos);
 
             if sample_pos + sample_size > pkt.end {
 	    	    call show_iff;
@@ -367,11 +358,19 @@ module quic_protection(tls_id,tls) = {
             
             var sample := pkt.segment(sample_pos,sample_pos+sample_size);
             var pnum := pkt.segment(pnum_pos,pnum_pos+4);
+
+            var yy := show_pnum(pnum);
+
             var mask := stream_data.empty;
             
             # tricky: this encrypts with the receiving cipher
             # mask = header_protection(hp_key, sample)
+            # if retry_sent {
+            #     mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,true);
+            # } else {
             mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,true);
+            #};
+            
 
             # if (packet[0] & 0x80) == 0x80:
                 # Long header: 4 bits masked
@@ -384,27 +383,7 @@ module quic_protection(tls_id,tls) = {
             var hdr := pkt.segment(0,pnum_pos);
             hdr := hdr.set(0,byte_xor(hdr.value(0),byte0_mask));
             
-            var pnum_len := get_pnum_len(hdr);
-
-            #if h.hdr_long & bvand(h.hdr_type,0x30) = 0x00 & retry_sent  {
-                pnum_len2 := get_pnum_len5(hdr);
-                y := show_pnum1(pnum_len2);
-                pnum_len2 := get_pnum_len3(hdr);
-                y := show_pnum1(pnum_len2);
-                pnum_len2 := get_pnum_len4(hdr);
-                y := show_pnum1(pnum_len2);
-                pnum_len2 := get_pnum_len2(hdr);
-                y := show_pnum1(pnum_len2);
-
-                pnum_len2 := get_pnum_len5(pkt);
-                y := show_pnum1(pnum_len2);
-                pnum_len2 := get_pnum_len3(pkt);
-                y := show_pnum1(pnum_len2);
-                pnum_len2 := get_pnum_len4(pkt);
-                y := show_pnum1(pnum_len2);
-                pnum_len2 := get_pnum_len2(pkt);
-                y := show_pnum1(pnum_len2);
-            #};
+            var pnum_len := get_pnum_len5(hdr);
 
             #var pnum_len := get_pnum_len(hdr);
             #var pnum_len := get_pnum_len2(pkt);
@@ -418,10 +397,11 @@ module quic_protection(tls_id,tls) = {
 
             # pn_offset is the start of the Packet Number field.
             # packet[pn_offset:pn_offset+pn_length] ^= mask[1:1+pn_length]
-            pnum := stream_data_xor(pnum.segment(0,pnum_len),mask.segment(1,1+pnum_len));
+            #pnum := stream_data_xor(pnum.segment(0,pnum_len),mask.segment(1,1+pnum_len));
+            pnum := stream_data_xor(pkt.segment(pnum_pos,pnum_pos+pnum_len),mask.segment(1,1+pnum_len));
 
     	    call show_seqnum_data(pnum);
-            y := show_pnum(pnum);
+            var y := show_pnum(pnum);
             
             hdr := hdr.extend(pnum);
             var new_seq := get_pnum(pnum,0,pnum_len);
@@ -439,6 +419,7 @@ module quic_protection(tls_id,tls) = {
                     hdr := hdr.extend(new_len);
                     hdr := hdr.extend(pnum);
                 };
+                res.payload := res.data;
                 res.data := hdr.extend(res.data);
             }
         }
@@ -554,27 +535,30 @@ module quic_protection(tls_id,tls) = {
             };
             var pos := 1 + 4 + 1 + dcil + 1 + scil; #7 + dcil + scil;
             call show_pos(pos);
-            var x := show_offset(pos);
+            var x := show_offset1(pos);
+            var tlen : stream_pos := 0;
+            var retry_token_len : stream_pos := 0;
             if bvand(h.hdr_type,0x30) = 0x00 {
                 #Initial packet
-                var len := get_var_int_len(pkt,pos);
-                var retry_token_len := get_var_int(pkt,pos,len);
+                tlen := get_var_int_len(pkt,pos);
+                retry_token_len := get_var_int(pkt,pos,tlen);
                 h.token_length := retry_token_len;
                 #call show_token_len(len);
                 call show_token_len(retry_token_len);
-                pos := pos + len + retry_token_len;
+                pos := pos + tlen + retry_token_len;
             } else {
                 h.token_length := 0;
             };
+            x := show_offset2(pos);
             x := show_p(h.token_length);
             var len := get_var_int_len(pkt,pos);
-            #x := show_p(len);
+            x := show_p(len);
             #call show_token_len(len);
             h.payload_length := get_var_int(pkt,pos,len);
             h.payload_length_pos := pos;
             h.pkt_num_pos := pos + len;
             call show_pos(h.pkt_num_pos);
-            x := show_offset(h.pkt_num_pos);
+            x := show_offset3(h.pkt_num_pos);
         }
         else {
             #todo check if good for client test too
@@ -768,9 +752,30 @@ module quic_protection(tls_id,tls) = {
         >>>
     }
 
-    action show_offset(x:stream_pos) returns (z:byte) = {
+    action show_offset1(x:stream_pos) returns (z:byte) = {
         <<<
-        std::cerr <<  "show_offset: " <<  x << std::endl;
+        std::cerr <<  "show_offset1: " <<  x << std::endl;
+        z = 0;
+        >>>
+    }
+
+    action show_sample_p(x:stream_pos) returns (z:byte) = {
+        <<<
+        std::cerr <<  "show_sample_pos: " <<  x << std::endl;
+        z = 0;
+        >>>
+    }
+
+    action show_offset2(x:stream_pos) returns (z:byte) = {
+        <<<
+        std::cerr <<  "show_offset2: " <<  x << std::endl;
+        z = 0;
+        >>>
+    }
+
+    action show_offset3(x:stream_pos) returns (z:byte) = {
+        <<<
+        std::cerr <<  "show_offset3: " <<  x << std::endl;
         z = 0;
         >>>
     }
@@ -792,6 +797,7 @@ module quic_protection(tls_id,tls) = {
     import action show_token_len(ver:stream_pos)
     import action show_header(h:header_info)
     import action show_htype(h:byte)
+    import action show_sample_pos(h:stream_pos)
     import action show_if
     import action show_cool
     import action show_encrypt_finish
@@ -887,14 +893,32 @@ object quic_prot_deser = {}
                 unsigned dcil = peek(pos+5);
                 unsigned scil = peek(pos+6+dcil);
                 unsigned pnum_pos = pos + 7 + dcil + scil;
-                if ((peek(pos) &0x30) == 0x00) { // initial packets have tokens
+                unsigned ptype = peek(pos) & 0x30;
+                if (ptype == 0x00) { // initial packets have tokens
                     unsigned len = get_var_int_len(pnum_pos);
                     unsigned retry_token_len = get_var_int(pnum_pos,len);
                     pnum_pos = pnum_pos + len + retry_token_len;
+                } else if (ptype == 0x30) { // Retry packets have tokens
+                    unsigned packet_size = inp.size();
+                    unsigned len = packet_size - 16 - 1 - dcil - 1 - scil - 1 - 4;
+                    //unsigned retry_token_len = get_var_int(pnum_pos,len);
+                    std::cerr << "token len (prot) " << len << std::endl;
+                    pnum_pos = pnum_pos + len + 16;
+                    data_remaining = pnum_pos-pos;
+                    std::cerr << "data_remaining (prot) " << data_remaining << std::endl;
                 }
-                unsigned len = get_var_int_len(pnum_pos);
-                unsigned pyld_len = get_var_int(pnum_pos,len);
-                data_remaining = (pnum_pos-pos) + len + pyld_len;
+                if (inp[1]+inp[2]+inp[3]+inp[4] == 0) {
+                    // Version negociation
+                    std::cerr << "Version n (prot) " << std::endl;
+                    unsigned remain = inp.size() - pnum_pos;
+                    data_remaining = (pnum_pos-pos) + remain;
+                }
+                else if ((ptype == 0x00 || ptype == 0x20)) { 
+                    // Only for Handshake and initial
+                    unsigned len = get_var_int_len(pnum_pos);
+                    unsigned pyld_len = get_var_int(pnum_pos,len);
+                    data_remaining = (pnum_pos-pos) + len + pyld_len;
+                }  
                 //std::cerr << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
             }
             else {

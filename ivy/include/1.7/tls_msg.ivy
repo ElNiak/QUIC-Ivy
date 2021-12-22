@@ -116,7 +116,8 @@ module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
     
     type decrypt_result = struct {
         ok : bool,
-        data : bytes
+        data : bytes,
+        payload : bytes
     }
 
     # Decrypt data with cipher for given level, additional data `ad`

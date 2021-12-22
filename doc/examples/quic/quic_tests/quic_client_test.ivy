@@ -180,7 +180,8 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
         require client.ep.addr ~= 0;         
         require scid = the_cid;
     } else {
-        require is_no_error
+        require is_no_error;
+        call _finalize;
     }
 }
 
@@ -190,6 +191,9 @@ before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:ci
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
+    } else {
+        require is_no_error;
+        call _finalize;
     }
 }
 
