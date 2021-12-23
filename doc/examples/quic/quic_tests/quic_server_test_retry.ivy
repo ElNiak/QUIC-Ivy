@@ -307,7 +307,6 @@ attribute radix=16
 # small bit vector enodings.
 
 interpret cid -> longbv[1][13][20]
-interpret itoken -> longbv[1][13][16]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
@@ -392,6 +391,24 @@ after init {
     initial_version := 0xff00001d;
 }
 
+# This token MUST be repeated by the client in all
+#    Initial packets it sends for that connection after it receives the
+#    Retry packet. 
+
+# In comparison, a
+#    token obtained in a Retry packet MUST be used immediately during the
+#    connection attempt and cannot be used in subsequent connection
+#    attempts.
+
+# A client MUST
+#    discard a Retry packet that contains a Source Connection ID field
+#    that is identical to the Destination Connection ID field of its
+#    Initial packet TODO
+
+# The client MUST use the value from the Source
+#    Connection ID field of the Retry packet in the Destination Connection
+#    ID field of subsequent packets that it sends.
+
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
         var tp := trans_params(the_cid);
@@ -413,7 +430,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             pkt.dst_cid := server_cid; # TODO
         };
         require dst = server.ep;
-        if pkt.ptype = quic_packet_type.initial & retry_recv {
+        if pkt.ptype = quic_packet_type.initial & retry_recv & ~zero_length_token {
             require pkt.token = retry_recv_token;
         } else {
             require pkt.token.end = 0; 

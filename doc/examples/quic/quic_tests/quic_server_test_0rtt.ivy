@@ -309,7 +309,6 @@ attribute radix=16
 # small bit vector enodings.
 
 interpret cid -> longbv[1][13][20]
-interpret itoken -> longbv[1][13][16]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]

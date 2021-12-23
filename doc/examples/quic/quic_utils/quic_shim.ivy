@@ -102,7 +102,7 @@ action test returns (is_padding:bool) = {
 }
 
 implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.arr) {
-    var t := test;
+    #var t := test;
     var dst := socket_endpoint(host,s);  # because net API doesn't tell us the dst
     var idx := pkts.begin;
 
@@ -119,17 +119,17 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var ppkt := pkts.value(idx);
         var tls_id := dst_tls_id(dst);
         var header := ppkt.value(0);
-        call show_typp(src,dst,bfe[4][5](header));
-        call show_typp(src,dst,bfe[4][7](header));
+        # call show_typp(src,dst,bfe[4][5](header));
+        # call show_typp(src,dst,bfe[4][7](header));
 
         var is_long : bool := bvand(0x80,header) ~= 0;
-        call show_islong(src,dst,is_long);
+        #call show_islong(src,dst,is_long);
 
         var version := ppkt.segment(1,1+4);
-        call show_version_sd(src,dst,version);
+        #call show_version_sd(src,dst,version);
         
         var ptype : byte := bvand(0x30,header);
-        call show_type(src,dst,ptype);
+        #call show_type(src,dst,ptype);
 
         var typ : type_bits  := bfe[7][8](header);
         var typ_retry : type_bits := bfe[4][5](header); # bfe[5][6](ppkt.value(0));
@@ -151,7 +151,6 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                     & bvand(ppkt.value(0),0xf0) = 0xc0 {
                 # for client test
                 #if (retry_client_test -> retry_sent) {
-                    call show_ttt;
                     call tls_client_initial_response(src,dst,ppkt)
                 #};
             };
@@ -190,7 +189,6 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                         # };
                         if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
                             # for client test
-                            call app_server_open_event_show(dst,src,pkt,the_cid,pkt.src_cid);
                             call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
                         }
                     };
@@ -244,7 +242,6 @@ implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.l
     var e := quic_packet_type.initial if lev = 0
              else (quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt);
     var scid := tls_id_to_cid(tls_id);
-    call show_tls_id_to_cid(scid);
     call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
                         0, bytes,crypto_data_end(scid,e),e);
 }
@@ -265,7 +262,6 @@ after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data 
 
 implement tls_api.upper.keys_established(tls_id:tls_api.id,lev:tls_api.upper.level) {
     var e := quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt;
-    call show_tls_id_to_cid(tls_id_to_cid(tls_id));
     call tls_keys_established_event(tls_id_to_cid(tls_id),e); #tls_id = server.tls_id  for client ?
 }
 
@@ -312,7 +308,6 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pver
     var ikm := cid_to_bytes(nonce,dcid_size_cl(retry_rsp)); 
     client_initial_scil := scid_size_pos(false);
     call show_set_initial_keys(ikm);
-    call show_l(client_initial_scil);
     var salt : stream_data := stream_data.empty;
 
     #0xc3 0xee 0xf7 0x12 0xc7 0x2e 0xbb 0x5a 0x11 0xa7 0xd2 0x43 0x2b 0xb4 0x63 0x65 0xbe 0xf9 0xf5 0x02 QUIC-27
@@ -442,7 +437,12 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     #     client_initial_dcid := bytes_to_cid(skm);
     # };
 
+    # if retry_client_test -> retry_sent {
+    #     tls_api.upper.destroy(0);
+    # };
+
     call export_length_cid(dcil,scil);
+    call export_length_cid_extension(dcil,scil);
 
     if ~tp_client_set 
         | negocation_of_version | (retry_response & ~init_token) {
@@ -470,7 +470,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
     if client_initial_version ~= 0xff00001d {
         negocation_of_version := true;
-    } else  if (~initial_keys_set & retry_client_test -> retry_sent)
+    } else  if (~initial_keys_set & retry_client_test -> retry_sent) #
         | negocation_of_version | (retry_response & ~init_token)  { # if ~initial_keys_set
         #TODO check value
         negocation_of_version := false;
@@ -526,13 +526,8 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
             salt := salt.append(0xa8);
             salt := salt.append(0x99);
         };
-        # if retry_sent {
-        #     call show_set_initial_keys(ikm);
-        #     call tls_api.upper.set_initial_keys(0,salt,ikm);
-        # } else {
-            call show_set_initial_keys(ikm);
-            call tls_api.upper.set_initial_keys(0,salt,ikm);
-        #};
+        call show_set_initial_keys(ikm);
+        call tls_api.upper.set_initial_keys(0,salt,ikm);
         
         initial_keys_set := true;
     }
@@ -584,14 +579,11 @@ import action show_version(ver:version)
 
 after tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
     var tls_id := dst_tls_id(dst);
-    call recv_vn_packet(src,dst,spkt);
     var dcil : stream_pos := bfe[0][7](spkt.value(5));
     var dcid := prot.bytes_to_cid(spkt.segment(6,6+dcil));
     var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
     var scid := prot.bytes_to_cid(spkt.segment(7+dcil,7+dcil+scil));
     var versions_vn := spkt.segment(3 +  4  + dcil + scil,spkt.end);
-
-    call recv_vv_pkt(src,dst,dcil, dcid, scil, scid, versions_vn);
 
     call export_length_cid_extension(dcil,scil);
 
@@ -618,8 +610,6 @@ after tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         sv := sv.append(v);
     };
 
-    call recv_v_pkt(src,dst,dcil, dcid, scil, scid, sv);
-
     var idxx : index := 0;
     var idxx_bv : index := 0;
     while idxx < sv.end {
@@ -638,7 +628,6 @@ after tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
     if final_version ~= 0x00000000 {
         version_negociated := true;
-        call recv_vn_packet_v(src,dst,final_version);
         var pkt := pkt_serdes_vn.from_bytes(spkt);
         pkt.ptype := quic_packet_type.version_negociation;
         call recv_vn_pkt(src,dst,pkt);
@@ -668,12 +657,6 @@ after tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_dat
     var dcid := prot.bytes_to_cid(spkt.segment(6,6+dcil));
     var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
     var scid := prot.bytes_to_cid(spkt.segment(7+dcil,7+dcil+scil));
-    var pos := 7 + dcil + scil;
-    var len := prot.get_var_int_len(spkt,pos);
-    var retry_token_len := prot.get_var_int(spkt,pos,len);
-    pos := pos + len + retry_token_len;
-    call recv_retry_packet(src,dst,spkt);
-    call recv_r_pkt(src,dst,dcil,dcid,scil,scid);
 
     call export_length_cid_extension(scil,dcil);
 
@@ -682,10 +665,11 @@ after tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_dat
     call recv_retry_pkt(src,dst,pkt);
     call infer_tls_events_retry(src,dst,pkt);
     retry_recv_token := pkt.token;
+    if pkt.token.end = 0 {
+        zero_length_token := true;
+    };
     retry_response := true;
-    #conn_enc_level(src,scid) := quic_packet_type.initial;
     call packet_event_retry(src,dst,pkt);       # also an inferred event
-    #call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
 }
 
 after tls_client_0rtt_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {

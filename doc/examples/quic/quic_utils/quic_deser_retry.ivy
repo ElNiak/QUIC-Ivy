@@ -94,7 +94,7 @@ object quic_deser_retry = {}
                     } else {
                         dcil = dcid_h; //dcil_long
                     }
-                    getn(res,(dcil));
+                    getn(res,dcil);
                     std::cerr << "dstID res " << res << std::endl;
                     state = quic_s_scid;
                 }
@@ -147,28 +147,25 @@ object quic_deser_retry = {}
 
                     std::cerr << "token_count " << token_count << std::endl;
                     
-                    if(token_count < token_len){
-                        getn(res,1);    
-                        token_count += 1;
-                        if(token_count == token_len)
-                        state = quic_s_retry_integrity_tag;
-                        else
-                        state = quic_s_retry_token; //useless ?
-                    }
-                    else 
-                        state = quic_s_retry_integrity_tag;
+                    getn(res,1);    
+                    token_count += 1;
+                    if(token_count == token_len)
+                    state = quic_s_retry_integrity_tag;
+                    else
+                    state = quic_s_retry_token; //useless ?
                 }
                 break;
                 case quic_s_retry_integrity_tag:
                 {
-                    std::cerr << "retry_integrity_tag token_count " << tokeni_count << std::endl;
-                    getn(res,16);
+                    std::cerr << "retry_integrity_tag inp " << inp.size() << std::endl;
+                    getn(res,16); //ivy_binary_deser_128::
                     /*if(tokeni_count < 16){
                         getn(res,1);    
                         tokeni_count += 1;
                         state = quic_s_retry_integrity_tag;
                     }*/
                     //else */
+                    token_count+=1;
                     std::cerr << "retry_integrity_tag " << res << std::endl;
                 }
                 break;
@@ -235,7 +232,7 @@ object quic_deser_retry = {}
                /*while ((fence == 0 || pos < fence) && more(1) && inp[pos] == 0)
                    pos++;  // skip padding frames
                 */
-               return  false; //more(1); //tokeni_count < 16; //more(16); //(fence == 0 || pos < fence) && 
+               return false; //more(16); //oken_count == token_len;//  (fence == 0 || pos < fence) && more(1); //more(1); //tokeni_count < 16; //more(16); //(fence == 0 || pos < fence) && 
             }
             if (state == quic_s_init)
                 return more(1);
@@ -247,9 +244,12 @@ object quic_deser_retry = {}
 
         }
         void close_list() {
-            if (state == quic_s_retry_integrity_tag) {
+            /*if (state == quic_s_retry_integrity_tag) {
                 state = quic_s_init;
                 pos += QUIC_DESER_FAKE_CHECKSUM_LENGTH; // skip the fake checksum
+            }*/
+            if (state == quic_s_retry_token) {
+                state = quic_s_retry_integrity_tag;
             }
         }
         void close_list_elem() {}

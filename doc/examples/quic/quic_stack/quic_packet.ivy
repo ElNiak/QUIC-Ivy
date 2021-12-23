@@ -372,15 +372,15 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # and the actual servers do not seem to check it.
     
 
-    call show_cond(connected(dcid));
-    call show_cond(pkt.ptype = quic_packet_type.initial
-        & is_client(scid)
-        & dcid = nonce_cid(scid));
-    call show_cond(is_client(scid));
-    call show_cond(dcid = nonce_cid(scid));
-    call show_cid(dcid);
-    call show_cid(scid);
-    call show_cid(nonce_cid(scid));
+    # call show_cond(connected(dcid));
+    # call show_cond(pkt.ptype = quic_packet_type.initial
+    #     & is_client(scid)
+    #     & dcid = nonce_cid(scid));
+    # call show_cond(is_client(scid));
+    # call show_cond(dcid = nonce_cid(scid));
+    # call show_cid(dcid);
+    # call show_cid(scid);
+    # call show_cid(nonce_cid(scid));
 
     require connected(dcid) |
         pkt.ptype = quic_packet_type.initial
@@ -401,8 +401,12 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         scid := connected_to(dcid);
     };
 
-    call show_pstats(scid,pkt.ptype,pkt.seq_num);
-    call show_pstats(scid,queued_level(scid),pkt.seq_num);
+    if retry_sent & ~_generating & ~zero_length_token & pkt.ptype = quic_packet_type.initial {
+        require dcid = rscid;
+    };
+
+    # call show_pstats(scid,pkt.ptype,pkt.seq_num);
+    # call show_pstats(scid,queued_level(scid),pkt.seq_num);
 
     # The packet type must match the encryption level of the queued
     # frames at the source. 
@@ -500,7 +504,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         initial_token := pkt.token;
         # An initial packet with an unseen destination cid is a connection request.
         if ~conn_seen(dcid) | (retry_response & ~init_token) {#TODO
-            call show_initial_request_initial;
+            #call show_initial_request_initial;
             call tls_client_initial_request(src,dst,dcid,pkt.pversion);
             conn_requested(src,dst,scid) := true;
             if retry_response {
@@ -740,10 +744,14 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
         };
     };
 
-    if ~is_client_hello & retry_recv {
+    if ~is_client_hello & retry_recv & ~zero_length_token {
         require retry_source_connection_id.is_set(trans_params(scid));
         require retry_source_connection_id.value(trans_params(scid)).rcid = rscid; # todo generalize
     };
+
+    if ~retry_recv & is_client_hello{
+        require ~retry_source_connection_id.is_set(trans_params(scid));
+    }
     
     # [7]
     if min_ack_delay.is_set(trans_params(scid)) & max_ack_delay.is_set(trans_params(scid)) {

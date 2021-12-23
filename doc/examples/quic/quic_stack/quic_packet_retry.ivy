@@ -46,6 +46,8 @@ include byte_stream
 # - *seq_num*: the packet sequence number  [7]
 # - *payload*: the payload, a sequence of frames  [8]
 
+interpret itoken -> longbv[1][13][16]
+
 object quic_packet_retry = {
     type this = struct {
         ptype : quic_packet_type, # [2]
@@ -169,15 +171,27 @@ action packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 #   If a zero-length connection ID is selected, the corresponding
 #   transport parameter is included with a zero-length value.
 
+# A server MUST NOT send more than one Retry
+#    packet in response to a single UDP datagram.
+
+# A client MUST discard a Retry packet with a zero-length
+#    Retry Token field. TODO test
+
+#    A Retry packet does not include a packet number and cannot be
+#    explicitly acknowledged by a client. TODO
+
 import action show_iretryb(v:stream_data)
 import action show_iretry(v:itoken)
 
 
 relation init_token
+relation zero_length_token
 function rscid : cid
+function send_token : stream_data
 
 after init {
     init_token :=  false;
+    zero_length_token := false;
 }
 
 
@@ -191,6 +205,8 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 	    dcid := cid_to_aid(dcid);
     };
 
+    send_token := pkt.token;
+
     if src = client_alt | dst = client_alt {
 	    migration_done := true;
 	    #call net.close(endpoint_id.client,sock);	# destroy connection ?
@@ -201,10 +217,12 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
                                            pkt.pversion,
                                            scid_size_pos(true),dcid,
                                            dcid_size_pos(true),scid,
-                                           pkt.token, last_pkt_num(dcid,quic_packet_type.initial),h_retry);
+                                           pkt.token, last_pkt_num(scid,quic_packet_type.initial),h_retry);
 
-        call show_iretryb(expected_itoken);
-        # TODO require expected_itoken = pkt.token;
+        #call show_iretry(bytes_to_itoken_2(expected_itoken));
+        # call show_iretry(bytes_to_itoken(expected_itoken));
+        # call show_iretry(pkt.integrity_token);
+        require  bytes_to_itoken(expected_itoken) = pkt.integrity_token;
     };
     # Similarly, an endpoint MUST NOT reuse a connection ID when sending to
     # more than one destination address.  
@@ -217,7 +235,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     # destination cid may be the nonce cid chosen by the client for
     # the given source cid.
 
-    #require pkt.ptype = quic_packet_type.retry & is_client(scid) & dcid = nonce_cid(scid);
+    require pkt.ptype = quic_packet_type.retry; # & is_client(scid) & dcid = nonce_cid(scid);
 
     #call show_pstats(scid,pkt.ptype,pkt.seq_num);
     #call show_pstats(scid,queued_level(scid),pkt.seq_num);
@@ -251,7 +269,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     # the "before" section cannot be accessed in the "after" section.
 
     var dcid := pkt.dst_cid;
-    var scid := pkt.src_cid if pkt.long else connected_to(dcid);
+    var scid := pkt.src_cid;
 
     if cid_mapped(dcid) {
 	    dcid := cid_to_aid(dcid);
@@ -283,7 +301,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
         extns := extns.append(make_transport_parameters);
         call tls_api.upper.destroy(0);
         call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
-        call show_initial_request_retry;
+        #call show_initial_request_retry;
         call tls_client_initial_request(src,dst,server_cid,final_version); #TODO 
         #call tls_client_initial_response(src,dst,spkt);
         conn_requested(src,dst,the_cid) := true;

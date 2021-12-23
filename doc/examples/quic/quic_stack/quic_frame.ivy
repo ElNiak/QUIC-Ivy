@@ -822,7 +822,6 @@ object frame = {
         action handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 
 	around handle {
-            call show_enc_level(e);
             # if  e = quic_packet_type.one_rtt { #  & established_0rtt_keys(scid)
             #     require connected(dcid) & connected_to(dcid) = scid;
             #     require e = quic_packet_type.one_rtt & established_1rtt_keys(scid); #  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid) 

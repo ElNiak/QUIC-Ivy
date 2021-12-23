@@ -981,12 +981,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         
         ptls_aead_context_t *aead = ptls_aead_new_direct(&ptls_openssl_aes128gcm, 1, key, nonce);
         std::cerr << "compute_retry_integrity_tag aead " << aead <<  "\n";
-        
-        picotls_connection *s = `cid_map`[0];
-        std::cerr << "c 1 \n";
-        ptls_aead_context_t *aead2 = (ptls_aead_context_t *)(s->crypto_context[0].aead_encrypt);
-        std::cerr << "c 2 \n";
-        std::cerr << "compute_retry_integrity_tag aead2 " << aead2 <<  "\n";
+    
         
         uint32_t checksum_length = aead->algo->tag_size;
         std::cerr << "c 3 \n";
@@ -1071,12 +1066,6 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         
         cipher.resize(output.size());
         std::copy(output.begin(),output.end(),cipher.begin());
-
-        //HKDF-Expand-Label(initial_secret, "client in", "", 32)
-        //int ret = ptls_hkdf_expand_label(cipher.hash, client_secret, cipher.hash->digest_size,
-        //    prk, QUIC_LABEL_RETRY1, ptls_iovec_init(NULL, 0),NULL);
-
-        //bail(ret,"tls: failed to set up retry secret\n");
 
         std::cerr << "compute_retry_integrity_tag encrypted size: " << std::dec << encrypted  << "\n";
         std::cerr << "compute_retry_integrity_tag output size: " << std::dec << output.size()  << "\n";

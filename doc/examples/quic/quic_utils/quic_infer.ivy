@@ -17,7 +17,7 @@
 #
 
 action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
-    call infer_tls;
+    #call infer_tls;
     # Stream frames on id 0 indicate that a `tls_send_event` has occurred.
     # TODO: ignore duplicate frames.
 
