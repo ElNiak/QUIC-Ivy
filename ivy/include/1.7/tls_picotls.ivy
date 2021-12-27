@@ -148,6 +148,8 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
     #define QUIC_LABEL_RETRY1 "quic key"
     #define QUIC_LABEL_RETRY2 "quic iv"
 
+    #define PTLS_HELLO_RANDOM_SIZE 32
+
     //SSL: ptls_get_client_random(), quic_update_traffic_key_callback
     // The following mess is to get the traffic keys from picotls
 
@@ -263,7 +265,107 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         res.len = vec.size();
     }    
 
-    int setup_0rtt_traffic_keys(picotls_connection *session)
+    /**
+     * @brief from https://gitlab.com/wireshark/wireshark/-/blob/master/wsutil/str_util.c
+     * 
+     * @param ch 
+     * @return int 
+     */
+    int
+    ws_xton(char ch)
+    {
+        switch (ch) {
+            case '0': return 0;
+            case '1': return 1;
+            case '2': return 2;
+            case '3': return 3;
+            case '4': return 4;
+            case '5': return 5;
+            case '6': return 6;
+            case '7': return 7;
+            case '8': return 8;
+            case '9': return 9;
+            case 'a':  case 'A': return 10;
+            case 'b':  case 'B': return 11;
+            case 'c':  case 'C': return 12;
+            case 'd':  case 'D': return 13;
+            case 'e':  case 'E': return 14;
+            case 'f':  case 'F': return 15;
+            default: return -1;
+        }
+    }
+    
+    int 
+    set_client_random(ptls_context_t* ctx) 
+    {
+        std::cerr << "set_client_random start\n";
+        int ret = 0;
+
+        char ch;
+        FILE *fp;
+        size_t len = 0;
+        ssize_t read;
+        char * line = NULL;
+
+        const char * keylogfile_0rtt = getenv("ZRTTSSLKEYLOGFILE");
+        if(keylogfile_0rtt != NULL) {
+            fp = fopen(keylogfile_0rtt, "r"); // read mode
+            if (fp == NULL) {
+                perror("Error while opening the file.\n");
+                exit(EXIT_FAILURE);
+            }
+            read = getline(&line, &len, fp);
+            int i = 0;
+            // std::cerr << "Retrieved line of length " << read << std::endl;
+            // std::cerr << line << std::endl;
+            char *token = strtok(line, " ");
+            char label[100];
+            strcpy(label, token);
+            std::cerr <<  "\n-------------------------------------"  << std::endl;
+            //std::cerr << "Label = " << label << std::endl;
+            token = strtok(NULL, " ");
+            std::cerr << "Token = " << token << std::endl;
+            std::cerr << "Token size = " << strlen(token) << std::endl;
+            uint8_t random_client[256];
+            memset(random_client, 0, sizeof(random_client));
+            /*for (int i = 0 ; i < PTLS_HELLO_RANDOM_SIZE ; i++) {
+                //secret[i] = ((uint8_t *) token)[i];
+                 std::cerr << "token[i] = " << token[i] << std::endl;
+                random_client[i] = (uint8_t) token[i];
+            }*/
+            int hex_len = strlen(token);
+            std::cerr << "random_client = \n" << random_client << std::endl;
+            std::cerr << "hex_len/2 = " << hex_len/2 << std::endl;
+            for (i = 0; i < hex_len/2; i++) {
+                int a = ws_xton(token[i*2]);
+                int b = ws_xton(token[i*2 + 1]);
+                if (a == -1 || b == -1)
+                    return -1;
+                random_client[i] = a << 4 | b;
+                std::cerr << "token[i*2] = " << token[i*2] << std::endl;
+                std::cerr << "token[i*2+1] = " << token[i*2+1] << std::endl;
+                std::cerr << "random_client[i] = " << random_client[i] << std::endl;
+            }
+            std::cerr << "random_client = \n" << random_client << std::endl;
+            std::cerr << "random_client size = " << PTLS_HELLO_RANDOM_SIZE << std::endl;
+            ctx->random_bytes(random_client, PTLS_HELLO_RANDOM_SIZE); // = void(*)
+            std::cerr << "set_client_random stop\n";
+            fclose(fp);
+        } else 
+            ret = -1;
+
+        std::cerr << "set_client_random stop\n";
+	    return ret;
+    }
+
+    /**
+     * @brief Set the up 0rtt traffic keys object
+     * from https://gitlab.com/wireshark/wireshark/-/blob/master/epan/dissectors/packet-tls-utils.c
+     * @param session 
+     * @return int 
+     */
+    int 
+    setup_0rtt_traffic_keys(picotls_connection *session)
     {
         std::cerr << "setup_0rtt_traffic_keys start\n";
         int ret = 0;
@@ -283,16 +385,16 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             }
             while ((read = getline(&line, &len, fp)) != -1) {
                 int i = 0;
-                std::cerr << "Retrieved line of length " << read << std::endl;
-                std::cerr << line << std::endl;
+                // std::cerr << "Retrieved line of length " << read << std::endl;
+                // std::cerr << line << std::endl;
                 char *token = strtok(line, " ");
                 char label[100];
                 strcpy(label, token);
-                std::cerr << token << std::endl;
+                std::cerr <<  "\n-------------------------------------"  << std::endl;
+                std::cerr << "Label = " << label << std::endl;
                 token = strtok(NULL, " ");
                 token = strtok(NULL, " ");
                 while (token != NULL) {
-                    std::cerr << token << std::endl;
                     //picotls_connection* cnx = (picotls_connection*)*ptls_get_data_ptr(session->gs);
                     ptls_cipher_suite_t cipher = { 0, &ptls_openssl_aes128gcm, &ptls_openssl_sha256 };;
 
@@ -310,29 +412,51 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
                         level = 3;
                         i = 1;
                     }
-                    std::cerr <<  ""  << std::endl;
-                    std::cerr <<  static_cast<const void*>(token) << std::endl;
-                    std::cerr << (const void*) token << std::endl;
-                    std::cerr <<  &cipher << std::endl;
-                    std::cerr <<  level << std::endl;
-                    std::cerr <<  session->is_server << std::endl;
-                    std::cerr <<  token << std::endl;
-                    std::cerr <<   &session->crypto_context[0] << std::endl;
-                    std::cerr <<  ""  << std::endl;
-                    if(i == 0) { //server
-                        quic_set_key_from_secret(&cipher, session->is_server , &session->crypto_context[level], (const void*) token);
-                    } else { //client
-                        quic_set_key_from_secret(&cipher, !session->is_server, &session->crypto_context[level], (const void*) token);
-                    }  
+                    //uint8_t secret[cipher.hash->digest_size];
+                    uint8_t secret[strlen(token)-1];
+                    //uint8_t secret[256];
+                    //for (int i = 0 ; i < cipher.hash->digest_size ; i++) {
+                    /*for (int i = 0 ; i < strlen(token)-1 ; i++) {
+                        //secret[i] = ((uint8_t *) token)[i];
+                        secret[i] = (uint8_t) token[i];
+                    }*/
+
+                    int hex_len = strlen(token) - 1;
+                    for (int j = 0; j < hex_len / 2; j++) {
+                        int a = ws_xton(token[j*2]);
+                        int b = ws_xton(token[j*2 + 1]);
+                        if (a == -1 || b == -1)
+                            return -1;
+                        secret[j] = a << 4 | b;
+                    }
+
+                    std::cerr << "i = " << i << std::endl;
+                    std::cerr << "level = " << level << std::endl;
+                    std::cerr << "Secret = " << secret << std::endl;
+                    std::cerr << "Secret size = " << sizeof(secret) << std::endl;
+                    std::cerr << "Token = " << token << std::endl;
+                    std::cerr << "Token size = " << strlen(token) << std::endl;
+
+                    std::cerr <<  "-------------------------------------\n"  << std::endl;
+
+                    //if(level == 3) {
+                        if(i == 1) { //server
+                            quic_set_key_from_secret(&cipher, session->is_server , &session->crypto_context[level], secret);
+                        } else {     //client
+                            quic_set_key_from_secret(&cipher, !session->is_server, &session->crypto_context[level], secret);
+                        } 
+                    //}
+
+                    // if (session->crypto_context[level].aead_encrypt && session->crypto_context[level].aead_decrypt) {
+                    //     session->cb.use(session->id,level);
+                    // }
+                    //quic_set_key_from_secret(&cipher, true , &session->crypto_context[level], secret);
+                    //quic_set_key_from_secret(&cipher, false , &session->crypto_context[level], secret);
+                    
                     token = strtok(NULL, " ");
                 }
             }
-
             fclose(fp);
-            //quic_set_key_from_secret(cipher, is_enc, &cnx->crypto_context[epoch], secret);
-            //quic_set_key_from_secret(cipher, is_enc, &cnx->crypto_context[epoch], secret);
-            //quic_set_key_from_secret(cipher, is_enc, &cnx->crypto_context[epoch], secret);
-            //quic_set_key_from_secret(cipher, is_enc, &cnx->crypto_context[epoch], secret);
         } else 
             ret = -1;
 
@@ -369,7 +493,17 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             prk, QUIC_LABEL_INITIAL_SERVER, ptls_iovec_init(NULL, 0),NULL);
             // QUIC_LABEL_QUIC_BASE);
         bail(ret,"tls: failed to set up initial server secret\n");
-	
+        
+        std::cerr << "setup_initial_traffic_keys server_secret " << server_secret << "\n";
+        std::cerr << "setup_initial_traffic_keys server_secret " << sizeof(server_secret) << "\n";
+        /*for (int i = 0 ; i < 256 ; i++) 
+            std::cerr << (char) server_secret[i];
+        std::cerr << "\n";*/
+        std::cerr << "setup_initial_traffic_keys client_secret " << client_secret << "\n";
+        std::cerr << "setup_initial_traffic_keys client_secret " << sizeof(client_secret) << "\n";
+        /*for (uint8_t i = 0 ; i < 256 ; i++) 
+            std::cerr << (char) client_secret[i];
+        std::cerr << "\n";*/
         quic_set_key_from_secret(&cipher, session->is_server, &session->crypto_context[0], server_secret);
         quic_set_key_from_secret(&cipher, !session->is_server, &session->crypto_context[0], client_secret);
         std::cerr << "setup_initial_traffic_keys stop\n";
@@ -562,9 +696,9 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         // add the extensions
         int add = 1;
         const char* env_p = std::getenv("ZERORTT_TEST");
-        if (!is_server) {
+        /*if (!is_server) {
             add = 2;
-        } 
+        } */
         if(env_p != NULL && !is_server) { 
             std::cerr << "ZERORTT_TEST " << env_p << std::endl;
             add = 3;
@@ -620,7 +754,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             ptls_exts[e.size()+2].type = 0xffff;
             ptls_exts[e.size()+2].data.base = NULL;
             ptls_exts[e.size()+2].data.len = 0;
-        } else if (!is_server) {
+        } /*else if (!is_server) {
             //psk
             ptls_exts[e.size()].type = 0x29;
             unsigned char data [] =  {
@@ -641,7 +775,7 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
             ptls_exts[e.size()+1].type = 0xffff;
             ptls_exts[e.size()+1].data.base = NULL;
             ptls_exts[e.size()+1].data.len = 0;
-        } else {
+        } */else {
             ptls_exts[e.size()].type = 0xffff;
             ptls_exts[e.size()].data.base = NULL;
             ptls_exts[e.size()].data.len = 0;
@@ -715,14 +849,15 @@ module tls_gnutls(cid,index,bytes,extens,exten_ser,lower,upper) = {
         ctx = new ptls_context_t;
         memset(ctx, 0, sizeof(ptls_context_t));
         ctx->random_bytes = ptls_openssl_random_bytes;
+        //set_client_random(ctx);
         ctx->key_exchanges = picotls_key_exchanges; 
         ctx->cipher_suites = picotls_cipher_suites; 
         ctx->send_change_cipher_spec = 0;
         // ctx->hkdf_label_prefix = QUIC_LABEL_QUIC_BASE;
         
         ctx->hkdf_label_prefix__obsolete = NULL;
-        ctx->update_traffic_key = new ptls_update_traffic_key_t;
-        ctx->update_traffic_key->cb = quic_update_traffic_key_callback;
+        // ctx->update_traffic_key = new ptls_update_traffic_key_t;
+        // ctx->update_traffic_key->cb = quic_update_traffic_key_callback;
         ctx->get_time = &ptls_get_time;
         ctx->ticket_lifetime = 0; // no ticket? was: 100000; /* 100,000 seconds, a bit more than one day */
         ctx->require_dhe_on_psk = 1;
