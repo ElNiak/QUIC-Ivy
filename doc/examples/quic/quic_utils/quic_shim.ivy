@@ -162,7 +162,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                 call tls_client_version_response(src,dst,past_data);
             } 
             else if ptype = 0x30 
-                    & ~host = endpoint_id.server  {
+                    & ~host = endpoint_id.server & ~(version = vn_version)  {
                 #for server test, Retry packet
                 call tls_client_retry_response(src,dst,ppkt);
             }       
