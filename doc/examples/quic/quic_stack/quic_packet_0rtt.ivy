@@ -344,7 +344,7 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
 
     # TODO: the following should not be here
 
-    if pkt.ptype = quic_packet_type.zero_rtt & ~_generating & false {
+    if pkt.ptype = quic_packet_type.zero_rtt & ~_generating {
         conn_requested(src,dst,scid) := false;
         conn_requested(src,dst,dcid) := false;
         connected(dcid) :=  false;
@@ -401,7 +401,7 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
         init_token := true;
     };
 
-    conn_seen(scid_i) := true;  # [1]
+    #conn_seen(scid_i) := true;  # [1]
 
     # Update the ack credits. A non-ack packet sent to a destination
     # increases the destination's ack credit. An ack packet decreases

@@ -25,7 +25,7 @@ module tls_lower_intf(cid,bytes) = {
 # `extens` : the type of lists of extensions
 # `exten_ser` : serializer for extensions
 
-module tls_intf(cid,index,bytes,lower,extens,exten_ser) = {
+module tls_intf(cid,index,bytes,lower,extens,hextens,exten_ser) = {
 
     # The upper interface is between TLS and the application
 

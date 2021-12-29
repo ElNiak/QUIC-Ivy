@@ -42,7 +42,8 @@ servers = [
 ]
 
 clients = [
-    ['picoquic',[scdir + '/picoquic','./picoquicdemo -v ff00001d -l - -D -L -a hq-29 localhost 4443']], # -b myqlog.bin -R ff00001d -v ff00001e 
+    # -z is for no 0rtt => Hello REtry request
+    ['picoquic',[scdir + '/picoquic','./picoquicdemo  -v ff00001d -l - -D -L -a hq-29 localhost 4443']], # -b myqlog.bin -R ff00001d -v ff00001e 
     ['pquic',[scdir + '/pquic','./picoquicdemo -D -L -v ff00001d localhost 4443 ']],
     ['quant',['..',scdir + '/quant/Debug/bin/client -e 0xff00001d -c false -r 20 -l '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/tls-keys/secret.log -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlogs/quant -t 3600 -v 5  https://localhost:4443/index.html']], #-c leaf_cert.pem '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/QUIC-Ivy/doc/examples/quic/leaf_cert.pem -o -u -c leaf_cert.pem -c keypair.pem -a  -c false -u  -e 0xff00001d
     ['winquic',['..','true']], 
@@ -97,6 +98,7 @@ server_tests = [
       ['quic_server_test_version_negociation_ext','test_completed'],
       ['quic_server_test_retry','test_completed'],
       ['quic_server_test_0rtt','test_completed'],
+      ['quic_server_test_0rtt_stream','test_completed'],
       ]
     ],
 ]
@@ -295,8 +297,8 @@ class IvyTest(Test):
         randomSeed = random.randint(0,1000)
         random.seed(datetime.now())
         if "quic_server_test_0rtt" in self.name: # TODO build quic_server_test_stream
-            return "unset ZERORTT_TEST; " + (' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,"quic_server_test_stream",randomSeed,0,'' 
-            if is_client else 'server_cid={} client_port={} client_port_alt={}'.format(1,2*test_command+4987,2*test_command+4988))] + extra_args)) + ";export ZERORTT_TEST=true;" +' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,self.name,randomSeed,0,'' 
+            return (' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,"quic_server_test_0rtt_stream",randomSeed,0,'' 
+            if is_client else 'server_cid={} client_port={} client_port_alt={}'.format(1,2*test_command+4987,2*test_command+4988))] + extra_args)) + ";" +' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,self.name,randomSeed,0,'' 
             if is_client else 'server_cid={} client_port={} client_port_alt={}'.format(1,2*test_command+4987,2*test_command+4988))] + extra_args)
         else:
             return ' '.join(['{}./build/{} seed={} the_cid={} {}'.format(timeout_cmd,self.name,randomSeed,0,'' 
@@ -423,8 +425,8 @@ def main():
                 if "quic_client_test_version_negociation" in test.name:
                     if quic_name == "quant":
                         quic_cmd = scdir + '/quant/Debug/bin/client -c false -r 20 -l '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/tls-keys/secret.log -q '+os.environ.get('QUIC_IMPL_DIR',os.environ.get('PROOTPATH',''))+'/qlogs/quant -t 3600 -v 5  https://localhost:4443/index.html'
-                    elif quic_name == "picoquic":
-                        quic_cmd = './picoquicdemo -v ff00001d -v ff00001e -l - -D -L -a hq-29 localhost 4443' 
+                    elif quic_name == "picoquic": # -v ff00001d -v ff00001e -v babababa
+                        quic_cmd = './picoquicdemo -z -l - -D -L -a hq-29 localhost 4443' 
                     elif quic_name == "quiche":
                         quic_cmd = "cargo run --manifest-path=tools/apps/Cargo.toml --bin quiche-client -- https://localhost:4443/index.html --dump-json --no-verify --body / -n 20"
                     elif quic_name == "quinn":

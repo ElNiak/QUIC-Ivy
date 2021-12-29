@@ -78,12 +78,19 @@ object tls = {
         }
     }
 
-    object early_data = {
-        variant this of extension = struct {
-            #etype : extension_type,
-            max_early_data_size : stream_pos
-        }
-    }
+    # object early_data = {
+    #     variant this of extension = struct {
+    #         #etype : extension_type,
+    #         max_early_data_size : stream_pos
+    #     }
+    # }
+
+    # object psk_key_exchange_modes = {
+    #     variant this of extension = struct {
+    #         #etype : extension_type,
+    #         content : stream_data
+    #     }
+    # }
 
     # TODO
 
@@ -91,16 +98,25 @@ object tls = {
     #     variant this of extension = struct {
     #         #etype : extension_type,
     #         #extensions : vector[offered_psk]
-    #         content_psk : stream_data
+    #         content : stream_data
     #     }
     # }
 
+    object psk_identity = {
+        type this = struct {
+            #etype : extension_type,
+            #extensions : vector[offered_psk]
+            identity : stream_data,
+            obfuscated_ticket_age : stream_pos
+        }
+    }
 
     # object pre_shared_key_client = {
     #     variant this of extension = struct {
     #         #etype : extension_type,
     #         #extensions : vector[offered_psk]
-    #         content : stream_data
+    #         psk_identities : vector[psk_identity],
+    #         psk_binder : stream_data
     #     }
     # }
 
@@ -207,13 +223,14 @@ object tls = {
         }
     }
 
+
     #uint32 ticket_lifetime;
     #uint32 ticket_age_add;
     #opaque ticket_nonce<0..255>;
     #opaque ticket<1..2^16-1>;
     #Extension extensions<0..2^16-2>;
     object new_session_ticket = {
-        variant this of extension = struct {
+        variant this of handshake = struct {
             ticket_lifetime : stream_pos,
             ticket_age_add : stream_pos,
             ticket_nonce : stream_data,
@@ -239,6 +256,7 @@ object tls = {
     type message_type
     interpret message_type -> bv[8]
 
+
     object unknown_message = {
         variant this of handshake = struct {
             mtype : message_type,
@@ -252,7 +270,6 @@ object tls = {
             unknown_message_bytes : stream_data
         }
     }
-
     
     # ### Records
 

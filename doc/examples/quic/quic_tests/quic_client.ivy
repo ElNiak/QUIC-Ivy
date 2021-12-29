@@ -89,6 +89,8 @@ instance server : quic_endpoint(endpoint_id.server)
 var sock : net.socket
 
 instance tls_extensions : vector(tls.extension)
+instance tls_hand_extensions : vector(tls.handshake)
+
 
 # Open a server socket to listen on and create an instance of TLS.
 # TODO: we should have one instance of TLS per connection

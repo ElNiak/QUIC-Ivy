@@ -94,6 +94,8 @@ instance server : quic_endpoint(endpoint_id.server)
 var sock : net.socket
 
 instance tls_extensions : vector(tls.extension)
+instance tls_hand_extensions : vector(tls.handshake)
+
 
 # Open a server socket to listen on and create an instance of TLS.
 # TODO: we should have one instance of TLS per connection
@@ -579,6 +581,42 @@ import action show_stream(pkt:stream_data)
 
 import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
 
+export frame.max_streams.handle
+export frame.max_stream_data.handle
+export frame.max_data.handle
+#export frame.stream_blocked.handle
+export frame.rst_stream.handle
+attribute frame.rst_stream.handle.weight = "0.02"
+attribute frame.max_streams.handle.weight = "0.02"
+attribute frame.max_stream_data.handle.weight = "0.02"
+attribute frame.max_data.handle.weight = "0.02"
+
+
+# export frame.connection_close.handle
+# attribute frame.connection_close.handle.weight = "0.02"
+
+#export frame.application_close.handle
+#attribute frame.application_close.handle.weight = "0.02"
+
+# export frame.stop_sending.handle
+
+before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid,e:quic_packet_type) {
+    if _generating {
+        require f.pos = 32 | f.pos = 16;
+    }
+}
+
+before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dcid:cid,e:quic_packet_type) {
+    if _generating {
+        require f.pos > 32;
+    }
+}
+
+before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid,e:quic_packet_type) {
+    if _generating {
+        require f.pos = 2048 | f.pos = 40;
+    }
+}
 
 # Final check
 #

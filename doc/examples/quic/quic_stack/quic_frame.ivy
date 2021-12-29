@@ -831,6 +831,8 @@ object frame = {
             #     require num_queued_frames_rtt(scid) > 0 -> e = queued_level_rtt(scid); # TODO
             # };
 
+            require tls_handshake_finished;
+
             require connected(dcid) & connected_to(dcid) = scid;
             require (e = quic_packet_type.one_rtt) & established_1rtt_keys(scid); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid) 
             #require e = quic_packet_type.zero_rtt -> established_0rtt_keys(scid);  # [11]

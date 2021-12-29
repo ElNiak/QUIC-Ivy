@@ -27,13 +27,13 @@ module tls_lower_intf(cid,bytes) = {
 # This module defines the interface of a TLS endpoint (either a client
 # or a server. The parameters are:
 #
-# `cid` : the type of connection identifiers
-# `bytes` : the type of byte arrays
-# `lower` : the interface to the underlying transport
-# `extens` : the type of lists of extensions
-# `exten_ser` : serializer for extensions
+# `cid`:the type of connection identifiers
+# `bytes`:the type of byte arrays
+# `lower`:the interface to the underlying transport
+# `extens`:the type of lists of extensions
+# `exten_ser`:serializer for extensions
 
-module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
+module tls_intf(cid,index,bytes,lower,extens,hextens,exten_ser,seq_num) = {
 
     # The upper interface is between TLS and the application
 
@@ -70,9 +70,21 @@ module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
     
     # Create a new connection with a fresh cid, and list of extensions
 
-    action create(c:cid, is_server : bool, e : extens)
+    action create(c:cid, is_server:bool, e:extens)
 
-    action create_0rtt(c:cid, is_server : bool, e : extens)
+    action create_0rtt(c:cid, is_server:bool)
+
+    action add_extensions(c:cid, is_server:bool, e:extens, he:hextens)
+
+    action start_handshake(c:cid)
+
+    action compute_binder(c:cid) returns (b:bytes)
+
+    action get_session_ticket(c:cid) returns (b:bytes)
+
+    action get_session_lifetime(c:cid) returns (b:stream_pos)
+
+    action get_session_lifetime_add(c:cid) returns (b:stream_pos)
 
     # Destroy an existing connection
 
@@ -106,7 +118,7 @@ module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
                                        pversion: version,
                                        dcil: stream_pos, dcid: cid,
                                        scil: stream_pos, scid: cid,
-                                       token : stream_data,
+                                       token:stream_data,
                                        seq:seq_num,h:stream_pos) returns (cipher:bytes)
 
     # Encrypt data with AEAD for given level, additional data `ad` and
@@ -115,9 +127,9 @@ module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
     action encrypt_aead(c:cid,l:level,clear:bytes,seq:seq_num,ad:bytes) returns (cipher:bytes)
     
     type decrypt_result = struct {
-        ok : bool,
-        data : bytes,
-        payload : bytes
+        ok:bool,
+        data:bytes,
+        payload:bytes
     }
 
     # Decrypt data with cipher for given level, additional data `ad`
@@ -170,7 +182,7 @@ module tls_intf(cid,index,bytes,lower,extens,exten_ser,seq_num) = {
         invariant established(C) -> open(C)
     }
     
-    instance foo : tls_gnutls(cid,index,bytes,extens,exten_ser,lower,this)
+    instance foo:tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,this)
 
 }
 

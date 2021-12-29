@@ -141,6 +141,7 @@ object quic_ser_zerortt = {}
 	            }
 		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
                 payload_length_pos_z = this->res.size();
+                setn(0,2);  // will fill in correct value later
                 state = quic_s_pkt_num_z;
             }
             break;
@@ -157,14 +158,16 @@ object quic_ser_zerortt = {}
                     std::cerr << "ser res init " << res << std::endl;
                     long_format = res != 3;
                     hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
+                    std::cerr << "ser res init hdr_type " << hdr_type << std::endl;
                     setn(hdr_type | (long_format ? 0x80 : 0), 1);
                     state = quic_s_version;
                 } else {
                     std::cerr << "ser res init_z " << res << std::endl;
                     long_format = res != 3;
-                    hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
-                    //setn(hdr_type | (long_format ? 0x80 : 0), 1);
-                    setn(213, 1);
+                    hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ; //0xdc; //
+                    std::cerr << "ser res init_z hdr_type " << hdr_type << std::endl;
+                    setn(hdr_type | (long_format ? 0x80 : 0), 1);
+                    //setn(hdr_type, 1);
                     state = quic_s_version_z;
                 }
             }
@@ -745,10 +748,12 @@ object quic_ser_zerortt = {}
                     //while (res.size() < 1200)
                     // /    res.push_back(0);  // pad initial packet to 1200 bytes
                 }
-                for(unsigned i = 0; i < 26; i++)
-                    res.push_back(0);
+                // for(unsigned i = 0; i < 26; i++)
+                //     res.push_back(0);
+                // for(unsigned i = 0; i < 16; i++)
+                //     res.push_back(0);
                 if (long_format) {
-                    int len = res.size() - (payload_length_pos+2); // + 26;
+                    int len = res.size() - (payload_length_pos+2) + 26; //  26
                     std::cerr << "quic_ser_zerortt close_list len " <<  (0x40 | ((len >> 8) & 0x3f)) <<  std::endl;  
                     res[payload_length_pos] = 0x40 | ((len >> 8) & 0x3f);
                     res[payload_length_pos+1] = len & 0xff;

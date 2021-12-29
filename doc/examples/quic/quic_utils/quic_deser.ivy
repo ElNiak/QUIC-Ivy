@@ -279,6 +279,7 @@ object quic_deser = {}
                 get_var_int(res);
                 data_remaining = res;
                 state = quic_crypto_data;
+                std::cerr << "quic_crypto_length " << std::endl;
             }
             break;
             case quic_stream_data:

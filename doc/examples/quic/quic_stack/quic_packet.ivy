@@ -639,12 +639,45 @@ action handle_tls_handshake(
     else if some(fh:tls.finished) hs *> fh {
         tls_handshake_finished := true;
     }
-    else if some(fh:tls.early_data) hs *> fh {
-        zero_rtt_allowed := true;
+    else if some(fh:tls.finished) hs *> fh {
+        tls_handshake_finished := true;
+    }
+    else if some(st:tls.new_session_ticket) hs *> st {
+        call export_session_ticket(st.ticket, st.ticket_lifetime, st.ticket_age_add);
     }
     else if some(ee:tls.encrypted_extensions) hs *> ee {
         call handle_tls_extensions(src,dst,scid,ee.extensions,false);
     }
+}
+
+action export_session_ticket(tkt:stream_data, lf:stream_pos, obf:stream_pos) = {
+    <<<
+
+    std::cerr <<  "export_session_ticket "  << tkt.size() <<std::endl;
+	unsigned str_d[tkt.size()];
+	for (int i = 0; i < tkt.size(); i++)
+        str_d[i] = tkt[i]; //static_cast<char>(tkt[i]); // + '0'
+    //str_d[tkt.size()] = '\0';
+    //std::cerr <<  "export_session_ticket "  << str_d << std::endl;
+    //std::cerr <<  "export_session_ticket size "  << strlen(str_d) << std::endl;
+	const char * session_file = getenv("STFILE");
+    FILE *fp;
+    if(session_file != NULL) {
+        fp = fopen(session_file,"w");
+        for (int i = 0; i < tkt.size(); i++) {
+            //std::cerr <<  "str_d[i] "  << str_d[i] << std::endl;
+            //std::cerr <<  "str_d[i] == 0 "  << (str_d[i] == 0) << std::endl;
+            if(str_d[i] < 16)
+                fprintf(fp, "0%x", str_d[i]);
+            else 
+                fprintf(fp, "%x", str_d[i]);
+        }  
+        fprintf(fp, "%s", "\n");
+        fprintf(fp, "%llu\n", lf);
+        fprintf(fp, "%llu", obf);
+        fclose(fp);
+	}
+    >>>
 }
 
 #
