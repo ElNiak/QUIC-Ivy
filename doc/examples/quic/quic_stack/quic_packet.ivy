@@ -416,9 +416,13 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
     # Removed for MVFST that start with big PKT_NUM
     if  _generating {
-        require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
-    	require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
+    	#require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
+        #require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x2;
+        require pkt.seq_num = last_pkt_num(scid,pkt.ptype) + 0x1;
+        #require pkt.seq_num < last_pkt_num(scid,pkt.ptype) + 0x1 & pkt.seq_num > last_pkt_num(scid,pkt.ptype);
     };
+    last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
+    #require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
     require ~sent_pkt(scid,pkt.ptype,pkt.seq_num);  # [4]
     sent_pkt(scid,pkt.ptype,pkt.seq_num) := true;  # [1]
 
@@ -486,7 +490,9 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     # Record the packet number as latest seen
 
-    last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
+    #last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
+
+    #require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
 
     if retry_sent {
         #call show_version_retry_resp;
@@ -653,7 +659,7 @@ action handle_tls_handshake(
 action export_session_ticket(tkt:stream_data, lf:stream_pos, obf:stream_pos) = {
     <<<
 
-    std::cerr <<  "export_session_ticket "  << tkt.size() <<std::endl;
+    //std::cerr <<  "export_session_ticket "  << tkt.size() <<std::endl;
 	unsigned str_d[tkt.size()];
 	for (int i = 0; i < tkt.size(); i++)
         str_d[i] = tkt[i]; //static_cast<char>(tkt[i]); // + '0'
@@ -662,6 +668,9 @@ action export_session_ticket(tkt:stream_data, lf:stream_pos, obf:stream_pos) = {
     //std::cerr <<  "export_session_ticket size "  << strlen(str_d) << std::endl;
 	const char * session_file = getenv("STFILE");
     FILE *fp;
+
+    time_t msec = time(NULL) * 1000;
+
     if(session_file != NULL) {
         fp = fopen(session_file,"w");
         for (int i = 0; i < tkt.size(); i++) {
@@ -674,7 +683,8 @@ action export_session_ticket(tkt:stream_data, lf:stream_pos, obf:stream_pos) = {
         }  
         fprintf(fp, "%s", "\n");
         fprintf(fp, "%llu\n", lf);
-        fprintf(fp, "%llu", obf);
+        fprintf(fp, "%llu\n", obf);
+        fprintf(fp, "%llu", static_cast<long long unsigned> (msec));
         fclose(fp);
 	}
     >>>

@@ -97,7 +97,7 @@ after init {
 action test returns (is_padding:bool) = {
     <<<
     is_padding = true;
-    std::cerr <<  "net.recv"  << std::endl;
+    //std::cerr <<  "net.recv"  << std::endl;
     >>>
 }
 
@@ -119,6 +119,9 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var ppkt := pkts.value(idx);
         var tls_id := dst_tls_id(dst);
         var header := ppkt.value(0);
+        var hdr_type : type_bits := bfe[0][6](ppkt.value(0));
+        var tt := bvand(hdr_type,0x30);
+
         # call show_typp(src,dst,bfe[4][5](header));
         # call show_typp(src,dst,bfe[4][7](header));
 
@@ -131,11 +134,11 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var ptype : byte := bvand(0x30,header);
         #call show_type(src,dst,ptype);
 
-        var typ : type_bits  := bfe[7][8](header);
-        var typ_retry : type_bits := bfe[4][5](header); # bfe[5][6](ppkt.value(0));
+        #var typ : type_bits  := bfe[7][8](header);
+        #var typ_retry : type_bits := bfe[4][5](header); # bfe[5][6](ppkt.value(0));
         
         # var h : header_info := get_header_info(ppkt,true);
-        # call show_type(src,dst,ppkt.value(0));
+        call show_typp(src,dst,tt);
         # call show_type(src,dst,bfe[7][8](ppkt.value(0))); 
 
         # call show_typp(src,dst,typ);
@@ -161,7 +164,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                 past_data := past_data.extend(ppkt);
                 call tls_client_version_response(src,dst,past_data);
             } 
-            else if ptype = 0x30 
+            else if tt = 0x30 
                     & ~host = endpoint_id.server & ~(version = vn_version)  {
                 #for server test, Retry packet
                 call tls_client_retry_response(src,dst,ppkt);
@@ -841,7 +844,7 @@ action scid_size_pos(cond:bool) returns(res:stream_pos) = {
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "server") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-            std::cerr << "TEST_SCIL " << env_p3 << std::endl;
+            //std::cerr << "TEST_SCIL " << env_p3 << std::endl;
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
@@ -859,7 +862,7 @@ action dcid_size_pos(cond:bool) returns(res:stream_pos) = {
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "server") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_DCIL")) {
-            std::cerr << "TEST_DCIL " << env_p3 << std::endl;
+            //std::cerr << "TEST_DCIL " << env_p3 << std::endl;
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
@@ -912,7 +915,7 @@ action bytes_to_itoken(bytes:stream_data) returns (val:itoken) = {
 action export_length_cid_extension(dcil:stream_pos,scil:stream_pos) = {
     <<<
 
-    std::cerr <<  "export_length_cid_extension"  << std::endl;
+    //std::cerr <<  "export_length_cid_extension"  << std::endl;
 	char str_d[20];
 	sprintf(str_d,"%llu",dcil);
 	if(setenv("TEST_DCIL",str_d,true) != 0) 
