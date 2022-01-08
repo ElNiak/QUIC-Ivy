@@ -126,14 +126,14 @@ object quic_deser_zerortt = {}
                     int128_t cil;
                     //long long cil;
                     getn(cil,1);
-                    //std::cerr << "dstID size " << cil << std::endl;
+                    std::cerr << "dstID size " << cil << std::endl;
                     dcil = cil;
                     dcid_h = cil;
                 } else {
                     dcil = dcid_h; //dcil_long
                 }
 		        getn(res,(dcil));
-                //std::cerr << "dstID res " << res << std::endl;
+                std::cerr << "dstID res " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
@@ -143,7 +143,7 @@ object quic_deser_zerortt = {}
                     int128_t cil;
                     //long long cil;
                     getn(cil,1);
-                    //std::cerr << "sourceID size " << cil << std::endl;  
+                    std::cerr << "sourceID size " << cil << std::endl;  
                     if(cil > 0)
                         have_scid = true;
                     else 
@@ -157,7 +157,7 @@ object quic_deser_zerortt = {}
                 /*if(scil != 8) { //tricks
                 tls_field_bytes_map["scid"] = scil;
                 }*/
-                //std::cerr << "sourceID res " << res << std::endl;
+                std::cerr << "sourceID res " << res << std::endl;
                 int128_t len;
                 //long long len;
                 if (long_format & ((hdr_type & 0x30) == 0x00)){
@@ -165,7 +165,7 @@ object quic_deser_zerortt = {}
 		        }
                 else len = 0;
                 data_remaining = len;
-		        //std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
+		        std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
                 state = quic_s_payload_length;//quic_s_pkt_num;
             }
             break;
@@ -234,27 +234,27 @@ object quic_deser_zerortt = {}
             case quic_ack_frequency: //TODO
             /*{
                 get_var_int(res);
-		        //std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
+		        std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
                 state = quic_ack_frequency_packet_tolerence;
             }
             break;
             case quic_ack_frequency_packet_tolerence: 
             {
                 get_var_int(res);
-		        //std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
+		        std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
                 state = quic_ack_frequency_update_max_ack_delay;
             }
             break;
             case quic_ack_frequency_update_max_ack_delay: 
             {
                 get_var_int(res);
-		        //std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
+		        std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
                 state = quic_ack_frequency_ignore_order;
             }
             break;
             case quic_ack_frequency_ignore_order:
             {
-		        //std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
+		        std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
                 getn(res,1);
             }
             break;*/
@@ -548,9 +548,9 @@ object quic_deser_zerortt = {}
                 }*/
                 std::cerr << "saw tag " << ft << std::endl;  
             }
-            //std::cerr << "state          = " << state << std::endl;  
-            //std::cerr << "quic_s_payload = " << quic_s_payload << std::endl;
-            //std::cerr << "quic_s_payload == " << (quic_s_payload == state) << std::endl;
+            std::cerr << "state          = " << state << std::endl;  
+            std::cerr << "quic_s_payload = " << quic_s_payload << std::endl;
+            std::cerr << "quic_s_payload == " << (quic_s_payload == state) << std::endl;
             std::cerr << "quic_deser_zerortt 2" << std::endl;  
             throw deser_err();
         }

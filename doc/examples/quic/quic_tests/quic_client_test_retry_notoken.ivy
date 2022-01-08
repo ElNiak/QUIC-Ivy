@@ -304,7 +304,8 @@ before packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
                                            version_used,
                                            client_initial_scid_size,client_initial_scid,
                                            0x8,pkt.src_cid,
-                                           pkt.token, last_pkt_num(pkt.dst_cid,quic_packet_type.initial),0xF6);
+                                           pkt.token, last_pkt_num(pkt.dst_cid,quic_packet_type.initial),
+                                           0xF6,false);
 
         call show_iretryb(rt);
         pkt.integrity_token := bytes_to_itoken(rt); # [1]

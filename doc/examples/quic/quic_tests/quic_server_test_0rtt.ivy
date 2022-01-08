@@ -172,9 +172,10 @@ after init {
     #hand_extns := hand_extns.append(make_tls_new_session_ticket);
     #extns := extns.append(make_transport_parameters);
     call tls_api.upper.create_0rtt(0,false);  # false means this instance of tls is not a server
-    # extns := extns.append(make_tls_psk_key_exchange_modes_extension);
-    # extns := extns.append(make_tls_early_data_extension);
-    # extns := extns.append(make_tls_pre_shared_key_extension);
+    extns := extns.append(make_tls_psk_key_exchange_modes_extension);
+    extns := extns.append(make_tls_early_data_extension);
+    call tls_api.upper.add_extensions(0,false,extns,hand_extns); # get offset
+    extns := extns.append(make_tls_pre_shared_key_extension);
     call tls_api.upper.add_extensions(0,false,extns,hand_extns);
     call tls_api.upper.start_handshake(0);
     #call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
@@ -308,28 +309,30 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
 }
 
-# action make_tls_psk_key_exchange_modes_extension returns (tp:tls.extension) = {
-#     var t : tls.psk_key_exchange_modes;
-#     t.content := stream_data.empty;
-#     t.content := t.content.append(0x01);
-#     t.content := t.content.append(0x01);
-#     tp := t;
-# }
+action make_tls_psk_key_exchange_modes_extension returns (tp:tls.extension) = {
+    var t : tls.psk_key_exchange_modes;
+    t.content := stream_data.empty;
+    t.content := t.content.append(0x01);
+    t.content := t.content.append(0x01);
+    tp := t;
+}
 
-# action make_tls_early_data_extension returns (tp:tls.extension) = {
-#     var t : tls.early_data;
-#     tp := t;
-# }
+action make_tls_early_data_extension returns (tp:tls.extension) = {
+    var t : tls.early_data;
+    tp := t;
+}
 
-# action make_tls_pre_shared_key_extension returns (tp:tls.extension) = {
-#     var t : tls.pre_shared_key_client;
-#     var i : tls.psk_identity;
-#     i.identity := tls_api.upper.get_session_ticket(0);
-#     i.obfuscated_ticket_age := tls_api.upper.get_session_lifetime(0) + tls_api.upper.get_session_lifetime_add(0);
-#     t.psk_identities := t.psk_identities.append(i);
-#     t.psk_binder := tls_api.upper.compute_binder(0); #random_stream_data(0,0xFF,33);
-#     tp := t;
-# }
+action make_tls_pre_shared_key_extension returns (tp:tls.extension) = {
+    var t : tls.pre_shared_key_client;
+    var i : tls.psk_identity;
+    i.identity := tls_api.upper.get_session_ticket(0); #stream_data.empty; #random_stream_data(0,0xFF,33); #
+    #i.identity :=  i.identity.append(0x0); 1000; #
+    i.obfuscated_ticket_age := tls_api.upper.get_session_lifetime(0) + tls_api.upper.get_session_lifetime_add(0);
+    t.psk_identities := t.psk_identities.append(i);
+    t.psk_binder := tls_api.upper.compute_binder(0); #random_stream_data(0,0xFF,33); random_stream_data(0,0xFF,33); #
+    #t.psk_binder :=  t.psk_binder.append(0x0);
+    tp := t;
+}
 
 action make_tls_new_session_ticket returns (tp:tls.handshake) = {
     # var t : tls.new_session_ticket;

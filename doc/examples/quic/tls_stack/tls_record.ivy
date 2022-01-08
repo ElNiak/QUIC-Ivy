@@ -78,19 +78,19 @@ object tls = {
         }
     }
 
-    # object early_data = {
-    #     variant this of extension = struct {
-    #         #etype : extension_type,
-    #         max_early_data_size : stream_pos
-    #     }
-    # }
+    object early_data = {
+        variant this of extension = struct {
+            #etype : extension_type,
+            max_early_data_size : stream_pos
+        }
+    }
 
-    # object psk_key_exchange_modes = {
-    #     variant this of extension = struct {
-    #         #etype : extension_type,
-    #         content : stream_data
-    #     }
-    # }
+    object psk_key_exchange_modes = {
+        variant this of extension = struct {
+            #etype : extension_type,
+            content : stream_data
+        }
+    }
 
     # TODO
 
@@ -111,14 +111,14 @@ object tls = {
         }
     }
 
-    # object pre_shared_key_client = {
-    #     variant this of extension = struct {
-    #         #etype : extension_type,
-    #         #extensions : vector[offered_psk]
-    #         psk_identities : vector[psk_identity],
-    #         psk_binder : stream_data
-    #     }
-    # }
+    object pre_shared_key_client = {
+        variant this of extension = struct {
+            #etype : extension_type,
+            #extensions : vector[offered_psk]
+            psk_identities : vector[psk_identity],
+            psk_binder : stream_data
+        }
+    }
 
     # # TODO
     # object offered_psk = {

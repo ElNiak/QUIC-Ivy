@@ -125,7 +125,7 @@ object quic_ser_zerortt = {}
                     setn(res,scid_h); //scid_h
                 else 
                     setn(res,8); 
-                //std::cerr << "ser res dcid 2 " << res << std::endl;
+                std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid_z;
             }
             break;
@@ -139,7 +139,7 @@ object quic_ser_zerortt = {}
                 	setn(dcid_h,1);
 			        setn(res,dcid_h);
 	            }
-		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        std::cerr << "ser res scid_h 1 " << res << std::endl;
                 payload_length_pos_z = this->res.size();
                 setn(0,2);  // will fill in correct value later
                 state = quic_s_pkt_num_z;
@@ -192,13 +192,13 @@ object quic_ser_zerortt = {}
                     setn(res,scid_h); //scid_h
                 else 
                     setn(res,8); 
-                //std::cerr << "ser res dcid 2 " << res << std::endl;
+                std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
             case quic_s_scid:
             {
-		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        std::cerr << "ser res scid_h 1 " << res << std::endl;
                 if (long_format) {
                     if((res == 0 || res == 1) && scid_h != 0){
                         setn(8,1);
@@ -208,7 +208,7 @@ object quic_ser_zerortt = {}
 		    	        setn(res,dcid_h);
 		            }
                 }
-		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token_length;
             }
             break;
@@ -282,27 +282,27 @@ object quic_ser_zerortt = {}
             case quic_ack_frequency: //TODO
             /*{
                 set_var_int(res);
-		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
+		        std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
                 state = quic_ack_frequency_packet_tolerence;
             }
             break;
             case quic_ack_frequency_packet_tolerence:
             {
                 set_var_int(res);
-		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
+		        std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
                 state = quic_ack_frequency_update_max_ack_delay;
             }
             break;
             case quic_ack_frequency_update_max_ack_delay: 
             {
                 set_var_int(res);
-		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
+		        std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
                 state = quic_ack_frequency_ignore_order;
             }
             break;
             case quic_ack_frequency_ignore_order: 
             {
-		        //std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
+		        std::cerr << "ser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
                 setn(res,1);
             }
             break;*/

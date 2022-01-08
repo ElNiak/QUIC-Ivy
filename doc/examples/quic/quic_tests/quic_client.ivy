@@ -1,10 +1,8 @@
 #lang ivy1.7
 
 include order
-include quic_connection
 include quic_infer
 include file
-include quic_shim
 include quic_shim_client
 include quic_locale
 include random_value
@@ -13,8 +11,8 @@ parameter the_cid : cid = 0xdd
 parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4443
 parameter max_stream_data : stream_pos = 0x2000
-parameter initial_max_streams_bidi : stream_id = 10
-parameter client_port_vn : ip.port = 4986
+parameter initial_max_streams_bidi : stream_id = 20
+parameter client_port_vn : ip.port = 4444
 
 # Network setup
 # -------------
@@ -98,6 +96,7 @@ instance tls_hand_extensions : vector(tls.handshake)
 after init {
     sock := net.open(endpoint_id.server,server.ep);
     server.tls_id := 0;
+    client.tls_id := 1;
 }
 
 # Here we have a bunch of conversions that map between cid's, IP

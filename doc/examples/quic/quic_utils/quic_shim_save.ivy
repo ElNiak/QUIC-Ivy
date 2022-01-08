@@ -168,7 +168,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var bversion := bytes_to_version(version);
         #call show_version(bversion);
             if host = endpoint_id.server 
-                    & tt = 0x00  { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
+                    & bvand(ppkt.value(0),0xf0) = 0xc0  { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
                 # for client test
                 #if (retry_client_test -> retry_sent) {
                     call tls_client_initial_response(src,dst,ppkt)
@@ -329,7 +329,6 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pver
     var ikm := cid_to_bytes(nonce,dcid_size_cl(retry_rsp)); 
     client_initial_scil := scid_size_pos(false);
     call show_set_initial_keys(ikm);
-    call show_version(pversion);
     var salt : stream_data := stream_data.empty;
 
     #0xc3 0xee 0xf7 0x12 0xc7 0x2e 0xbb 0x5a 0x11 0xa7 0xd2 0x43 0x2b 0xb4 0x63 0x65 0xbe 0xf9 0xf5 0x02 QUIC-27
@@ -401,6 +400,7 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pver
 		salt := salt.append(0x7f);
 		salt := salt.append(0x0a);
 	};
+
     call tls_api.upper.set_initial_keys(id,salt,ikm);
 }
 
@@ -495,7 +495,6 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         #     extns := extns.append(make_tls_transport_parameters);
         # };
 	    call export_length_cid_extension(dcil,scil);
-        #call tls_api.upper.destroy(0);
         call tls_api.upper.create(0,true,extns);  
         # 'true' means this instance of tls is a server
         tp_client_set := true;
@@ -510,12 +509,11 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     };
 
     client_initial_version := ver;
-    call show_version(client_initial_version);
+    #call show_version(client_initial_version);
 
     if client_initial_version ~= 0xff00001d { #version_used todo
         negocation_of_version := true;
-    } 
-    else if (~initial_keys_set & retry_client_test -> retry_sent) #  & retry_client_test -> retry_sent
+    } else  if (~initial_keys_set & retry_client_test -> retry_sent) #  & retry_client_test -> retry_sent
         | negocation_of_version | (retry_response & ~init_token)  { # if ~initial_keys_set
         #TODO check value
         negocation_of_version := false;
@@ -525,8 +523,8 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         var salt : stream_data := stream_data.empty;
         
         #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
-	    if client_initial_version = 0xfaceb002  
-         | client_initial_version = 0xff00001b 
+	    if client_initial_version = 0xfaceb002 
+         | client_initial_version = 0xff00001b
          | client_initial_version = 0xff00001c {
             salt := salt.append(0xc3);
             salt := salt.append(0xee);
@@ -594,6 +592,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
             salt := salt.append(0x7f);
             salt := salt.append(0x0a);
         };
+
 
         call show_set_initial_keys(ikm);
         call tls_api.upper.set_initial_keys(0,salt,ikm);
@@ -913,7 +912,7 @@ action dcid_size_cl(cond:bool) returns(res:cid_length) = {
 	  res = 8;
     } else 
       res = 8;
-    std::cerr <<  "dcid_size_cl size: " <<  res << std::endl;
+    std::cerr <<  "cid_size size: " <<  res << std::endl;
     >>>
 }
 
@@ -931,7 +930,7 @@ action scid_size_pos(cond:bool) returns(res:stream_pos) = {
 	  res = 8;
     } else 
       res = 8;
-    std::cerr <<  "scid_size_pos size: " <<  res << std::endl;
+    std::cerr <<  "cid_size size: " <<  res << std::endl;
     >>>
 }
 
@@ -949,7 +948,7 @@ action dcid_size_pos(cond:bool) returns(res:stream_pos) = {
 	  res = 8;
     } else 
       res = 8;
-    std::cerr <<  "dcid_size_pos size: " <<  res << std::endl;
+    std::cerr <<  "cid_size size: " <<  res << std::endl;
     >>>
 }
 

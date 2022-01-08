@@ -105,7 +105,7 @@ object quic_deser_retry = {}
                         int128_t cil;
                         //long long cil;
                         getn(cil,1);
-                        //std::cerr << "sourceID size " << cil << std::endl;  
+                        std::cerr << "sourceID size " << cil << std::endl;  
                         if(cil > 0)
                             have_scid = true;
                         else 
@@ -116,7 +116,7 @@ object quic_deser_retry = {}
                         scil = 0;
                     }
                     getn(res,scil);
-                    //std::cerr << "sourceID res " << res << std::endl;
+                    std::cerr << "sourceID res " << res << std::endl;
                     data_remaining = 8;
                     /*int128_t len;
                     //long long len;

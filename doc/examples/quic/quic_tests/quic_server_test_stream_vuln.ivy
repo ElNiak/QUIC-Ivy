@@ -54,9 +54,24 @@ var version_negociated : bool
 var initial_version : version
 
 after init {
-	allowed_multiple_migration := true;
+	allowed_multiple_migration := false;
     version_negociated := false;
-    initial_version := 0xff00001d;
+    initial_version := 0xff00001c;
+}
+
+after init {
+    supported_versions := versions.empty;
+    var v1 := stream_data.empty;
+    v1 := v1.append(0xff);
+    v1 := v1.append(0x0);
+    v1 := v1.append(0x0);
+    v1 := v1.append(0x1c); # TODO
+    supported_versions := supported_versions.append(v1);
+
+    supported_versions_bv := versions_bv.empty;
+    supported_versions_bv := supported_versions_bv.append(0xff00001c);
+
+    token_saved := false;
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
@@ -65,7 +80,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         if version_negociated {
             require src = client_vn;
         } else {
-            if ~disable_active_migration.is_set(tp) {
+            if ~disable_active_migration.is_set(tp) & false {
                 if ~migration_done | allowed_multiple_migration { 
                     #only one migration
                     require src = client.ep | src = client_alt;
@@ -110,14 +125,25 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 # TODO: We reuquire tje `off` and `len` bits to be true. Maybe these should
 # determined in the low-level packet encoding stage.
 
+# static uint8_t test_frame_stream_hang[] = {
+#     0x01, 
+#     0x00, 0x0D, 0xFF, 0xFF, 0xFF, 0x01, 0x00,
+#     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+#     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+# };
+# https://github.com/private-octopus/picoquic/issues/969
 before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
         require scid = the_cid;
         require connected(the_cid) & dcid = connected_to(the_cid);
         require f.len & f.off; 
         require f.length > 0;
-        require f.offset = stream_length(dcid,f.id);
-        require f.length = (stream_app_data_end(dcid,f.id)) - f.offset;
+        # require f.offset = stream_length(dcid,f.id);
+        # require f.length = (stream_app_data_end(dcid,f.id)) - f.offset;
+        #f.id := 0xffffffff;
+        f.offset := 0xffffffff;
+        #f.length:= 110;
+
     };
 
 }
@@ -151,7 +177,9 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
 before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-        require f.id = 4;
+        # f.id := 17;
+        # f.err_code := 1;
+        # f.final_offset := 0xffffffff; #0xFFFFFFFFFFFFFFFF; #bad
     }
 }
 
@@ -178,6 +206,41 @@ before frame.new_connection_id.handle(f:frame.new_connection_id,scid:cid,dcid:ci
     }
 }
 
+# static uint8_t test_frame_stream_hang[] = {
+#     0x01, 
+#     0x00, 0x0D, 0xFF, 0xFF, 0xFF, 0x01, 0x00,
+#     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+#     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+# };
+
+# before frame.malicious_frame.handle(f:frame.malicious_frame,scid:cid,dcid:cid) {
+#     if _generating {
+#         require scid = the_cid;
+#         f.data := stream_data.empty;
+#         f.data := f.data.append(0x00);
+#         f.data := f.data.append(0x0D);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0x01);
+#         f.data := f.data.append(0x00);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#         f.data := f.data.append(0xFF);
+#     }
+# }
+
 
 before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,dcid:cid) {
     if _generating {
@@ -193,7 +256,7 @@ before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,d
 
 before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
-        require conn_total_data(the_cid) > 30; # tricks
+        require conn_total_data(the_cid) > 2000; # tricks
         require scid = the_cid;
         require f.err_code = 0;
     } else {
@@ -309,7 +372,7 @@ around client_send_event {
 # that include this one.
 
 export frame.ack.handle
-export frame.stream.handle
+export frame.stream.handle ## V2
 export frame.crypto.handle
 export frame.path_response.handle
 export packet_event
@@ -318,8 +381,9 @@ export tls_recv_event
 #export frame.new_connection_id.handle
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
+#export frame.malicious_frame.handle ## V1
 #export frame.max_stream_id.handle
-export frame.connection_close.handle # TODO
+#export frame.connection_close.handle # TODO
 #export frame.max_stream_data.handle
 #export frame.max_data.handle
 

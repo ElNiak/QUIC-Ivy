@@ -434,7 +434,7 @@ module quic_protection(tls_id,tls) = {
                                dcil: stream_pos, dcid: cid,
                                scil: stream_pos, scid: cid,
                                token : stream_data,
-                               seq:pkt_num,h:stream_pos) returns (cipher:stream_data)
+                               seq:pkt_num,h:stream_pos,b:bool) returns (cipher:stream_data)
 
     implement retry_integrity_tag {
         # TODO useless, call directly  tls.compute_retry_integrity_tag
@@ -443,7 +443,7 @@ module quic_protection(tls_id,tls) = {
                                 pversion,
                                 dcil, cid_to_us(dcid),
                                 scil, cid_to_us(scid),
-                                token,seq,h);
+                                token,seq,h,b);
          cipher := rt;
     }
 

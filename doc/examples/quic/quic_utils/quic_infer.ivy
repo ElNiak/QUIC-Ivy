@@ -33,11 +33,11 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
 
     # If this is an initial client request, we infer the nonce choice
 
-    if pkt.ptype = quic_packet_type.initial & ~conn_seen(dcid) {
+    if pkt.ptype = quic_packet_type.initial & ~conn_seen(dcid) & ~negocation_of_version &  ~version_negociated {
         nonce_cid(scid) := dcid;
     };
 
-    if pkt.ptype = quic_packet_type.initial & retry_sent {
+    if pkt.ptype = quic_packet_type.initial & (retry_sent | version_negociated | negocation_of_version) {
         nonce_cid(scid) := dcid;
         conn_seen(dcid) := false;
         # nonce_cid(pkt.dst_cid) := pkt.src_cid;
@@ -54,7 +54,7 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
     call tls_keys_established_event(scid,e);
 
     # Infer an app_server_open_event.
-    if conn_requested(dst,src,dcid) & ~connected(dcid) & ~connected(scid) {
+    if conn_requested(dst,src,dcid) & ~connected(dcid) & ~connected(scid) { # & ~negocation_of_version &  ~version_negociated 
         call app_server_open_event(src,dst,scid,dcid);
     };
 
@@ -72,7 +72,7 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
         #if some(pf:frame.padding) f *> pf {
             # do nothing
         #} else {
-            call infer_frame(scid,dcid,f);
+        call infer_frame(scid,dcid,f);
         #};
         call f.handle(scid,dcid,e,sq);
         idx := idx.next

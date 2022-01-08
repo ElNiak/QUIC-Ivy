@@ -95,23 +95,23 @@ after packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
 #
 
 
-around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, e:quic_packet_type, lo : stream_pos, hi : stream_pos ) {
-    require src = client.ep & dst = server.ep;
-    require hi = crypto_length(scid,e);
-    require e = quic_packet_type.handshake -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
-    require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
-    require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.handshake) = crypto_length(scid,quic_packet_type.handshake);
-    require dcid = the_cid;
-    ...
-    var tls_id := server.tls_id;
-    var data := stream_data.empty;
-   # Fill in the message bytes
-    var idx := lo;
-    while idx < hi {
-	data := data.append(crypto_data(scid,e).value(idx));
-	idx := idx.next
-    };
-    #call tls_api.lower.recv(tls_id,data,0)
-}
+# around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, e:quic_packet_type, lo : stream_pos, hi : stream_pos ) {
+#     require src = client.ep & dst = server.ep;
+#     require hi = crypto_length(scid,e);
+#     require e = quic_packet_type.handshake -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
+#     require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
+#     require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.handshake) = crypto_length(scid,quic_packet_type.handshake);
+#     require dcid = the_cid;
+#     ...
+#     var tls_id := server.tls_id;
+#     var data := stream_data.empty;
+#    # Fill in the message bytes
+#     var idx := lo;
+#     while idx < hi {
+# 	data := data.append(crypto_data(scid,e).value(idx));
+# 	idx := idx.next
+#     };
+#     #call tls_api.lower.recv(tls_id,data,0)
+# }
 
 

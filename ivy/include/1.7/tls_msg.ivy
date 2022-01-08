@@ -86,6 +86,14 @@ module tls_intf(cid,index,bytes,lower,extens,hextens,exten_ser,seq_num) = {
 
     action get_session_lifetime_add(c:cid) returns (b:stream_pos)
 
+    action get_old_retry_token(c:cid) returns (b:stream_data)
+
+    action save_token(token:stream_data)
+
+    action create_no_hs(c:cid, is_server:bool, e:extens)
+
+    action get_old_new_token(c:cid) returns (b:stream_data)
+
     # Destroy an existing connection
 
     action destroy(c:cid)
@@ -119,7 +127,7 @@ module tls_intf(cid,index,bytes,lower,extens,hextens,exten_ser,seq_num) = {
                                        dcil: stream_pos, dcid: cid,
                                        scil: stream_pos, scid: cid,
                                        token:stream_data,
-                                       seq:seq_num,h:stream_pos) returns (cipher:bytes)
+                                       seq:seq_num,h:stream_pos,is_recv:bool) returns (cipher:bytes)
 
     # Encrypt data with AEAD for given level, additional data `ad` and
     # sequence number `seq`.

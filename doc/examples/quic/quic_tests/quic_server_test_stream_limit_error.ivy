@@ -409,7 +409,7 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
         require f.len & f.off; 
         require f.length = 0;
         f.offset := 0xffffffff;
-	is_stream_limit_test := true;
+	    is_stream_limit_test := true;
     }
 }
 

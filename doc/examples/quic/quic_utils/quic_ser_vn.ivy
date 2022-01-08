@@ -54,7 +54,7 @@ object quic_ser_vn = {}
             switch (state) {
             case quic_s_init:
             {
-                //std::cerr << "ser res init " << res << std::endl;
+                std::cerr << "ser res init " << res << std::endl;
                 long_format = res != 3;
                 hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
 		        setn(hdr_type | (long_format ? 0x80 : 0), 1);
@@ -85,7 +85,7 @@ object quic_ser_vn = {}
                     setn(res,scid_vn); //scid_vn
                 else 
 			        setn(res,8); 
-                //std::cerr << "ser res dcid 2 " << res << std::endl;
+                std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
@@ -105,13 +105,13 @@ object quic_ser_vn = {}
                         setn(res,dcid_vn);
                     }
                 }
-		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_supported_version;
             }
             break;
             case quic_s_supported_version:
             {
-		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        std::cerr << "ser res scid_h 1 " << res << std::endl;
                 //TODO only work with 1 version for now
                 setn(res,4);
             }

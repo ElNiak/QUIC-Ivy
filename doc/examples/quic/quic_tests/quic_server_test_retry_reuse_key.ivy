@@ -135,6 +135,7 @@ module quic_endpoint(ep_id) = {
 # create a client and server. the client has an instance of TLS
 
 instance client : quic_endpoint(endpoint_id.client)
+instance client_2 : quic_endpoint(endpoint_id.client_alt)
 instance server : quic_endpoint(endpoint_id.server)
 
 # An ip endpoint for the client to migrate to.
@@ -145,6 +146,8 @@ var client_vn : ip.endpoint
 after init {
     client_alt := endpoint_id_addr(endpoint_id.client_alt);
     client_vn := endpoint_id_addr(endpoint_id.client_vn);
+    second_client := endpoint_id_addr(endpoint_id.client_alt);
+    multiple_client := true;
 }
 
 # We create sockets and bind them to the addresses that the client can use.
@@ -160,15 +163,24 @@ instance tls_hand_extensions : vector(tls.handshake)
 # TODO: the TLS instance should be created dynamically when the application
 # layer creates a connection. 
 
+# https://github.com/private-octopus/picoquic/issues/923
+
 after init {
     sock := net.open(endpoint_id.client,client.ep);
-    sock_alt := net.open(endpoint_id.client_alt,client_alt);
+    sock_alt := net.open(endpoint_id.client_alt,client_2.ep);
     sock_vn := sock; #net.open(endpoint_id.client_vn,client_vn);
     client.tls_id := 0;
+    client_2.tls_id := 2;
     server.tls_id := 1;
     var extns := tls_extensions.empty;
     extns := extns.append(make_transport_parameters);
     call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
+}
+
+after init {
+    var extns2 := tls_extensions.empty;
+    #extns2 := extns2.append(make_transport_parameters2);
+    call tls_api.upper.create_no_hs(2,false,extns2);  # false means this instance of tls is not a server
 }
 
 # Here we have a bunch of conversions that map between cid's, IP
@@ -180,7 +192,7 @@ after init {
 action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
     if src = client.ep {
         pid := endpoint_id.client;
-    } else if src = client_alt {
+    } else if src = client_2.ep {
         pid:= endpoint_id.client_alt;
     } else if src = client_vn {
         pid:= endpoint_id.client_vn;
@@ -190,7 +202,7 @@ action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
 # Get the IP endpoint associated to a host id and socket number.
 
 action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
-    src := client.ep if host = endpoint_id.client else (client_vn if version_negociated else client_alt)
+    src := client.ep if host = endpoint_id.client else (client_vn if version_negociated else client_2.ep)
 }
     
 # Get the socket number associated to an IP endpoint.
@@ -198,7 +210,7 @@ action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) 
 action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
     if src = client.ep {
         socket := sock;
-    } else if src = client_alt {
+    } else if src = client_2.ep {
         socket := sock_alt;
     } else if src = client_vn {
         socket := sock_vn;
@@ -209,14 +221,14 @@ action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
 # TODO: this shouldn't be needed.
 
 action tls_id_to_src(tls_id:tls_api.id) returns (src:ip.endpoint) = {
-    src := client.ep if tls_id = client.tls_id & ~version_negociated else (client_vn if tls_id = client.tls_id & version_negociated else server.ep);
+    src := client.ep if tls_id = client.tls_id & ~version_negociated else (client_vn if tls_id = client.tls_id & version_negociated else (client_alt if tls_id = client_2.tls_id & ~version_negociated else server.ep));
 }
 
 # Get the destination IP endpoint associated to a TLS instance
 # TODO: this shouldn't be needed.
 
 action tls_id_to_dst(tls_id:tls_api.id) returns (dst:ip.endpoint) = {
-    dst := server.ep if tls_id = client.tls_id else client.ep;
+    dst := server.ep if tls_id = client.tls_id  |  tls_id = client_2.tls_id else client.ep; # TODO
 }
 
 # Get cid associated to a TLS instance
@@ -229,15 +241,16 @@ action tls_id_to_cid(tls_id:tls_api.id) returns (scid:cid) = {
 # TODO: shouldn't be needed.
 
 action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
-    res := dst = client.ep | dst = client_alt | dst = client_vn
+    res := dst = client.ep | dst = client_2.ep | dst = client_vn
 }
 
 # Returns the TLS instance associated to a destination IP endppoint.
 # TODO: shouldn't be needed.
 
 action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
-    tls_id := client.tls_id;
+    tls_id := client.tls_id; #TODO
 }
+
 
 #
 # Client HTTP request
@@ -296,6 +309,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
     tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
 }
+
 
 
 # This causes the log of events to be printed using hex numbers.
@@ -389,7 +403,7 @@ after init {
 	allowed_multiple_migration := false;
     allowed_migration := false;
     version_negociated := false;
-    initial_version := 0xff00001d;
+    initial_version := 0xff00001c;
 }
 
 after init {
@@ -398,11 +412,13 @@ after init {
     v1 := v1.append(0xff);
     v1 := v1.append(0x0);
     v1 := v1.append(0x0);
-    v1 := v1.append(0x1d); # TODO
+    v1 := v1.append(0x1c); # TODO
     supported_versions := supported_versions.append(v1);
 
     supported_versions_bv := versions_bv.empty;
-    supported_versions_bv := supported_versions_bv.append(0xff00001d);
+    supported_versions_bv := supported_versions_bv.append(0xff00001c);
+
+    token_saved := false;
 }
 
 # This token MUST be repeated by the client in all
@@ -432,9 +448,9 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             if ~disable_active_migration.is_set(tp) & allowed_migration {
                 if ~migration_done | allowed_multiple_migration { 
                     # only one migration
-                    require src = client.ep | src = client_alt;
+                    require src = client.ep | src = client_2.ep;
                 } else {
-                    require src = client_alt;
+                    require src = client_2.ep;
                 }
             } else {
                 require src = client.ep;
@@ -444,12 +460,17 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             pkt.dst_cid := server_cid; # TODO
         };
         require dst = server.ep;
-        if pkt.ptype = quic_packet_type.initial & retry_recv & ~zero_length_token {
-            require pkt.token = retry_recv_token;
+        if pkt.ptype = quic_packet_type.initial { # & retry_recv & ~zero_length_token
+            # var expected_token := tls_api.upper.get_old_retry_token(0);
+            # call show_token_retry(expected_token);
+            # #require pkt.token.end = expected_token.end;
+            # pkt.token := expected_token;
+            #require pkt.token = retry_recv_token;
+            var expected_token := tls_api.upper.get_old_new_token(0);
+            pkt.token := expected_token;
         } else {
             require pkt.token.end = 0; 
         };
-        
     };
     if final_version = 0x00000000 {
         #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
@@ -460,6 +481,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require pkt.long -> pkt.pversion = final_version
     };
 }
+import action show_token_retry(v:stream_data)
 
 # The protocol specification describes all the events occurring the
 # system at all protocol layers. When constructing the test mirror,
@@ -525,15 +547,6 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     } 
 }
 
-before frame.new_token.handle(f:frame.new_token,scid:cid,dcid:cid) {
-    if _generating {
-        require scid = the_cid;
-        #call handle_sending_ack(f.largest_acked);
-    } else {
-        call tls_api.upper.save_token(f.data);
-    }
-}
-
 # Generate rst_stream frames only for the environment process(es).
 
 before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
@@ -582,7 +595,7 @@ before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,d
 before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-        require conn_total_data(the_cid) > 40; # tricks
+        require conn_total_data(the_cid) > 30; # tricks
         require f.err_code = 0;
     } else {
         require is_no_error;
@@ -664,9 +677,9 @@ around client_send_event {
     } else {
         if ~disable_active_migration.is_set(tp) {
             if ~migration_done | allowed_multiple_migration  { #only one migration
-                require src = client.ep | src = client_alt;
+                require src = client.ep | src = client_2.ep;
             } else {
-                require src = client_alt;
+                require src = client_2.ep;
             }
         } else {
             require src = client.ep;

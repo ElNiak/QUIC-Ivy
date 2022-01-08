@@ -80,7 +80,7 @@ object tls_ser_server = {}
             }
             else if (fence.size() > 0) {
                 unsigned b = fence.back();
-                //std::cerr << "4) pkt-pos =  " << b << std::endl; 
+                std::cerr << "4) pkt-pos =  " << b << std::endl; 
                 fence.push_back(b);
             } 
             if (tls_field_bytes_map.find(name) != tls_field_bytes_map.end()) {
@@ -100,8 +100,6 @@ object tls_ser_server = {}
         }
 
         virtual int open_tag(const std::vector<std::string> &tags) {
-            //std::cerr << std::endl; 
-	        //std::cerr << "open_tag : " << tags << std::endl;  
             int bytes = 1;
             if (tls_tag_bytes_map.find(tags[0]) != tls_tag_bytes_map.end())   {
                 bytes = tls_tag_bytes_map[tags[0]];
@@ -162,13 +160,13 @@ object tls_ser_server = {}
                 //unsigned long long tag_intt = (uint128_t) tag_new; 
                 uint128_t tag_intt = (uint128_t) tag_new; 
                 tag_final = (tag_intt & mask);
-                /*if(tag == 0x0029 || tag == 0x002a) {
+                if(tag == 0x0029 || tag == 0x002a) {
                     getn(value_size,2);
                     pos -= 2;
-                } else {*/
+                } else {
                     getn(value_size,1);
                     pos -= 1;
-                //}
+                }
                                 
                 std::cerr << "tag: " << tag << std::endl; 
                 std::cerr << "value_size: " << value_size << std::endl;  
@@ -185,8 +183,8 @@ object tls_ser_server = {}
                 }*/
                 else if(tag == 0x0d) {
 		            int128_t pcil = value_size - 4 - 2 -16 - 2 - 1 - 16;
-                    //std::cerr << "pcil: " << pcil << std::endl;     
-                    //std::cerr << "pref_add: " << (pcil+4+2+16+2+1+16) << std::endl;   
+                    std::cerr << "pcil: " << pcil << std::endl;     
+                    std::cerr << "pref_add: " << (pcil+4+2+16+2+1+16) << std::endl;   
                     tls_field_bytes_map["pcid"] = pcil;
                 }
                 else if(tag == 0x10) { // else if(tag == 0x1010) {
@@ -200,12 +198,12 @@ object tls_ser_server = {}
             }
 
 
-	        //std::cerr << "value_size: " << value_size << std::endl;
+	        std::cerr << "value_size: " << value_size << std::endl;
             //std::cerr << "tag v2: " << tag_final << std::endl;
   
             for (int i = 0; i < tags.size(); i++) {
-                //std::cerr << "tags[i]: " << tags[i] << std::endl;
-                //std::cerr << "tls_tags_map[tags[i]]: " << tls_tags_map[tags[i]] << std::endl;
+               // std::cerr << "tags[i]: " << tags[i] << std::endl;
+               // std::cerr << "tls_tags_map[tags[i]]: " << tls_tags_map[tags[i]] << std::endl;
                 if (tag_final == tls_tags_map[tags[i]]) {
                    open_field(tags[i]);
                    return i;
@@ -304,8 +302,8 @@ object tls_ser_server = {}
                     res.resize(res.size() + flb);
                 }
             }
-            else if (name != "tls.early_data"  // && name != "tls.pre_shared_key_client" && name != "identity" 
-            && tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
+            else if (//name != "tls.early_data"  && // && name != "tls.pre_shared_key_client" && name != "identity" 
+             tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
                 flb = tls_field_length_bytes_map[name];
 		        std::cerr << "ser-open_field: flb : " << flb << std::endl;
                 res.resize(res.size() + flb);
@@ -324,8 +322,8 @@ object tls_ser_server = {}
                 in_encrypted_extensions = field_start.size();
                 std::cerr << "ser-open_field: name == tls.encrypted_extensions 2: " << in_encrypted_extensions << std::endl;
             }
-            //std::cerr << "ser-open_field: field_bytes: " << field_bytes << std::endl;
-            //std::cerr << "ser-open_field: res.size() : " << res.size() << std::endl;
+            std::cerr << "ser-open_field: field_bytes: " << field_bytes << std::endl;
+            std::cerr << "ser-open_field: res.size() : " << res.size() << std::endl;
         }
         //TODO [xx]
         virtual void close_field() {

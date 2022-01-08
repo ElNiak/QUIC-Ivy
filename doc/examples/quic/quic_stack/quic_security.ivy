@@ -88,7 +88,7 @@ action tls_keys_established_event(scid:cid, e:quic_packet_type)
 # Note: the nonce cid is used by TLS as the initial key material to
 # generate the encryption keys for initial packets.
 
-action tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version)
+action tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version, id:tls_api.id)
 
 #
 # Client initial response event
@@ -290,7 +290,7 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
     while max_present < crypto_data_end(scid,e) & crypto_data_present(scid,e,max_present) {
         max_present := max_present.next
     };
-    # require conn_open(src,dcid);  # [3]
+    #require conn_open(src,dcid);  # [3]
     var avail := crypto_data(scid,e).segment(crypto_handler_pos(scid,e),max_present);
     var res := tls.handshake_parser.deserialize(avail,0); #quicgo
     var hs := res.value;

@@ -103,6 +103,7 @@ instance tls_hand_extensions : vector(tls.handshake)
 after init {
     sock := net.open(endpoint_id.server,server.ep);
     server.tls_id := 0;
+    client.tls_id := 1;
 }
 
 # Here we have a bunch of conversions that map between cid's, IP
@@ -244,7 +245,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         #    pkt.src_cid := the_cid;
             #connected(pkt.src_cid) := true;
         #};
-        require pkt.ptype = quic_packet_type.initial -> retry_response; # retry_response retry_sent & 
+        require  pkt.ptype = quic_packet_type.initial -> retry_response; #  pkt.ptype = quic_packet_type.initial -> retry_response retry_sent &  
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
@@ -307,7 +308,7 @@ before packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
                                            version_used,
                                            client_initial_scid_size,client_initial_scid,
                                            0x8,pkt.src_cid,
-                                           pkt.token, last_pkt_num(pkt.dst_cid,quic_packet_type.initial),0xF6);
+                                           pkt.token, last_pkt_num(pkt.dst_cid,quic_packet_type.initial),0xF6,false);
 
         #call show_iretryb(rt);
         pkt.integrity_token := bytes_to_itoken(rt); # [1]
@@ -444,7 +445,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
         require scid = the_cid;
     } else {
         require is_no_error;
-        call _finalize;
+        #call _finalize;
     }
 }
 
@@ -456,7 +457,7 @@ before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:ci
         require scid = the_cid;
     } else {
         require is_no_error;
-        call _finalize;
+        #call _finalize;
     }
 }
 
@@ -585,8 +586,8 @@ export frame.max_streams.handle
 export frame.max_stream_data.handle
 export frame.max_data.handle
 #export frame.stream_blocked.handle
-export frame.rst_stream.handle
-attribute frame.rst_stream.handle.weight = "0.02"
+#export frame.rst_stream.handle
+#attribute frame.rst_stream.handle.weight = "0.02"
 attribute frame.max_streams.handle.weight = "0.02"
 attribute frame.max_stream_data.handle.weight = "0.02"
 attribute frame.max_data.handle.weight = "0.02"

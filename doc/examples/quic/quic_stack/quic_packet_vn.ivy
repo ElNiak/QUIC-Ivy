@@ -207,7 +207,7 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
     # On short headers (meaning one_rtt) the scid is not given, so we
     # use the recorded value.
 
-    require connected(dcid) -> connected_to(dcid) = scid;
+    #require connected(dcid) -> connected_to(dcid) = scid;
 
     # call show_pstats(scid,pkt.ptype,pkt.seq_num);
     # call show_pstats(scid,queued_level(scid),pkt.seq_num);
@@ -221,7 +221,7 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
 
     # TEMPORARY: don't allow client migration during handshake
 
-    require conn_seen(scid) & is_client(scid) -> conn_requested(src,dst,scid);
+    #require conn_seen(scid) & is_client(scid) -> conn_requested(src,dst,scid);
 
     ...
 
@@ -247,6 +247,7 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
         connected(server_cid) :=  false;
 
         var extns := tls_extensions.empty;
+        #call tls_api.upper.destroy(0);
         extns := extns.append(make_transport_parameters);
         call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
         #call show_initial_request_vn;
@@ -258,7 +259,7 @@ around packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
 
     # Record the packet number as latest see
 
-    conn_seen(scid) := true;  # [1]
+    #conn_seen(scid) := true;  # [1] not good
     negocation_of_version_send_recv := true;
 
 }

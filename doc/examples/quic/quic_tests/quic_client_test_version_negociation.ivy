@@ -248,9 +248,11 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    call show_version(version_used);
     } 
     else {
-        server_scid := pkt.src_cid;
-        server_dcid := pkt.dst_cid;
-	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
+        if pkt.ptype = quic_packet_type.initial {
+            server_scid := pkt.src_cid;
+            server_dcid := pkt.dst_cid;
+        };
+	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002 | pkt.pversion = 0xff000022);  #version 29
 	    if pkt.long {
 	    	version_used := pkt.pversion;
 	    };

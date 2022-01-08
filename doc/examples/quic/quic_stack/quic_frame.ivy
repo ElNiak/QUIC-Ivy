@@ -356,6 +356,15 @@ object frame = {
         }
     } 
 
+    # (0xtbd) 
+    object malicious_frame = {
+        # unknown_frame  frame frames are a variant of frame and contains nothing
+        variant this of frame = struct {
+            data: stream_data
+        }
+    } 
+
+
 	# (0x00) implicit in parsing
     #object padding = {
         # PADDING frame frames are a variant of frame and contains nothing
@@ -568,6 +577,8 @@ relation connection_closed
 
 relation handshake_done_send
 
+function last_cid_seq(C:cid):cid_seq
+
 #relation is_stream_limit_test
 var is_stream_limit_test : bool
 relation is_crypto_limit_test
@@ -601,11 +612,12 @@ after init {
     sdb_frame_restransmitted(S) := false;
     stop_sending_in_bad_state := false;
     first_ack_freq_received := true;
-    last_ack_freq_seq(C:cid) := 0;
+    last_ack_freq_seq(C) := 0;
     connection_closed := false;
     handshake_done_send := false;
     is_stream_limit_test := false;
     is_crypto_limit_test := false;
+    last_cid_seq(C) := 0;
 #chris
 }
 
@@ -856,7 +868,7 @@ object frame = {
             require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
             #call show_offset_length(offset,f.length); #todo import 
     
-            #if  is_stream_limit_test = false { #For stream limit test | ~_generating  not working
+            #if is_stream_limit_test = false { #For stream limit test & pico vuln| ~_generating  not working
             require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
             require f.fin <-> (stream_app_data_finished(dcid,f.id) & offset+f.length = stream_app_data_end(dcid,f.id));
 
@@ -1617,8 +1629,14 @@ object frame = { ...
             ...
             
 	        cid_mapped(f.scid) := true;
+            #cid_mapped(f.dcid) := true;
 	        cid_to_aid(f.scid) := scid;
+            #cid_to_aid(f.dcid) := dcid;
             seqnum_to_cid(scid,f.seq_num) := f.scid;
+            last_cid_seq(scid) := f.seq_num;
+            #seqnum_to_cid(dcid,f.seq_num) := f.dcid;
+            call map_cids(scid,dcid);
+            #call map_cids(dcid,scid);
             count_newcid_frame(f.seq_num,f.retire_prior_to,f.length,f.scid,f.token) := count_newcid_frame(f.seq_num,f.retire_prior_to,f.length,f.scid,f.token) + 1;
             if  count_newcid_frame(f.seq_num,f.retire_prior_to,f.length,f.scid,f.token) = 1 {
                 num_conn(dcid) := num_conn(dcid) + 1;
@@ -1804,6 +1822,28 @@ object frame = { ...
 }
 
 
+object frame = {
+    ...
+    object malicious_frame = {
+        ...
+        action handle(f:frame.malicious_frame,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
+
+	around handle {
+            require tls_handshake_finished;
+
+            require connected(dcid) & connected_to(dcid) = scid;
+            require (e = quic_packet_type.one_rtt) & established_1rtt_keys(scid); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid) 
+            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            require ~conn_closed(scid);  # [8]
+            require conn_seen(scid);  # [9]
+	        ...
+            call enqueue_frame(scid,f,e,false);
+        }
+    }
+}
+
+
+
 # Procedures
 # ----------
 
@@ -1838,7 +1878,7 @@ action enqueue_frame(scid:cid, f:frame, e:quic_packet_type, probing:bool) = {
         queued_close(scid) := true;
     };
 #Hamid
-    if ~(f isa frame.ack) & ~(f isa frame.connection_close){ #& ~(f isa frame.padding){
+    if ~(f isa frame.ack) & ~(f isa frame.connection_close) { #& ~(f isa frame.padding){ & ~queued_ack_eliciting(scid)
 	    queued_ack_eliciting(scid) := true;
     };
 #Hamid

@@ -53,7 +53,7 @@ object quic_ser_retry = {}
             switch (state) {
             case quic_s_init:
             {
-                //std::cerr << "ser res init " << res << std::endl;
+                std::cerr << "ser res init " << res << std::endl;
                 long_format = res != 3;
                 hdr_type = (long_format ? ((res & 3) << 4) : 0) | 0x43 ;
 		        setn(246, 1);
@@ -68,7 +68,7 @@ object quic_ser_retry = {}
             break;    
             case quic_s_dcid:
             {
-                //std::cerr << "ser res dcid 1 " << res << std::endl;
+                std::cerr << "ser res dcid 1 " << res << std::endl;
                 if((res != 0 && res != 1) || scid_h == 0)
                     setn(scid_h,1);
                 else 
@@ -77,7 +77,7 @@ object quic_ser_retry = {}
                     setn(res,scid_h); //scid_h
                 else 
                     setn(res,8); 
-                //std::cerr << "ser res dcid 2 " << res << std::endl;
+                std::cerr << "ser res dcid 2 " << res << std::endl;
                 state = quic_s_scid;
             }
             break;
@@ -93,7 +93,7 @@ object quic_ser_retry = {}
                 //  	setn(dcid_h,1);
 	    	    //     setn(res,dcid_h);
 		        // }
-		        //std::cerr << "ser res scid_h 1 " << res << std::endl;
+		        std::cerr << "ser res scid_h 1 " << res << std::endl;
                 state = quic_s_retry_token;
                 //state = quic_s_retry_token_length;
             }

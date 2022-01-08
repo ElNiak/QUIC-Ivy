@@ -4,84 +4,8 @@ include order
 include quic_infer
 include file
 include quic_shim_server
-include quic_locale
-
-#lang ivy1.7
-
-include order
-include quic_infer
-include file
-include quic_shim_server
-include quic_locale
 include random_value
-
-<<<
-
-
-/*
-
- virtual void ivy_assume(bool truth,const char *msg){
-        if (!truth) {
-            int i;
-            __ivy_out << "assumption_failed(\\"" << msg << "\\")" << std::endl;
-            std::string::size_type pos = msg.find('.ivy');
-            char * path = "";
-            if (pos != std::string::npos)
-                path = msg.substr(0, pos);
-
-            char *lineNumber =0;
-            char * command = "sed \'"<< lineNumber << "!d\'"  <<  path;
-            
-            if (system(NULL)) i=system(command);
-            else exit (EXIT_FAILURE);
-            std::cerr << msg << ": error: assumption failed\\n";
-            __ivy_exit(1);
-        }
-    }
-
-
-const quic_version_vals[] = {
-    { 0x00000000, "Version Negotiation" },
-    { 0x51303434, "Google Q044" },
-    { 0x51303530, "Google Q050" },
-    { 0x54303530, "Google T050" },
-    { 0x54303531, "Google T051" },
-    { 0xfaceb001, "Facebook mvfst (draft-22)" },
-    { 0xfaceb002, "Facebook mvfst (draft-27)" },
-    { 0xfaceb00e, "Facebook mvfst (Experimental)" },
-    { 0xff000004, "draft-04" },
-    { 0xff000005, "draft-05" },
-    { 0xff000006, "draft-06" },
-    { 0xff000007, "draft-07" },
-    { 0xff000008, "draft-08" },
-    { 0xff000009, "draft-09" },
-    { 0xff00000a, "draft-10" },
-    { 0xff00000b, "draft-11" },
-    { 0xff00000c, "draft-12" },
-    { 0xff00000d, "draft-13" },
-    { 0xff00000e, "draft-14" },
-    { 0xff00000f, "draft-15" },
-    { 0xff000010, "draft-16" },
-    { 0xff000011, "draft-17" },
-    { 0xff000012, "draft-18", "0xef4fb0abb47470c41befcf8031334fae485e09a0" },
-    { 0xff000013, "draft-19" },
-    { 0xff000014, "draft-20" },
-    { 0xff000015, "draft-21" },
-    { 0xff000016, "draft-22" },
-    { 0xff000017, "draft-23", "0xc3eef712c72ebb5a11a7d2432bb46365bef9f502"},
-    { 0xff000018, "draft-24" },
-    { 0xff000019, "draft-25" },
-    { 0xff00001a, "draft-26" },
-    { 0xff00001b, "draft-27", "0xc3eef712c72ebb5a11a7d2432bb46365bef9f502" },
-    { 0xff00001c, "draft-28" },
-    { 0xff00001d, "draft-29" , "0xafbfec289993d24c9e9786f19c6111e04390a899"},
-    { 0xff00001e, "draft-30" },
-    { 0xff00001f, "draft-31" },
-    { 0xff000020, "draft-32", "0xafbfec289993d24c9e9786f19c6111e04390a899"},
-    { 0, NULL }
-};*/
-
->>>
+include quic_locale
 
 parameter the_cid : cid = 0xd
 parameter client_addr : ip.addr = 0x7f000001
@@ -156,6 +80,7 @@ var sock_vn : net.socket
 instance tls_extensions : vector(tls.extension)
 instance tls_hand_extensions : vector(tls.handshake)
 
+
 # This creates the sockets and also a TLS instance to be used by `the_cid`.
 # TODO: the TLS instance should be created dynamically when the application
 # layer creates a connection. 
@@ -163,7 +88,7 @@ instance tls_hand_extensions : vector(tls.handshake)
 after init {
     sock := net.open(endpoint_id.client,client.ep);
     sock_alt := net.open(endpoint_id.client_alt,client_alt);
-    sock_vn := sock; #net.open(endpoint_id.client_vn,client_vn);
+    sock_vn := net.open(endpoint_id.client_vn,client_vn);
     client.tls_id := 0;
     server.tls_id := 1;
     var extns := tls_extensions.empty;
@@ -238,7 +163,6 @@ action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
 action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
     tls_id := client.tls_id;
 }
-
 #
 # Client HTTP request
 # ===================
@@ -284,7 +208,6 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(it);
     tp.transport_parameters := tp.transport_parameters.append(imsdbr);
     tp.transport_parameters := tp.transport_parameters.append(imsdu);
-
     var icid : initial_source_connection_id; #TODO update v29
     icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
@@ -307,7 +230,7 @@ attribute radix=16
 # Notably, the `intbv` type can be used to represent large numbers with
 # small bit vector enodings.
 
-interpret cid -> longbv[1][13][20]
+interpret cid -> longbv[1][13][30]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
@@ -333,95 +256,19 @@ import action cipher_packet(pkt:stream_data)
 
 import action show_stream(pkt:stream_data)
 
-import action show_connected(c1:bool, c2:cid)
-
 import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
 
 
 
-# This is a simple tester for quic servers. The tester plays the role of a
-# single client, which may use multiple UDP ports.
-#
-# Compile the tester like this:
-#
-#     ivyc target=test quic_server_test.ivy
-#
-# Run it like this:
-#
-#     ./quic_server_test [parameter=value...]
-#
-# Parameters are:
-#
-#     the_cid:int      cid to be used by the client (default 0xd)
-#     client_addr:int  the client IP address (default 0x7f000001, i.e., the loopback interface)
-#     server_addr:int  the server IP address (default 0x7f000001, i.e., the loopback interface)
-#     server_port:int  the server port number (default 4443)
-#     server_cid:int   the initial server CID used by the client (default 0xb)
-#     client_port:int  the client port number (default 4987)
-#     client_port_alt:int     the alternate client port (for migration) (default 4988)
-#     max_stream_data:int     the initial max stream data (0x2000)
-#
-#
-# Notes:
-#
-# - All IP addresses are IPv4 and are given as single 32-bit numbers,
-#   rather than using the dot notation.
-#
-#
-
-# The command-line parameters, with their defaults
-
-#
-# Restrict generation to packets from the designated client endpoints
-# to the server endpoint.
-#
-
-# An endpoint MUST NOT initiate
-#   connection migration before the handshake is confirmed, as defined in
-#   section 4.1.2 of [QUIC-TLS].
-
 var allowed_multiple_migration : bool
-var allowed_migration : bool
 var version_negociated : bool
 var initial_version : version
 
 after init {
-	allowed_multiple_migration := false;
-    allowed_migration := false;
+	allowed_multiple_migration := true;
     version_negociated := false;
     initial_version := 0xff00001d;
 }
-
-after init {
-    supported_versions := versions.empty;
-    var v1 := stream_data.empty;
-    v1 := v1.append(0xff);
-    v1 := v1.append(0x0);
-    v1 := v1.append(0x0);
-    v1 := v1.append(0x1d); # TODO
-    supported_versions := supported_versions.append(v1);
-
-    supported_versions_bv := versions_bv.empty;
-    supported_versions_bv := supported_versions_bv.append(0xff00001d);
-}
-
-# This token MUST be repeated by the client in all
-#    Initial packets it sends for that connection after it receives the
-#    Retry packet. 
-
-# In comparison, a
-#    token obtained in a Retry packet MUST be used immediately during the
-#    connection attempt and cannot be used in subsequent connection
-#    attempts.
-
-# A client MUST
-#    discard a Retry packet that contains a Source Connection ID field
-#    that is identical to the Destination Connection ID field of its
-#    Initial packet TODO
-
-# The client MUST use the value from the Source
-#    Connection ID field of the Retry packet in the Destination Connection
-#    ID field of subsequent packets that it sends.
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
@@ -429,9 +276,9 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         if version_negociated {
             require src = client_vn;
         } else {
-            if ~disable_active_migration.is_set(tp) & allowed_migration {
+            if ~disable_active_migration.is_set(tp) {
                 if ~migration_done | allowed_multiple_migration { 
-                    # only one migration
+                    #only one migration
                     require src = client.ep | src = client_alt;
                 } else {
                     require src = client_alt;
@@ -440,16 +287,8 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
                 require src = client.ep;
             }
         };
-        if pkt.ptype = quic_packet_type.initial {
-            pkt.dst_cid := server_cid; # TODO
-        };
         require dst = server.ep;
-        if pkt.ptype = quic_packet_type.initial & retry_recv & ~zero_length_token {
-            require pkt.token = retry_recv_token;
-        } else {
-            require pkt.token.end = 0; 
-        };
-        
+        require pkt.token.end = 0; 
     };
     if final_version = 0x00000000 {
         #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
@@ -459,6 +298,18 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     } else {
         require pkt.long -> pkt.pversion = final_version
     };
+}
+#  An endpoint cannot send this frame if it was provided with a zero-
+#   length connection ID by its peer.  An endpoint that provides a zero-
+#   length connection ID MUST treat receipt of a RETIRE_CONNECTION_ID
+#   frame as a connection error of type PROTOCOL_VIOLATION.
+
+before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,dcid:cid) {
+    if _generating {
+        require scid = the_cid;
+	    require connected(the_cid) & dcid = connected_to(the_cid);
+        #require scid = 0;
+    }
 }
 
 # The protocol specification describes all the events occurring the
@@ -490,8 +341,7 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
         require f.length > 0;
         require f.offset = stream_length(dcid,f.id);
         require f.length = (stream_app_data_end(dcid,f.id)) - f.offset;
-    };
-
+    }
 }
 
 # We have something similar for crypto frames
@@ -500,17 +350,10 @@ before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) 
     if _generating {
         require scid = the_cid;
         require f.length > 0;
-        call show_crypto_length(crypto_length(scid,e));
-        if e = quic_packet_type.initial & false {
-            require f.offset = 0;
-        } else {
-            require f.offset = crypto_length(scid,e);
-        };
+        require f.offset = crypto_length(scid,e);
         require f.length = (crypto_data_end(scid,e)) - f.offset;
     }
 }
-
-
 
 # Generate ack frames only for the client. HACK: to avoid generating
 # blizzards of ACK's, we set the bit `force_new_ack` which forces
@@ -521,16 +364,6 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
         force_new_ack := true;
-        #call handle_sending_ack(f.largest_acked);
-    } 
-}
-
-before frame.new_token.handle(f:frame.new_token,scid:cid,dcid:cid) {
-    if _generating {
-        require scid = the_cid;
-        #call handle_sending_ack(f.largest_acked);
-    } else {
-        call tls_api.upper.save_token(f.data);
     }
 }
 
@@ -560,19 +393,28 @@ before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     }
 }
 
+
+#   Once a sender indicates a Retire Prior To value, smaller values sent
+#   in subsequent NEW_CONNECTION_ID frames have no effect.  A receiver
+#   MUST ignore any Retire Prior To fields that do not increase the
+#   largest received Retire Prior To value7
+
+# https://github.com/NTAP/quant/issues/68
+
 before frame.new_connection_id.handle(f:frame.new_connection_id,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
+	    require f.length = 8; #[1]
+        f.scid := 0x42;
+        require f.retire_prior_to = 0; #[4]
+        f.seq_num := last_cid_seq(scid) + 0x1;
+        f.token := 42;
+        call show_cid_seq(last_cid_seq(scid));
+        #f.seq_num := seqnum_to_cidseq(last_pkt_num(scid,quic_packet_type.zero_rtt));
     }
 }
 
-
-before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,dcid:cid) {
-    if _generating {
-        require scid = the_cid;
-    }
-}
-
+import action show_cid_seq(c:cid_seq)
 
 # Generate connection_close frames only for the environment process(es).
 #
@@ -582,11 +424,8 @@ before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,d
 before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-        require conn_total_data(the_cid) > 40; # tricks
-        require f.err_code = 0;
     } else {
-        require is_no_error;
-        call _finalize;
+        require is_no_error
     }
 }
 
@@ -595,9 +434,6 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
 before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-    } else {
-        require is_no_error;
-        call _finalize;
     }
 }
 
@@ -628,7 +464,6 @@ before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dci
 before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-        require f.pos = 4000;
     }
     else {
         require ~(max_data_set(scid) & max_data_val(scid) > f.pos);
@@ -658,21 +493,15 @@ after init {
 around client_send_event {
     require s = current_stream;
     var tp := trans_params(the_cid);
-
-    if version_negociated {
-        require src = client_vn;
+    if ~disable_active_migration.is_set(tp)  {
+	 if ~migration_done | allowed_multiple_migration  { #only one migration
+        	 require src = client.ep | src = client_alt;
+	 } else {
+		 require src = client_alt;
+	 }
     } else {
-        if ~disable_active_migration.is_set(tp) {
-            if ~migration_done | allowed_multiple_migration  { #only one migration
-                require src = client.ep | src = client_alt;
-            } else {
-                require src = client_alt;
-            }
-        } else {
-            require src = client.ep;
-        }
+	 require src = client.ep;
     };
-
     require dst = server.ep;
     require connected(the_cid) & dcid = connected_to(the_cid);
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);
@@ -703,15 +532,14 @@ export frame.path_response.handle
 export packet_event
 export client_send_event
 export tls_recv_event
-#export frame.new_connection_id.handle
+
+export frame.new_connection_id.handle
+
 #export frame.retire_connection_id.handle
 #export frame.rst_stream.handle
 #export frame.max_stream_id.handle
-export frame.connection_close.handle
+#export frame.connection_close.handle
 #export frame.max_stream_data.handle
-#export frame.max_data.handle
-attribute frame.crypto.handle.weight = "5"
-attribute frame.path_response.handle.weight = "5"
 
 # Final check
 #
@@ -724,4 +552,5 @@ export action _finalize = {
     # chris TODO 
     require conn_total_data(the_cid) > 0;
 }
+
 

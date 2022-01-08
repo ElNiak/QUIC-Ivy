@@ -185,6 +185,7 @@ import action show_iretry(v:itoken)
 
 
 relation init_token
+relation token_saved
 relation zero_length_token
 function rscid : cid
 function send_token : stream_data
@@ -192,6 +193,7 @@ function send_token : stream_data
 after init {
     init_token :=  false;
     zero_length_token := false;
+    token_saved := true;
 }
 
 
@@ -217,7 +219,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
                                            pkt.pversion,
                                            scid_size_pos(true),dcid,
                                            dcid_size_pos(true),scid,
-                                           pkt.token, last_pkt_num(scid,quic_packet_type.initial),h_retry);
+                                           pkt.token, last_pkt_num(scid,quic_packet_type.initial),h_retry,token_saved);
 
         #call show_iretry(bytes_to_itoken_2(expected_itoken));
         # call show_iretry(bytes_to_itoken(expected_itoken));
@@ -280,7 +282,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     retry_send(dcid) := true;
     retry_token(dcid) := pkt.token;
 
-    if pkt.ptype = quic_packet_type.retry & ~_generating {
+    if ~_generating {
         conn_requested(src,dst,scid) := false;
         conn_requested(src,dst,dcid) := false;
         connected(dcid) :=  false;
@@ -302,8 +304,8 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
         call tls_api.upper.destroy(0);
         call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
         #call show_initial_request_retry;
-        call tls_client_initial_request(src,dst,server_cid,final_version); #TODO 
-        #call tls_client_initial_response(src,dst,spkt);
+        call tls_client_initial_request(src,dst,scid,pkt.pversion,0); #TODO 
+        #call tls_api.upper.start_handshake(0);
         conn_requested(src,dst,the_cid) := true;
     };
 
@@ -315,6 +317,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 
         conn_seen(pkt.dst_cid) := false;
         conn_seen(the_cid) := false;
+        #conn_seen(scid) := false;
     };
 }
 

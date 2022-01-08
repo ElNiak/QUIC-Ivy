@@ -1,10 +1,8 @@
 #lang ivy1.7
 
 include order
-include quic_connection
 include quic_infer
 include file
-include quic_shim
 include quic_shim_client
 include quic_locale
 include quic_client
@@ -283,7 +281,7 @@ around client_send_event {
 export frame.ack.handle
 export frame.stream.handle
 export frame.crypto.handle
-export frame.path_response.handle
+export frame.path_response.handle #challenge ?
 export frame.handshake_done.handle
 #attribute frame.handshake_done.handle.weight = "0.02"
 export packet_event
@@ -305,6 +303,7 @@ export tls_recv_event
 # action with additional checks.
 
 export action _finalize = {
+    require is_no_error;
     require conn_total_data(the_cid) > 0;
 }
 
