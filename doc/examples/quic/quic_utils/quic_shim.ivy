@@ -13,6 +13,7 @@ include quic_deser_zerortt
 include quic_ser_zerortt
 include quic_protection
 include random_value
+include quic_endpoint
 
 # TODO import show_stream for debug
 
@@ -70,7 +71,14 @@ var h_retry : stream_pos
 
 
 relation multiple_client
-function second_client : ip.endpoint
+
+#object multiple_endpoint = {
+instance second_client : quic_endpoint(endpoint_id.client_alt)
+instance second_server : quic_endpoint(endpoint_id.server_2)
+#}
+
+var the_cid_2 : cid
+var server_cid_2 : cid
 
 after init {
     multiple_client := false;
@@ -132,7 +140,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
 
     while idx < pkts.end {
         var ppkt := pkts.value(idx);
-        var tls_id := dst_tls_id(dst);
+        var tls_id := src_tls_id(dst); # todo multiple
         var header := ppkt.value(0);
         var hdr_type : type_bits := bfe[0][6](ppkt.value(0));
         var tt := bvand(hdr_type,0x30);
@@ -168,7 +176,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         var bversion := bytes_to_version(version);
         #call show_version(bversion);
             if host = endpoint_id.server 
-                    & tt = 0x00  { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
+                    & bvand(ppkt.value(0),0xf0) = 0xc0   { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
                 # for client test
                 #if (retry_client_test -> retry_sent) {
                     call tls_client_initial_response(src,dst,ppkt)
@@ -210,6 +218,10 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                         if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
                             # for client test
                             call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
+                        };
+                        if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid_2) { 
+                            # for client test
+                            call app_server_open_event(dst,src,the_cid_2,pkt.src_cid);  # [1]
                         }
                     };
                 } else {
@@ -306,7 +318,7 @@ import action show_tls_id_to_cid(ver:cid)
 
 after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream_data) {
     if dst_is_generated(dst) {
-        call tls_api.lower.recv(dst_tls_id(dst),data,0); # TODO: fill in the encryption level
+        call tls_api.lower.recv(src_tls_id(dst),data,0); # TODO: fill in the encryption level
     }
 }
 
@@ -647,7 +659,7 @@ import action show_version(ver:version)
 #   We simply resend Initial packet
 
 after tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
-    var tls_id := dst_tls_id(dst);
+    var tls_id := src_tls_id(src);
     var dcil : stream_pos := bfe[0][7](spkt.value(5));
     var dcid := prot.bytes_to_cid(spkt.segment(6,6+dcil));
     var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));

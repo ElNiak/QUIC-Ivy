@@ -3,14 +3,8 @@
 include order
 include quic_infer
 include file
-include quic_shim_server
-include quic_locale
-
-#lang ivy1.7
-
-include order
-include quic_infer
-include file
+include quic_endpoint
+include quic_shim
 include quic_shim_server
 include quic_locale
 include random_value
@@ -87,6 +81,7 @@ parameter the_cid : cid = 0xd
 parameter client_addr : ip.addr = 0x7f000001
 parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4443
+parameter server_port_2 : ip.port = 4443
 parameter server_cid  : cid = 0xb
 parameter client_port : ip.port = 4987
 parameter client_port_alt : ip.port = 4988
@@ -101,52 +96,27 @@ parameter max_stream_data : stream_pos = 0x2000
 #
 
 # Mandatory for longbv else truncated
+
 after init {
     the_cid := 0x1; # 0x0;
     server_cid := 0x2; # 0x1;
-}
-
-# We use this type as a host id. There are two client host ids so we
-# can model migration.
-
-object endpoint_id = {
-    type this = {client, client_alt, client_vn, server}
-}
-
-action endpoint_id_addr(ep_id : endpoint_id) returns (ep:ip.endpoint) = {
-    ep.protocol := ip.udp;
-    ep.addr := server_addr if ep_id = endpoint_id.server else client_addr;   # the loop-back addr
-    ep.port := client_port if ep_id = endpoint_id.client
-               else (client_port_alt if ep_id = endpoint_id.client_alt
-               else (client_port_vn if ep_id = endpoint_id.client_vn
-               else server_port));
+    the_cid_2 := 0x3; # 0x0;
+    server_cid_2 := 0x4; # 0x1;
 }    
 
-module quic_endpoint(ep_id) = {
-    var ep : ip.endpoint
-    var tls_id : tls_api.id
-    var enc_level : quic_packet_type
-    after init {
-        ep := endpoint_id_addr(ep_id);
-        enc_level := quic_packet_type.initial;
-    }
-}
     
 # create a client and server. the client has an instance of TLS
 
 instance client : quic_endpoint(endpoint_id.client)
-instance client_2 : quic_endpoint(endpoint_id.client_alt)
 instance server : quic_endpoint(endpoint_id.server)
 
 # An ip endpoint for the client to migrate to.
 
-var client_alt : ip.endpoint
 var client_vn : ip.endpoint
+var client_alt : ip.endpoint
 
 after init {
-    client_alt := endpoint_id_addr(endpoint_id.client_alt);
     client_vn := endpoint_id_addr(endpoint_id.client_vn);
-    second_client := endpoint_id_addr(endpoint_id.client_alt);
     multiple_client := true;
 }
 
@@ -165,13 +135,17 @@ instance tls_hand_extensions : vector(tls.handshake)
 
 # https://github.com/private-octopus/picoquic/issues/923
 
+# import second_client
+# import second_server
+
 after init {
     sock := net.open(endpoint_id.client,client.ep);
-    sock_alt := net.open(endpoint_id.client_alt,client_2.ep);
-    sock_vn := sock; #net.open(endpoint_id.client_vn,client_vn);
+    sock_alt := net.open(endpoint_id.client_alt,second_client.ep);
+    sock_vn := sock; #net.open(endpclientoint_id.client_vn,client_vn);
     client.tls_id := 0;
-    client_2.tls_id := 2;
+    second_client.tls_id := 2;
     server.tls_id := 1;
+    second_server.tls_id := 3;
     var extns := tls_extensions.empty;
     extns := extns.append(make_transport_parameters);
     call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
@@ -179,8 +153,9 @@ after init {
 
 after init {
     var extns2 := tls_extensions.empty;
-    #extns2 := extns2.append(make_transport_parameters2);
-    call tls_api.upper.create_no_hs(2,false,extns2);  # false means this instance of tls is not a server
+    extns2 := extns2.append(make_transport_parameters_c2);
+    #call tls_api.upper.create_no_hs(2,false,extns2);  # false means this instance of tls is not a server
+    call tls_api.upper.create(2,false,extns2);  # false means this instance of tls is not a server
 }
 
 # Here we have a bunch of conversions that map between cid's, IP
@@ -192,7 +167,7 @@ after init {
 action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
     if src = client.ep {
         pid := endpoint_id.client;
-    } else if src = client_2.ep {
+    } else if src = second_client.ep {
         pid:= endpoint_id.client_alt;
     } else if src = client_vn {
         pid:= endpoint_id.client_vn;
@@ -202,7 +177,9 @@ action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
 # Get the IP endpoint associated to a host id and socket number.
 
 action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
-    src := client.ep if host = endpoint_id.client else (client_vn if version_negociated else client_2.ep)
+    src := client.ep if host = endpoint_id.client 
+    else (client_vn if version_negociated 
+    else second_client.ep)
 }
     
 # Get the socket number associated to an IP endpoint.
@@ -210,7 +187,7 @@ action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) 
 action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
     if src = client.ep {
         socket := sock;
-    } else if src = client_2.ep {
+    } else if src = second_client.ep {
         socket := sock_alt;
     } else if src = client_vn {
         socket := sock_vn;
@@ -221,36 +198,48 @@ action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
 # TODO: this shouldn't be needed.
 
 action tls_id_to_src(tls_id:tls_api.id) returns (src:ip.endpoint) = {
-    src := client.ep if tls_id = client.tls_id & ~version_negociated else (client_vn if tls_id = client.tls_id & version_negociated else (client_alt if tls_id = client_2.tls_id & ~version_negociated else server.ep));
+    src := client.ep if tls_id = client.tls_id & ~version_negociated 
+    else (second_client.ep if tls_id = second_client.tls_id & ~version_negociated 
+    else (second_server.ep if tls_id = second_server.tls_id 
+    else server.ep));
 }
 
 # Get the destination IP endpoint associated to a TLS instance
 # TODO: this shouldn't be needed.
 
 action tls_id_to_dst(tls_id:tls_api.id) returns (dst:ip.endpoint) = {
-    dst := server.ep if tls_id = client.tls_id  |  tls_id = client_2.tls_id else client.ep; # TODO
+    dst := server.ep if tls_id = client.tls_id 
+    else (second_server.ep if tls_id = second_client.tls_id
+    else (client.ep if tls_id = server.tls_id
+    else second_client.ep)); # TODO
 }
 
 # Get cid associated to a TLS instance
 
 action tls_id_to_cid(tls_id:tls_api.id) returns (scid:cid) = {
-    scid := the_cid;
+    scid := the_cid_2 if tls_id = second_client.tls_id 
+    else the_cid;
 }
 
 # Returns true if an IP endpoint is controlled by the generator.
 # TODO: shouldn't be needed.
 
 action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
-    res := dst = client.ep | dst = client_2.ep | dst = client_vn
+    res := dst = client.ep | dst = second_client.ep | dst = client_vn
 }
 
 # Returns the TLS instance associated to a destination IP endppoint.
 # TODO: shouldn't be needed.
 
 action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
-    tls_id := client.tls_id; #TODO
+    tls_id := client.tls_id if dst = server.ep 
+    else second_client.tls_id; #TODO
 }
 
+action src_tls_id(src:ip.endpoint) returns (tls_id:tls_api.id) = {
+    tls_id := client.tls_id if src = client.ep 
+    else second_client.tls_id; #TODO
+}
 
 #
 # Client HTTP request
@@ -274,6 +263,7 @@ after init {
 
 after init {
     nonce_cid(the_cid) := server_cid;
+    nonce_cid(the_cid_2) := server_cid_2;
 }
 
 #
@@ -310,7 +300,34 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
 }
 
+action make_transport_parameters_c2 returns (tp:quic_transport_parameters) = {
+    var imsdbl : initial_max_stream_data_bidi_local;
+    imsdbl.stream_pos_32 := max_stream_data;
+    var imd : initial_max_data;
+    imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
+    var it : max_idle_timeout;
+    it.seconds_16 := random_microsecs(0,0xFFFFFFF);
+    var imsdbr : initial_max_stream_data_bidi_remote;
+    imsdbr.stream_pos_32 := max_stream_data;
+    var imsdu : initial_max_stream_data_uni;
+    imsdu.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
+    tp.transport_parameters := tp.transport_parameters.append(imsdbl);
+    tp.transport_parameters := tp.transport_parameters.append(imd);
+    tp.transport_parameters := tp.transport_parameters.append(it);
+    tp.transport_parameters := tp.transport_parameters.append(imsdbr);
+    tp.transport_parameters := tp.transport_parameters.append(imsdu);
 
+    var icid : initial_source_connection_id; #TODO update v29
+    icid.scid := the_cid_2;
+    tp.transport_parameters := tp.transport_parameters.append(icid);
+
+    var no_migration : disable_active_migration; #TODO update v29
+    tp.transport_parameters := tp.transport_parameters.append(no_migration);
+
+    var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
+    max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
+    tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
+}
 
 # This causes the log of events to be printed using hex numbers.
 
@@ -441,24 +458,21 @@ after init {
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-        var tp := trans_params(the_cid);
-        if version_negociated {
-            require src = client_vn;
-        } else {
-            if ~disable_active_migration.is_set(tp) & allowed_migration {
-                if ~migration_done | allowed_multiple_migration { 
-                    # only one migration
-                    require src = client.ep | src = client_2.ep;
-                } else {
-                    require src = client_2.ep;
-                }
-            } else {
-                require src = client.ep;
-            }
-        };
-        if pkt.ptype = quic_packet_type.initial {
-            pkt.dst_cid := server_cid; # TODO
-        };
+        require src = client.ep | src = second_client.ep;
+        #require (pkt.ptype = quic_packet_type.initial & src = client.ep -> pkt.dst_cid = server_cid) & (pkt.ptype = quic_packet_type.initial & src = second_client.ep -> pkt.dst_cid = server_cid_2);
+        require (pkt.ptype = quic_packet_type.initial & pkt.dst_cid = server_cid -> src = client.ep) & (pkt.ptype = quic_packet_type.initial &  pkt.dst_cid = server_cid_2 -> src = second_client.ep);
+        require (src = client.ep <-> pkt.dst_cid = connected_to(the_cid)) | (src = second_client.ep <-> pkt.dst_cid = connected_to(the_cid_2));
+
+        # if src = second_client.ep {
+        #     if pkt.ptype = quic_packet_type.initial {
+        #         pkt.dst_cid := server_cid_2; # TODO
+        #     };
+        # } else {
+        #     require src = client.ep;  # if src = client.ep 
+        #     if pkt.ptype = quic_packet_type.initial {
+        #         pkt.dst_cid := server_cid; # TODO
+        #     };
+        # };
         require dst = server.ep;
         if pkt.ptype = quic_packet_type.initial { # & retry_recv & ~zero_length_token
             # var expected_token := tls_api.upper.get_old_retry_token(0);
@@ -466,8 +480,13 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             # #require pkt.token.end = expected_token.end;
             # pkt.token := expected_token;
             #require pkt.token = retry_recv_token;
-            var expected_token := tls_api.upper.get_old_new_token(0);
-            pkt.token := expected_token;
+            if src = second_client.ep {
+                var expected_token := tls_api.upper.get_old_new_token(2);
+                pkt.token := expected_token;
+            } else {
+                var expected_token := tls_api.upper.get_old_new_token(0);
+                pkt.token := expected_token;
+            };
         } else {
             require pkt.token.end = 0; 
         };
@@ -506,8 +525,8 @@ import action show_token_retry(v:stream_data)
 
 before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
-        require scid = the_cid;
-        require connected(the_cid) & dcid = connected_to(the_cid);
+        require scid = the_cid | scid = the_cid_2;
+        require (connected(the_cid) & dcid = connected_to(the_cid)) | (connected(the_cid_2) & dcid = connected_to(the_cid_2));
         require f.len & f.off; 
         require f.length > 0;
         require f.offset = stream_length(dcid,f.id);
@@ -520,7 +539,7 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
 
 before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
         require f.length > 0;
         call show_crypto_length(crypto_length(scid,e));
         if e = quic_packet_type.initial & false {
@@ -541,7 +560,7 @@ before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) 
 
 before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
         force_new_ack := true;
         #call handle_sending_ack(f.largest_acked);
     } 
@@ -551,7 +570,7 @@ before frame.ack.handle(f:frame.ack,scid:cid,dcid:cid) {
 
 before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
         require f.id = 4;
     }
 }
@@ -560,7 +579,7 @@ before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
 
 before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
         require f.id = 4;
     }
 }
@@ -569,20 +588,20 @@ before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
 
 before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
     }
 }
 
 before frame.new_connection_id.handle(f:frame.new_connection_id,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
     }
 }
 
 
 before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
     }
 }
 
@@ -594,8 +613,7 @@ before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,d
 
 before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
-        require conn_total_data(the_cid) > 30; # tricks
+        require (scid = the_cid & conn_total_data(the_cid) > 100) & (scid = the_cid_2 & conn_total_data(the_cid_2) > 100);
         require f.err_code = 0;
     } else {
         require is_no_error;
@@ -607,7 +625,9 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
 
 before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
+        require (conn_total_data(the_cid) > 30) & (conn_total_data(the_cid_2) > 30); # tricks
+        require f.err_code = 0;
     } else {
         require is_no_error;
         call _finalize;
@@ -619,7 +639,7 @@ before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:ci
 
 before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
         require 4 <= f.id & f.id <= 16;
     }
 }
@@ -629,7 +649,7 @@ before frame.max_stream_data.handle(f:frame.max_stream_data,scid:cid,dcid:cid) {
 
 before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
         require f.id = 4;
     }
 }
@@ -640,11 +660,11 @@ before frame.stream_data_blocked.handle(f:frame.stream_data_blocked,scid:cid,dci
 
 before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid) {
     if _generating {
-        require scid = the_cid;
+        require scid = the_cid | scid = the_cid_2;
         require f.pos = 4000;
     }
     else {
-        require ~(max_data_set(scid) & max_data_val(scid) > f.pos);
+        require ~(max_data_set(scid) & max_data_val(scid) > f.pos); #TODO
         var tp := trans_params(scid);
         if initial_max_data.is_set(tp) {
 # TEMORARY: commented out until fixed
@@ -670,27 +690,15 @@ after init {
 
 around client_send_event {
     require s = current_stream;
-    var tp := trans_params(the_cid);
-
-    if version_negociated {
-        require src = client_vn;
-    } else {
-        if ~disable_active_migration.is_set(tp) {
-            if ~migration_done | allowed_multiple_migration  { #only one migration
-                require src = client.ep | src = client_2.ep;
-            } else {
-                require src = client_2.ep;
-            }
-        } else {
-            require src = client.ep;
-        }
-    };
-
+    #require (pkt.dst_cid = server_cid -> src = client.ep) & (pkt.dst_cid = server_cid_2 -> src = second_client.ep);
+    require src = client.ep | src = second_client.ep;
     require dst = server.ep;
-    require connected(the_cid) & dcid = connected_to(the_cid);
+    require ((connected(the_cid) & dcid = connected_to(the_cid))) | (connected(the_cid_2) & dcid = connected_to(the_cid_2));
+    #require (dcid = connected_to(the_cid) -> src = client.ep) & (dcid =  connected_to(the_cid_2) -> src = second_client.ep);
+    require (src = client.ep <-> dcid = connected_to(the_cid)) | (src = second_client.ep <-> dcid = connected_to(the_cid_2));
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);
     require stream_length(dcid,s) < end & end <= http_request.end;
-    require current_stream < 60;
+    require current_stream < 120;
     ...
     while end < http_request.end & http_request.value(end) ~= 10 {
         end := end.next
@@ -736,5 +744,6 @@ attribute frame.path_response.handle.weight = "5"
 export action _finalize = {
     # chris TODO 
     require conn_total_data(the_cid) > 0;
+    require conn_total_data(the_cid_2) > 0;
 }
 

@@ -38,32 +38,32 @@ after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {  # & ~conn_closed(pkt.the_cid)
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt,false);
-        var tls_id := dst_tls_id(dst);
+        var tls_id := src_tls_id(src);
         var ppkt := prot.encrypt(tls_id,rnum,spkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
         call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
-        if multiple_client {
-            if pkt.ptype = quic_packet_type.initial{
-                var extns := tls_extensions.empty;
-                var hand_extns := tls_hand_extensions.empty;
-                extns := extns.append(make_transport_parameters2);
-                call tls_api.upper.add_extensions(2,false,extns,hand_extns);
-                call tls_api.upper.start_handshake(2);
-                # var extns2 := tls_extensions.empty;
-                # extns2 := extns2.append(make_transport_parameters2);
-                # call tls_api.upper.create(2,false,extns2);  # false means this instance of tls is not a server
-            };
-            pkt.src_cid := 0x42;
-            # pkt.dst_cid := 0x43;
-            var spkt2 := pkt_serdes.to_bytes(pkt);
-            var rnum2 := reference_pkt_num(spkt2,false);
-            var tls_id2 : tls_api.id := 2;
-            var ppkt2 := prot.encrypt(tls_id2,rnum2,spkt2);
-            var pkts2 := prot.arr.empty;
-            pkts2 := pkts2.append(ppkt2);
-            call net.send(endpoint_to_pid(second_client),endpoint_to_socket(second_client),dst,pkts2);
-        };
+        # if multiple_client {
+        #     if pkt.ptype = quic_packet_type.initial{
+        #         var extns := tls_extensions.empty;
+        #         var hand_extns := tls_hand_extensions.empty;
+        #         extns := extns.append(make_transport_parameters2);
+        #         call tls_api.upper.add_extensions(2,false,extns,hand_extns);
+        #         call tls_api.upper.start_handshake(2);
+        #         # var extns2 := tls_extensions.empty;
+        #         # extns2 := extns2.append(make_transport_parameters2);
+        #         # call tls_api.upper.create(2,false,extns2);  # false means this instance of tls is not a server
+        #     };
+        #     pkt.src_cid := 0x42;
+        #     # pkt.dst_cid := 0x43;
+        #     var spkt2 := pkt_serdes.to_bytes(pkt);
+        #     var rnum2 := reference_pkt_num(spkt2,false);
+        #     var tls_id2 : tls_api.id := 2;
+        #     var ppkt2 := prot.encrypt(tls_id2,rnum2,spkt2);
+        #     var pkts2 := prot.arr.empty;
+        #     pkts2 := pkts2.append(ppkt2);
+        #     call net.send(endpoint_to_pid(multiple_endpoint.second_client),endpoint_to_socket(multiple_endpoint.second_client),dst,pkts2);
+        # };
     }
 }
 
@@ -100,6 +100,9 @@ action make_transport_parameters2 returns (tp:quic_transport_parameters) = {
 after packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
     if _generating {  # & ~conn_closed(pkt.the_cid)
         var spkt := pkt_serdes_vn.to_bytes(pkt);
+        # var rnum := reference_pkt_num(spkt,false);
+        # var tls_id := dst_tls_id(dst);
+        # var ppkt := prot.encrypt(tls_id,rnum,spkt); # no encryption ?
         var pkts := prot.arr.empty;
         pkts := pkts.append(spkt);
         call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
@@ -119,7 +122,7 @@ after packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
     if _generating {  # & ~conn_closed(pkt.the_cid)
         var spkt := pkt_serdes_0rtt.to_bytes(pkt);
         var pkts := prot.arr.empty;
-        var tls_id := dst_tls_id(dst);
+        var tls_id := src_tls_id(src);
         var rnum := reference_pkt_num(spkt,false);
         var ppkt := prot.encrypt_rtt(tls_id,rnum,spkt);
         pkts := pkts.append(ppkt);

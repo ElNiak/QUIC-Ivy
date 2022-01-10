@@ -337,7 +337,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    dcid := cid_to_aid(dcid);
     };
 
-    if src = client_alt | dst = client_alt {
+    if (src = client_alt | dst = client_alt) & ~multiple_client {
 	    migration_done := true;
 	    #call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
@@ -419,11 +419,14 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
     # Removed for MVFST that start with big PKT_NUM
     if  _generating {
-        #client
-    	require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
-        require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
+        # if ~is_client(scid) {
+        #     #client
+        #     require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
+        #     require pkt.seq_num <= last_pkt_num(scid,pkt.ptype) + 0x15;
+        # } else {
         #server
-        #require pkt.seq_num = last_pkt_num(scid,pkt.ptype) + 0x1; # OK
+        require pkt.seq_num = last_pkt_num(scid,pkt.ptype) + 0x1; # OK
+        # };
         
         #require pkt.seq_num < last_pkt_num(scid,pkt.ptype) + 0x1 & pkt.seq_num > last_pkt_num(scid,pkt.ptype);
     };
@@ -517,11 +520,11 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         # An initial packet with an unseen destination cid is a connection request.
         if ~conn_seen(dcid)  {#TODO | (retry_response & ~init_token)
             call show_initial_request_initial;
-            call tls_client_initial_request(src,dst,dcid,pkt.pversion,0);
+            call tls_client_initial_request(src,dst,dcid,pkt.pversion,src_tls_id(src));
             conn_requested(src,dst,scid) := true;
             # if multiple_client {
-            #     call tls_client_initial_request(second_client,dst,dcid,pkt.pversion,2);
-            #     conn_requested(second_client,dst,0x0000000000000042) := true;
+            #     call tls_client_initial_request(multiple_endpoint.second_client,dst,dcid,pkt.pversion,2);
+            #     conn_requested(multiple_endpoint.second_client,dst,0x0000000000000042) := true;
             # };
             if retry_response {
                 retry_rsp := false;
@@ -593,7 +596,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     if pkt.ptype = quic_packet_type.initial & ~first_initial_send & zero_rtt_allowed {
         first_initial_send := true;
-        queued_level(the_cid) := quic_packet_type.zero_rtt;
+        queued_level(the_cid) := quic_packet_type.zero_rtt; # todo multiple client
     } else {
         first_initial_send := false;
     };
@@ -610,6 +613,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     queued_ack_eliciting(scid) := false;
 #Hamid
 }
+
+
 
 # around packet_event_multiple_src(src1:ip.endpoint, src2:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 #     #call show_connected(connected(the_cid), connected_to(the_cid));

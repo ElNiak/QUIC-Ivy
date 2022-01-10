@@ -11,6 +11,7 @@ parameter the_cid : cid = 0xd
 parameter client_addr : ip.addr = 0x7f000001
 parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4443
+parameter server_port_2 : ip.port = 4443
 parameter server_cid  : cid = 0xb
 parameter client_port : ip.port = 4987
 parameter client_port_alt : ip.port = 4988
@@ -33,28 +34,11 @@ after init {
 # We use this type as a host id. There are two client host ids so we
 # can model migration.
 
-object endpoint_id = {
-    type this = {client, client_alt, client_vn, server}
-}
 
-action endpoint_id_addr(ep_id : endpoint_id) returns (ep:ip.endpoint) = {
-    ep.protocol := ip.udp;
-    ep.addr := server_addr if ep_id = endpoint_id.server else client_addr;   # the loop-back addr
-    ep.port := client_port if ep_id = endpoint_id.client
-               else (client_port_alt if ep_id = endpoint_id.client_alt
-               else (client_port_vn if ep_id = endpoint_id.client_vn
-               else server_port));
-}    
 
-module quic_endpoint(ep_id) = {
-    var ep : ip.endpoint
-    var tls_id : tls_api.id
-    var enc_level : quic_packet_type
-    after init {
-        ep := endpoint_id_addr(ep_id);
-        enc_level := quic_packet_type.initial;
-    }
-}
+
+
+include quic_endpoint
     
 # create a client and server. the client has an instance of TLS
 
@@ -162,6 +146,11 @@ action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
 
 action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
     tls_id := client.tls_id;
+}
+
+action src_tls_id(src:ip.endpoint) returns (tls_id:tls_api.id) = {
+    tls_id := client.tls_id if src = client.ep 
+    else second_client.tls_id; #TODO
 }
 #
 # Client HTTP request

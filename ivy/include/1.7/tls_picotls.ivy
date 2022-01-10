@@ -1863,9 +1863,9 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                 fclose(fp);
                 bool is_error = false;
                 if(line != NULL) { 
-                    std::cerr << "NTFILE 1 " << line << std::endl;
+                    // std::cerr << "NTFILE 1 " << line << std::endl;
                     int hex_len = strlen(line);
-                    std::cerr << "NTFILE hex_len " << hex_len << std::endl;
+                    // std::cerr << "NTFILE hex_len " << hex_len << std::endl;
                     uint8_t secret[hex_len/2];
                     for (int j = 0; j < hex_len/2; j++) {
                         int a = ws_xton(line[j*2]);
@@ -1878,9 +1878,9 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                             break;
                         }
                         secret[j] = a << 4 | b;
-                        std::cerr << "NTFILE a " << a << std::endl;
-                        std::cerr << "NTFILE b " << b << std::endl;
-                        std::cerr << "NTFILE secret[j] " << secret[j] << std::endl;
+                        // std::cerr << "NTFILE a " << a << std::endl;
+                        // std::cerr << "NTFILE b " << b << std::endl;
+                        // std::cerr << "NTFILE secret[j] " << secret[j] << std::endl;
                     }  
                     std::cerr << "NTFILE 2 " << secret << std::endl;
                     /*for(int i = (hex_len/2)-1; i >=0 && !is_error; i--)
