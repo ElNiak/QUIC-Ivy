@@ -1539,13 +1539,15 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         }
         else {
             std::cerr << "PROUT " << is_zrtt << std::endl;
-            ctx->ticket_lifetime = 60 * 60 * 24;
-            ctx->require_dhe_on_psk = 0;
+            // ctx->ticket_lifetime = 60 * 60 * 24;
+            // ctx->require_dhe_on_psk = 0;
+            ctx->ticket_lifetime = 0; // no ticket? was: 100000; /* 100,000 seconds, a bit more than one day */
+            ctx->require_dhe_on_psk = 1;
         }
         ctx->max_early_data_size = 0xFFFFFFFF;
         ctx->omit_end_of_early_data = 1;
 
-        ctx->use_exporter = 1; // master secrets should be recorded
+        //ctx->use_exporter = 1; // master secrets should be recorded
        
         ptls_handshake_properties_t *handshake_properties = new ptls_handshake_properties_t; 
         memset(handshake_properties, 0, sizeof(ptls_handshake_properties_t));
@@ -1790,9 +1792,9 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                             break;
                         }
                         secret[j] = a << 4 | b;
-                        std::cerr << "TEST_ST a " << a << std::endl;
-                        std::cerr << "TEST_ST b " << b << std::endl;
-                        std::cerr << "TEST_ST secret[j] " << secret[j] << std::endl;
+                        // std::cerr << "TEST_ST a " << a << std::endl;
+                        // std::cerr << "TEST_ST b " << b << std::endl;
+                        // std::cerr << "TEST_ST secret[j] " << secret[j] << std::endl;
                     }  
                     std::cerr << "TEST_ST 2 " << secret << std::endl;
                     /*for(int i = (hex_len/2)-1; i >=0 && !is_error; i--)
@@ -1927,7 +1929,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
     
             std::cerr << "get_session_lifetime   1 "  <<  c << "\n";
 
-            std::cerr << s->gs->state << "\n";
+            //std::cerr << s->gs->state << "\n";
             //picotls_connection *s = `cid_map`[c];
             //size_t in_epoch = ptls_get_read_epoch(s->gs);
 
@@ -2055,7 +2057,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
 
         ptls_iovec_t uh = ptls_iovec_init(s->message.base, (s->message.base + PTLS_HANDSHAKE_HEADER_SIZE) - s->message.base);
         std::cerr << "compute_binder uh.len " << uh.len <<"\n";
-         std::cerr << "compute_binder s->message.off " << s->message.off <<"\n";
+        std::cerr << "compute_binder s->message.off " << s->message.off <<"\n";
         ptls__key_schedule_update_hash(ptls->key_schedule, uh.base, uh.len);
 
         int binder_length3 = ptls->key_schedule->hashes[0].algo->digest_size;

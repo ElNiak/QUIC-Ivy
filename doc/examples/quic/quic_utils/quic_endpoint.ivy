@@ -1,7 +1,7 @@
 #lang ivy1.7
 
 object endpoint_id = {
-    type this = {client, client_alt, client_vn, server, server_2}
+    type this = {client, client_alt, client_vn, server, server_2, mim}
 }
 
 # We use this type as a host id. There are two client host ids so we
@@ -9,12 +9,15 @@ object endpoint_id = {
 
 action endpoint_id_addr(ep_id : endpoint_id) returns (ep:ip.endpoint) = {
     ep.protocol := ip.udp;
-    ep.addr := server_addr if ep_id = endpoint_id.server | ep_id = endpoint_id.server_2  else client_addr;   # the loop-back addr
+    ep.addr := server_addr if ep_id = endpoint_id.server | ep_id = endpoint_id.server_2  
+                    else (server_addr if ep_id = endpoint_id.mim
+                    else client_addr);   # the loop-back addr
     ep.port := client_port if ep_id = endpoint_id.client
+               else (4444 if ep_id = endpoint_id.mim
                else (client_port_alt if ep_id = endpoint_id.client_alt
                else (client_port_vn if ep_id = endpoint_id.client_vn
                else (server_port_2 if ep_id = endpoint_id.server_2
-               else server_port)));
+               else server_port))));
 }
 
 module quic_endpoint(ep_id) = {

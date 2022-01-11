@@ -136,8 +136,7 @@ action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
 }
 
 action src_tls_id(src:ip.endpoint) returns (tls_id:tls_api.id) = {
-    tls_id := server.tls_id if src = server.ep 
-    else second_server.tls_id; #TODO
+    tls_id := server.tls_id; #TODO
 }
 
 

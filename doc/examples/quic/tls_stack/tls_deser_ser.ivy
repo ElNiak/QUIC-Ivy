@@ -302,7 +302,7 @@ object tls_ser_server = {}
                     res.resize(res.size() + flb);
                 }
             }
-            else if (//name != "tls.early_data"  && // && name != "tls.pre_shared_key_client" && name != "identity" 
+            else if (name != "tls.early_data"  && // && name != "tls.pre_shared_key_client" && name != "identity" 
              tls_field_length_bytes_map.find(name) != tls_field_length_bytes_map.end()) {
                 flb = tls_field_length_bytes_map[name];
 		        std::cerr << "ser-open_field: flb : " << flb << std::endl;

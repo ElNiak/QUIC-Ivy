@@ -71,10 +71,13 @@ var h_retry : stream_pos
 
 
 relation multiple_client
+relation is_mim
 
 #object multiple_endpoint = {
 instance second_client : quic_endpoint(endpoint_id.client_alt)
 instance second_server : quic_endpoint(endpoint_id.server_2)
+instance mim : quic_endpoint(endpoint_id.mim)
+
 #}
 
 var the_cid_2 : cid
@@ -82,6 +85,7 @@ var server_cid_2 : cid
 
 after init {
     multiple_client := false;
+    is_mim := false;
 }
 
 after init {
@@ -175,11 +179,39 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         #if is_long { & ptype = 0xc0
         var bversion := bytes_to_version(version);
         #call show_version(bversion);
+
+        if is_mim & ~src.port = 4444 { # todo condition, only for client test now
+            call recv_packet_mim(src,dst,ppkt);
+            # forward packet
+            var pkts_mim := prot.arr.empty;
+            pkts_mim := pkts_mim.append(ppkt);
+            #call net.send(endpoint_id.server,endpoint_to_socket(src),dst,pkts_mim);
+            client.ep := src; # TODO: migration?
+            negocation_of_version := true;
+            var dcil : stream_pos := bfe[0][7](ppkt.value(5));
+            var ikm := cid_to_bytes(0,1); # dcid
+            if(~dcil = 0) {
+                client_initial_dcid_size := dcil;
+                ikm := ppkt.segment(6,6+dcil); # dcid
+            };
+            var scil : stream_pos := bfe[0][7](ppkt.value(6+dcil));
+            var skm := cid_to_bytes(0,1); # scid
+            if(~scil = 0) {
+                client_initial_scid_size := scil;
+                client_present_scid := true;	
+                skm := ppkt.segment(6+dcil+1,6+dcil+1+scil); # scid
+            };
+            client_initial_dcid := bytes_to_cid(ikm);
+            client_initial_scid := bytes_to_cid(skm); # skm
+            call export_length_cid(dcil,scil);
+            call export_length_cid_extension(dcil,scil);
+        }
+        else {
             if host = endpoint_id.server 
                     & bvand(ppkt.value(0),0xf0) = 0xc0   { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
                 # for client test
                 #if (retry_client_test -> retry_sent) {
-                    call tls_client_initial_response(src,dst,ppkt)
+                call tls_client_initial_response(src,dst,ppkt)
                 #};
             };
             if ~ host = endpoint_id.server  
@@ -219,7 +251,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                             # for client test
                             call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
                         };
-                        if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid_2) { 
+                        if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid_2) & multiple_client { 
                             # for client test
                             call app_server_open_event(dst,src,the_cid_2,pkt.src_cid);  # [1]
                         }
@@ -228,7 +260,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                     call undecryptable_packet_event(src,dst,ppkt);
                 };
             };
-        #};
+        };
         idx := idx.next;
     };
     version_not_found := false;
@@ -240,6 +272,8 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
 
 import action app_server_open_event_show(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet,cid1 : cid, cid2: cid)
 import action recv_packet(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
+import action recv_packet_mim(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
+
 import action show_islong(src:ip.endpoint,dst:ip.endpoint,v:bool)
 import action show_type(src:ip.endpoint,dst:ip.endpoint,v:byte)
 import action show_typed(src:ip.endpoint,dst:ip.endpoint,v:stream_data)

@@ -46,17 +46,17 @@ after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         call cipher_packet(ppkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
-        call net.send(endpoint_id.server,sock,dst,pkts);
+        call net.send(endpoint_id.server,endpoint_to_socket(src),dst,pkts);
     }
 }
 
 after packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
    # if src = server.ep  {
-    if dst_is_generated(src) { # _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid)
+    if dst_is_generated(src) | is_mim { # _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid) TODO
         var spkt := pkt_serdes_vn.to_bytes(pkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(spkt);
-        call net.send(endpoint_id.server,sock,dst,pkts);
+        call net.send(endpoint_id.server,endpoint_to_socket(src),dst,pkts);
     }
 }
 
@@ -66,7 +66,7 @@ after packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) 
         var spkt := pkt_serdes_retry.to_bytes(pkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(spkt);
-        call net.send(endpoint_id.server,sock,dst,pkts);
+        call net.send(endpoint_id.server,endpoint_to_socket(src),dst,pkts);
     }
 }
 
@@ -80,7 +80,7 @@ after packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
         call cipher_packet(ppkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
-        call net.send(endpoint_id.server,sock,dst,pkts);
+        call net.send(endpoint_id.server,endpoint_to_socket(src),dst,pkts);
         zero_rtt_sent := true;
     }
 }

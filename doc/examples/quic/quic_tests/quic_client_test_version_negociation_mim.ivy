@@ -8,7 +8,6 @@ include quic_shim
 include quic_shim_client
 include quic_locale
 include random_value
-include byte_stream
 
 parameter the_cid : cid = 0xd
 parameter server_addr : ip.addr = 0x7f000001
@@ -16,6 +15,7 @@ parameter server_port : ip.port = 4443
 parameter server_port_2 : ip.port = 4443
 parameter max_stream_data : stream_pos = 0x2000
 parameter initial_max_streams_bidi : stream_id = 10
+parameter client_port_vn : ip.port = 4986
 
 # Network setup
 # -------------
@@ -44,11 +44,18 @@ after init {
     client_vn := endpoint_id_addr(endpoint_id.client_vn);
 }
 
+
+# TODO configure implementation with unsupported version
+
 function version_used : version
 var server_cid  : cid  # useless for now, refactoring of shim neeeded
 var client_addr : ip.addr 
 var client_port : ip.port
 var client_port_alt : ip.port
+
+var mim_addr : ip.addr 
+var mim_port : ip.port
+
 after init {
     the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
     version_used := 0xff00001d;
@@ -56,13 +63,12 @@ after init {
     client_addr := 0;
     client_port := 0;
     client_port_alt := 0;
+
+    mim_addr := 0x7f000001;
+    mim_port := 4444;
+    is_mim := true;
 }
 
-
-var version_negociated : bool
-after init {
-    version_negociated := false;
-}
 
 # Map test endpoint ids to the ip endpoints
 
@@ -83,6 +89,7 @@ instance server : quic_endpoint(endpoint_id.server)
 # a socket for the server
 
 var sock : net.socket
+var sock_mim : net.socket
 
 instance tls_extensions : vector(tls.extension)
 instance tls_hand_extensions : vector(tls.handshake)
@@ -93,8 +100,8 @@ instance tls_hand_extensions : vector(tls.handshake)
 
 after init {
     sock := net.open(endpoint_id.server,server.ep);
+    sock_mim := net.open(endpoint_id.mim,mim.ep);
     server.tls_id := 0;
-    client.tls_id := 1;
 }
 
 # Here we have a bunch of conversions that map between cid's, IP
@@ -116,7 +123,7 @@ action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) 
 # Get the socket number associated to an IP endpoint.
 
 action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
-    socket := sock;
+    socket := sock if src = mim.ep else sock_mim;
 }
 
 # Get the source IP endpoint associated to a TLS instance
@@ -187,16 +194,15 @@ after init {
 
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsdbl : initial_max_stream_data_bidi_local;
-    imsdbl.stream_pos_32 := max_stream_data;
+    imsdbl.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var imd : initial_max_data;
-    imd.stream_pos_32 := random_stream_pos(0,0xFFFFFFF);
+    imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var it : max_idle_timeout;
     it.seconds_16 := random_microsecs(0,0xFFFFFFF);
     var imsdbr : initial_max_stream_data_bidi_remote;
-    imsdbr.stream_pos_32 := max_stream_data;
+    imsdbr.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
     var imsdu : initial_max_stream_data_uni;
     imsdu.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
-
     tp.transport_parameters := tp.transport_parameters.append(imsdbl);
     tp.transport_parameters := tp.transport_parameters.append(imd);
     tp.transport_parameters := tp.transport_parameters.append(it);
@@ -208,39 +214,35 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsib : initial_max_stream_id_bidi;
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
-
+    
+    #if client_present_scid {
     var icid : initial_source_connection_id; #update v29
-    icid.scid := the_cid; #client_initial_scid; #the_cid
+    icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
-
+    #};
     var odci : original_destination_connection_id; #update v29
-    odci.dcid := client_initial_dcid ;# the_cid; # client_initial_dcid;
+    odci.dcid := client_initial_dcid;
     tp.transport_parameters := tp.transport_parameters.append(odci);
+}
 
-    var retry : retry_source_connection_id; #TODO update v29
-    retry.rcid := 0x5; # TODO
-    tp.transport_parameters := tp.transport_parameters.append(retry);
+relation initial_send
+var version_negociated : bool
+
+var server_scid  : cid
+var server_dcid  : cid
+
+after init {
+    initial_send :=  false;
+    version_negociated := false;
 }
 
 #
 # Restrict generation to packets from the designated client endpoints
 # to the server endpoint.
 
-relation initial_recv
-
-after init {
-    initial_recv :=  false;
-    retry_client_test := true;
-}
-
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-        #if retry_sent {
-            #the_cid := 0x5;
-        #    pkt.src_cid := the_cid;
-            #connected(pkt.src_cid) := true;
-        #};
-        require  pkt.ptype = quic_packet_type.initial -> retry_response; #  pkt.ptype = quic_packet_type.initial -> retry_response retry_sent &  
+        require ~negocation_of_version;
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
@@ -249,78 +251,37 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require pkt.token.end = 0; # [1]
         require connected(pkt.src_cid);
     	require pkt.long -> pkt.pversion = version_used;  #version 29
-	    #call show_version(version_used);
+	    call show_version(version_used);
     } 
     else {
-	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
+        if pkt.ptype = quic_packet_type.initial {
+            server_scid := pkt.src_cid;
+            server_dcid := pkt.dst_cid;
+        };
+	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002 | pkt.pversion = 0xff000022);  #version 29
 	    if pkt.long {
 	    	version_used := pkt.pversion;
 	    };
-
-        if ~retry_sent {
-            conn_requested(src,dst,pkt.src_cid) := false;
-            conn_requested(src,dst,pkt.dst_cid) := false;
-
-            conn_seen(pkt.src_cid) := false;
-            conn_seen(pkt.dst_cid) := false;
-
-            connected(pkt.src_cid) :=  false;
-            connected(pkt.dst_cid) :=  false;
-        } else {
-            require pkt.ptype = quic_packet_type.initial -> pkt.token = send_token;
-        };
-
-        # if retry_sent & tp_client_set & pkt.ptype = quic_packet_type.initial  {
-        #     tp_client_set := false
-        # };
-
-        initial_recv := true;
-	    #call show_version(version_used);
+	    call show_version(version_used);
     }
 }
 
-before packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) {
+
+before packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
     if _generating {
-        #call show_version_retry(version_used);
         #require version_used ~= 0xff00001d; 
-        #require initial_recv;
-        require ~retry_sent;
+        require negocation_of_version;
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        #require pkt.dst_cid = client_initial_scid;
         require pkt.dst_cid = client_initial_scid;
-        #require pkt.src_cid = 0x5;
-        pkt.src_cid := 0x5;
-        rscid := 0x5;
-        require pkt.pversion = version_used;
-        #require pkt.token.end = 0; # [1] todo
-        require pkt.token.end < 50 & pkt.token.end > 1; 
-
-        #call show_token_retry(pkt.token);
-
-        var rt := prot.retry_integrity_tag(client_initial_dcid_size,client_initial_dcid,
-                                           version_used,
-                                           client_initial_scid_size,client_initial_scid,
-                                           0x8,pkt.src_cid,
-                                           pkt.token, last_pkt_num(pkt.dst_cid,quic_packet_type.initial),0xF6,false);
-
-        #call show_iretryb(rt);
-        pkt.integrity_token := bytes_to_itoken(rt); # [1]
-        #call show_iretry(pkt.integrity_token);
-        #require pkt.integrity_token.end = 1; #16 = oveflow
-        retry_sent := true;
-
-        #client_initial_dcid := client_initial_scid;
-        # initial_keys_set := false;
-        # #call tls_api.upper.destroy(0);
-        # tp_client_set := false;
+        require pkt.src_cid = client_initial_dcid;
+        require pkt.pversion = 0x00000000;  #version 0
+        pkt.supported_version := supported_versions_bv;
+        #pkt.supported_version := versions_bv.empty;
+        #pkt.supported_version := pkt.supported_version.append(0xff00001d);
     } 
 }
-
-
-import action show_version_retry(v:version)
-import action show_token_retry(v:stream_data)
 
 before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
     if _generating {
@@ -440,7 +401,7 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
         require scid = the_cid;
     } else {
         require is_no_error;
-        #call _finalize;
+        call _finalize;
     }
 }
 
@@ -452,7 +413,7 @@ before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:ci
         require scid = the_cid;
     } else {
         require is_no_error;
-        #call _finalize;
+        call _finalize;
     }
 }
 
@@ -533,7 +494,7 @@ export frame.crypto.handle
 export frame.path_response.handle
 export frame.handshake_done.handle
 export packet_event
-export packet_event_retry
+export packet_event_vn
 export client_send_event
 export tls_recv_event
 #export frame.new_connection_id.handle
@@ -545,7 +506,7 @@ export tls_recv_event
 
 attribute radix=16       # print in hex
 
-interpret cid -> longbv[1][13][3]
+interpret cid -> longbv[1][13][5]
 interpret version -> bv[32]
 interpret pkt_num -> bv[32]
 interpret error_code -> bv[16]
@@ -581,8 +542,8 @@ export frame.max_streams.handle
 export frame.max_stream_data.handle
 export frame.max_data.handle
 #export frame.stream_blocked.handle
-#export frame.rst_stream.handle
-#attribute frame.rst_stream.handle.weight = "0.02"
+export frame.rst_stream.handle
+attribute frame.rst_stream.handle.weight = "0.02"
 attribute frame.max_streams.handle.weight = "0.02"
 attribute frame.max_stream_data.handle.weight = "0.02"
 attribute frame.max_data.handle.weight = "0.02"
@@ -623,7 +584,7 @@ before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid,e:quic_packet_ty
 
 export action _finalize = {
     # chris TODO 
-    require conn_total_data(the_cid) > 0;
+    require conn_total_data(the_cid) = 0;
 }
 
 

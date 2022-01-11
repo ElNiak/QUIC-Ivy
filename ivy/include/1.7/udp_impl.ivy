@@ -260,6 +260,8 @@ object impl(me:host) = {
 	dstaddr.sin_addr.s_addr = htonl(dst.addr);
 	//dstaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	dstaddr.sin_port = htons(dst.port);
+	std::cerr << "sending socket: " << s << std::endl;
+	//std::cerr << "sending id: " << me << " addr: " << ntohl(dstaddr.sin_addr.s_addr) << " port: " << ntohs(dstaddr.sin_port) << std::endl;
 	std::cerr << "sending id: " << me << " addr: " << ntohl(dstaddr.sin_addr.s_addr) << " port: " << ntohs(dstaddr.sin_port) << std::endl;
 	`ser` sr;
 	__ser(sr,x);

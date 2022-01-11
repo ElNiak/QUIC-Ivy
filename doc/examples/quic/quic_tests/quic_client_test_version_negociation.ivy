@@ -49,12 +49,18 @@ after init {
 
 function version_used : version
 var server_cid  : cid  # useless for now, refactoring of shim neeeded
-
+var client_addr : ip.addr 
+var client_port : ip.port
+var client_port_alt : ip.port
 after init {
     the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
     version_used := 0xff00001d;
     server_cid := 0xb;
+    client_addr := 0;
+    client_port := 0;
+    client_port_alt := 0;
 }
+
 
 # Map test endpoint ids to the ip endpoints
 
@@ -145,8 +151,7 @@ action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
 }
 
 action src_tls_id(src:ip.endpoint) returns (tls_id:tls_api.id) = {
-    tls_id := server.tls_id if src = server.ep 
-    else second_server.tls_id; #TODO
+    tls_id := server.tls_id; #TODO
 }
 
 #
