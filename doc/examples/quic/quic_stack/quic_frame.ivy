@@ -843,13 +843,19 @@ object frame = {
             #     require num_queued_frames_rtt(scid) > 0 -> e = queued_level_rtt(scid); # TODO
             # };
 
-            require tls_handshake_finished;
-
-            require connected(dcid) & connected_to(dcid) = scid;
-            require (e = quic_packet_type.one_rtt) & established_1rtt_keys(scid); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid) 
+            if ~zero_rtt_allowed | zero_rtt_sent {
+                require tls_handshake_finished;
+                require (connected(dcid) & connected_to(dcid) = scid);# | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); #e = quic_packet_type.zero_rtt & 
+                require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid));# | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)  
+            } else {
+                #require (connected(dcid) & connected_to(dcid) = scid) | (established_0rtt_keys(scid)); #e = quic_packet_type.zero_rtt & 
+                #require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid)) | (established_0rtt_keys(scid)); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)  
+            }
             #require e = quic_packet_type.zero_rtt -> established_0rtt_keys(scid);  # [11]
-            require num_queued_frames(scid) > 0 -> e = queued_level(scid);
-            require num_queued_frames_rtt(scid) > 0 -> e = queued_level_rtt(scid); # TODO
+            if ~zero_rtt_allowed | zero_rtt_sent {
+                require num_queued_frames(scid) > 0 -> e = queued_level(scid);
+            }
+            #require num_queued_frames_rtt(scid) > 0 -> e = queued_level_rtt(scid); # TODO
 
             # [11] (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)
             #require e = quic_packet_type.zero_rtt -> established_0rtt_keys(scid);  # [11]
@@ -878,7 +884,10 @@ object frame = {
             # re-ordering. QUESTION: what can we say?  require
             # ~stream_reset(dcid,f.id); # [7]
 
-            require conn_seen(scid);  # [9]
+            if ~zero_rtt_allowed | zero_rtt_sent {
+                require conn_seen(scid);  # [9]
+            }
+
             #quinn bug: +-deadlock
             #require ((offset) + (f.length)) <= stream_max_data(dcid,f.id);  # [2]
 
@@ -915,8 +924,11 @@ object frame = {
                 #     call handle_receiving_sizeKnown(f.id,seq_num);
                 # };
             };
-            call enqueue_frame(scid,f,e,false);
-            call enqueue_frame_rtt(scid,f,e,false);
+            if ~zero_rtt_allowed | zero_rtt_sent  { #TODO
+                call enqueue_frame(scid,f,e,false);
+            } else {
+                call enqueue_frame_rtt(scid,f,e,false);
+            }
         }
     }
 }
@@ -1958,7 +1970,10 @@ action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
     # var idhi_cid : cid := id / 4;
     var idhi : stream_id := id / 4;
 
-    if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
+    if zero_rtt_allowed { # TODO
+        ok := idhi < 2;
+    }
+    else if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
         if kind = unidir {
             if initial_max_stream_id_uni.is_set(tp) {
                 ok := idhi < (initial_max_stream_id_uni.value(tp).stream_id_16)  # [3]

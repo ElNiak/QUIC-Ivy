@@ -240,7 +240,7 @@ module quic_protection(tls_id,tls) = {
 
         # ----------------------------------------------------------
 
-        var sample_size_rtt : stream_pos := tls.iv_size(c,3);
+        var sample_size_rtt : stream_pos := tls.iv_size(c,1);
         var pnum_pos_rtt := h_rtt.pkt_num_pos;
         var pnum_len_rtt := get_pnum_len5(pkt_rtt); #pnum_len; #
         x := show_pnum2(pnum_len_rtt);

@@ -120,6 +120,14 @@ object tls = {
         }
     }
 
+    object pre_shared_key_server = {
+        variant this of extension = struct {
+            #etype : extension_type,
+            #extensions : vector[offered_psk]
+            selected_identity : stream_pos
+        }
+    }
+
     # # TODO
     # object offered_psk = {
     #     variant this of extension = struct {

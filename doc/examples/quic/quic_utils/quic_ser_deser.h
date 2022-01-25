@@ -106,7 +106,7 @@ std::string quic_params[18] = {
     "loss_bits"
 };
 
-struct tls_name_struct tls_field_length_bytes[45] = {
+struct tls_name_struct tls_field_length_bytes[46] = {
     {"fragment", 2},
     {"content", 2},
     {"content_psk",2},
@@ -117,6 +117,7 @@ struct tls_name_struct tls_field_length_bytes[45] = {
     {"tls.finished", 3},
     {"tls.early_data", 2},
     {"tls.pre_shared_key_client", 2},
+    {"tls.pre_shared_key_server", 2},
     //{"tls.psk_key_exchange_modes", 2},
     //{"tls.pre_shared_key", 2},
     {"unknown_message_bytes", 3},
@@ -159,7 +160,7 @@ struct tls_name_struct tls_field_length_bytes[45] = {
     {"ticket", 2},
     {0, 0}};
 tls_name_map tls_field_length_bytes_map;
-struct tls_name_struct tls_field_bytes[42] = {
+struct tls_name_struct tls_field_bytes[43] = {
     {"version", 2},
     {"client_version", 2}, //0x0303 = 2 bytes
     {"server_version", 2},
@@ -203,10 +204,11 @@ struct tls_name_struct tls_field_bytes[42] = {
     {"identity", 1},
     {"psk_identities", -1},
     {"obfuscated_ticket_age", 4},
+    {"selected_identity", 2},
     {0, 0}};
 tls_name_map tls_field_bytes_map;
 //TODO check old version
-struct tls_name_struct tls_tags[38] = {
+struct tls_name_struct tls_tags[39] = {
     {"tls.handshake_record", 22},
     {"tls.application_data_record", 23},
     {"tls.change_cipher_spec", 20},
@@ -217,6 +219,7 @@ struct tls_name_struct tls_tags[38] = {
     {"tls.early_data", 0x002a},
     {"tls.psk_key_exchange_modes", 0x002d},
     {"tls.pre_shared_key_client", 0x0029},
+    {"tls.pre_shared_key_server", 0x0029},
     {"tls.new_session_ticket", 4},
     {"tls.unknown_message", -1},
     {"tls.unknown_extension", -1},
@@ -247,12 +250,13 @@ struct tls_name_struct tls_tags[38] = {
     {"unknown_ignore", 0x4042},
     {0, 0}};
 tls_name_map tls_tags_map;
-struct tls_name_struct tls_tag_bytes[30] = {
+struct tls_name_struct tls_tag_bytes[31] = {
     {"tls.unknown_extension", 2},
     {"tls.early_data", 2},
     {"tls.new_session_ticket", 1},
     {"tls.psk_key_exchange_modes", 2},
     {"tls.pre_shared_key_client", 2},
+    {"tls.pre_shared_key_server", 2},
     {"quic_transport_parameters", 2},
     {"initial_max_stream_data_bidi_local", 1},
     {"initial_max_data", 1},

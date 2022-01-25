@@ -228,6 +228,7 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
     if  _generating {
         require pkt.seq_num_i <= last_pkt_num(scid_i,pkt.ptype_i) + 0x15;
     	require pkt.seq_num_i > last_pkt_num(scid_i,pkt.ptype_i);
+        require pkt.seq_num =  pkt.seq_num_i;
     };
     require ~sent_pkt(scid_i,pkt.ptype_i,pkt.seq_num_i);  # [4]
     sent_pkt(scid_i,pkt.ptype_i,pkt.seq_num_i) := true;  # [1]
@@ -259,12 +260,17 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
     #require pkt.ptype = queued_level(scid);
     #require queued_level(scid) = quic_packet_type.zero_rtt;
     require pkt.ptype = quic_packet_type.zero_rtt;
-    established_1rtt_keys(scid) := true;
+    #established_1rtt_keys(scid) := true;
+
+    var type_app := quic_packet_type.one_rtt;
+    require ~sent_pkt(scid,type_app,pkt.seq_num);  # [4]
+    sent_pkt(scid,type_app,pkt.seq_num) := true;  # [1]
+
 
     #require pkt.ptype = quic_packet_type.one_rtt;
     #queued_level_rtt(scid) := quic_packet_type.zero_rtt;
 
-    #require num_queued_frames_rtt(scid) > 0;  # [7]
+    require num_queued_frames_rtt(scid) > 0;  # [7]
 
     # The payload must exactly match the queued frames.
 
@@ -336,6 +342,7 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
     # Record the packet number as latest seen
 
     last_pkt_num(scid_i,pkt.ptype_i) := pkt.seq_num_i;
+    last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
 
     if retry_sent {
         #call show_version_retry_resp;
@@ -460,7 +467,7 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
 
     if pkt.ptype_i = quic_packet_type.initial & ~first_initial_send & zero_rtt_allowed {
         first_initial_send := true;
-        queued_level(the_cid) := quic_packet_type.zero_rtt;
+        #queued_level(the_cid) := quic_packet_type.zero_rtt;
     } else {
         first_initial_send := false;
     };

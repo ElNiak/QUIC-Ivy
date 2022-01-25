@@ -72,17 +72,19 @@ module tls_intf(cid,index,bytes,lower,extens,hextens,exten_ser,seq_num) = {
 
     action create(c:cid, is_server:bool, e:extens)
 
-    action create_0rtt(c:cid, is_server:bool)
+    action create_0rtt(c:cid, is_server:bool, e:extens, he:hextens)
 
     action add_extensions(c:cid, is_server:bool, e:extens, he:hextens)
 
     action start_handshake(c:cid)
 
-    action compute_binder(c:cid) returns (b:bytes)
+    action compute_binder(c:cid,a:stream_pos) returns (b:bytes)
 
     action get_session_ticket(c:cid) returns (b:bytes)
 
     action get_session_lifetime(c:cid) returns (b:stream_pos)
+
+    action get_obfuscated_ticket_age(c:cid) returns (b:stream_pos)
 
     action get_session_lifetime_add(c:cid) returns (b:stream_pos)
 

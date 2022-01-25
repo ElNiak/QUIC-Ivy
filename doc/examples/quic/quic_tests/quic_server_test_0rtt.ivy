@@ -147,13 +147,16 @@ after init {
     extns := extns.append(make_transport_parameters);
     #hand_extns := hand_extns.append(make_tls_new_session_ticket);
     #extns := extns.append(make_transport_parameters);
-    call tls_api.upper.create_0rtt(0,false);  # false means this instance of tls is not a server
-    extns := extns.append(make_tls_psk_key_exchange_modes_extension);
-    extns := extns.append(make_tls_early_data_extension);
-    call tls_api.upper.add_extensions(0,false,extns,hand_extns); # get offset
-    extns := extns.append(make_tls_pre_shared_key_extension);
-    call tls_api.upper.add_extensions(0,false,extns,hand_extns);
-    call tls_api.upper.start_handshake(0);
+    call tls_api.upper.create_0rtt(0,false,extns,hand_extns);  # false means this instance of tls is not a server
+    
+    # segfault when operate in different calls
+
+    # extns := extns.append(make_tls_psk_key_exchange_modes_extension);
+    # extns := extns.append(make_tls_early_data_extension);
+    # call tls_api.upper.add_extensions(0,false,extns,hand_extns); # get offset
+    # extns := extns.append(make_tls_pre_shared_key_extension);
+    # call tls_api.upper.add_extensions(0,false,extns,hand_extns);
+    # call tls_api.upper.start_handshake(0);
     #call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
     #call tls_api.upper.set_0rtt_keys(0);
 }
@@ -304,14 +307,15 @@ action make_tls_early_data_extension returns (tp:tls.extension) = {
     tp := t;
 }
 
+#useless in fact :( automatically done by picotls !
 action make_tls_pre_shared_key_extension returns (tp:tls.extension) = {
     var t : tls.pre_shared_key_client;
     var i : tls.psk_identity;
     i.identity := tls_api.upper.get_session_ticket(0); #stream_data.empty; #random_stream_data(0,0xFF,33); #
     #i.identity :=  i.identity.append(0x0); 1000; #
-    i.obfuscated_ticket_age := tls_api.upper.get_session_lifetime(0) + tls_api.upper.get_session_lifetime_add(0);
+    i.obfuscated_ticket_age := tls_api.upper.get_obfuscated_ticket_age(0); #  + tls_api.upper.get_session_lifetime(0) - 
     t.psk_identities := t.psk_identities.append(i);
-    t.psk_binder := tls_api.upper.compute_binder(0); #random_stream_data(0,0xFF,33); random_stream_data(0,0xFF,33); #
+    t.psk_binder := tls_api.upper.compute_binder(0,i.obfuscated_ticket_age); #random_stream_data(0,0xFF,33); random_stream_data(0,0xFF,33); #
     #t.psk_binder :=  t.psk_binder.append(0x0);
     tp := t;
 }
@@ -524,7 +528,7 @@ before packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
 before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
         require scid = the_cid;
-        require connected(the_cid) & dcid = connected_to(the_cid);
+        #require (connected(the_cid) & dcid = connected_to(the_cid)) | (e = quic_packet_type.zero_rtt  & established_0rtt_keys(the_cid));
         require f.len & f.off; 
         require f.length > 0;
         require f.offset = stream_length(dcid,f.id);
@@ -537,7 +541,7 @@ before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) 
 
 before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
-        require e ~= quic_packet_type.zero_rtt;
+        #require e ~= quic_packet_type.zero_rtt;
         require scid = the_cid;
         require f.length > 0;
         call show_crypto_length(crypto_length(scid,e));
@@ -612,7 +616,7 @@ before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,d
 
 before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
-        require conn_total_data(the_cid) > 40; # tricks
+        require conn_total_data(the_cid) > 1000; # tricks
         require scid = the_cid;
         require f.err_code = 0;
     } else {

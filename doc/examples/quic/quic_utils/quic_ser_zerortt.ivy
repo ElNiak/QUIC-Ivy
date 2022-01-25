@@ -745,15 +745,15 @@ object quic_ser_zerortt = {}
             if (state == quic_s_payload) {
                 if (long_format && (hdr_type & 0x30) == 0x00) {
                     is_rtt = true;
-                    //while (res.size() < 1200)
-                    // /    res.push_back(0);  // pad initial packet to 1200 bytes
+                   // while (res.size() < 1200)
+                   //     res.push_back(0);  // pad initial packet to 1200 bytes
                 }
                 // for(unsigned i = 0; i < 26; i++)
                 //     res.push_back(0);
-                // for(unsigned i = 0; i < 16; i++)
-                //     res.push_back(0);
+                //for(unsigned i = 0; i < 16; i++)
+                //    res.push_back(0);
                 if (long_format) {
-                    int len = res.size() - (payload_length_pos+2) + 26; //  26
+                    int len = res.size() - (payload_length_pos+2) + 26;// + 26; //  26
                     std::cerr << "quic_ser_zerortt close_list len " <<  (0x40 | ((len >> 8) & 0x3f)) <<  std::endl;  
                     res[payload_length_pos] = 0x40 | ((len >> 8) & 0x3f);
                     res[payload_length_pos+1] = len & 0xff;

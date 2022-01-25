@@ -520,7 +520,9 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         # An initial packet with an unseen destination cid is a connection request.
         if ~conn_seen(dcid)  {#TODO | (retry_response & ~init_token)
             call show_initial_request_initial;
-            call tls_client_initial_request(src,dst,dcid,pkt.pversion,src_tls_id(src));
+            if ~zero_rtt_sent {
+                call tls_client_initial_request(src,dst,dcid,pkt.pversion,src_tls_id(src));
+            };
             conn_requested(src,dst,scid) := true;
             # if multiple_client {
             #     call tls_client_initial_request(multiple_endpoint.second_client,dst,dcid,pkt.pversion,2);
@@ -947,6 +949,7 @@ action handle_tls_handshake(
     }
     else if some(st:tls.new_session_ticket) hs *> st {
         call export_session_ticket(st.ticket, st.ticket_lifetime, st.ticket_age_add);
+        #call export_session_ticket_full(st);
     }
     else if some(ee:tls.encrypted_extensions) hs *> ee {
         call handle_tls_extensions(src,dst,scid,ee.extensions,false);
@@ -968,8 +971,8 @@ action export_session_ticket(tkt:stream_data, lf:stream_pos, obf:stream_pos) = {
     if(session_file != NULL) {
         fp = fopen(session_file,"w");
         for (int i = 0; i < tkt.size(); i++) {
-            std::cerr <<  "str_d[i] "  << str_d[i] << std::endl;
-            std::cerr <<  "str_d[i] == 0 "  << (str_d[i] == 0) << std::endl;
+            //std::cerr <<  "str_d[i] "  << str_d[i] << std::endl;
+            //std::cerr <<  "str_d[i] == 0 "  << (str_d[i] == 0) << std::endl;
             if(str_d[i] < 16)
                 fprintf(fp, "0%x", str_d[i]);
             else 
@@ -978,12 +981,42 @@ action export_session_ticket(tkt:stream_data, lf:stream_pos, obf:stream_pos) = {
         fprintf(fp, "%s", "\n");
         fprintf(fp, "%llu\n", lf);
         fprintf(fp, "%llu\n", obf);
-        fprintf(fp, "%llu", static_cast<long long unsigned> (msec));
+        fprintf(fp, "%llu\n", static_cast<long long unsigned> (msec));
+        for (int i = 0; i < tkt.size(); i++) {
+            //std::cerr <<  "str_d[i] "  << str_d[i] << std::endl;
+            //std::cerr <<  "str_d[i] == 0 "  << (str_d[i] == 0) << std::endl;
+            fprintf(fp, "%x", str_d[i]);
+        }  
         fclose(fp);
 	}
     >>>
 }
+# action export_session_ticket_full(tkt:tls.new_session_ticket) = {
+#     <<<
 
+#     std::cerr <<  "export_session_ticket_full "  << sizeof(tkt) <<std::endl;
+# 	unsigned str_d[sizeof(tkt)];
+# 	for (int i = 0; i < sizeof(tkt); i++)
+#         str_d[i] = tkt[i]; //static_cast<char>(tkt[i]); // + '0'
+#     //str_d[tkt.size()] = '\0';
+#     std::cerr <<  "export_session_ticket_full "  << str_d << std::endl;
+# 	const char * session_file = getenv("STFILE2");
+#     FILE *fp;
+#     time_t msec = time(NULL) * 1000;
+#     if(session_file != NULL) {
+#         fp = fopen(session_file,"w");
+#         for (int i = 0; i < sizeof(tkt); i++) {
+#             //std::cerr <<  "str_d[i] "  << str_d[i] << std::endl;
+#             //std::cerr <<  "str_d[i] == 0 "  << (str_d[i] == 0) << std::endl;
+#             if(str_d[i] < 16)
+#                 fprintf(fp, "0%x", str_d[i]);
+#             else 
+#                 fprintf(fp, "%x", str_d[i]);
+#         }  
+#         fclose(fp);
+# 	}
+#     >>>
+# }
 #
 # The rules in `handle_client_transport_parameters` apply to each
 # `quic_transport_parameters` extension instance in order of
