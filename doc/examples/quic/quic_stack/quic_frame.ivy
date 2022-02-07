@@ -886,11 +886,11 @@ object frame = {
 
             if ~zero_rtt_allowed | zero_rtt_sent {
                 require conn_seen(scid);  # [9]
+                #quinn bug: +-deadlock
+                require ((offset) + (f.length)) <= stream_max_data(dcid,f.id);  # [2]
             }
 
-            #quinn bug: +-deadlock
-            #require ((offset) + (f.length)) <= stream_max_data(dcid,f.id);  # [2]
-
+            
             require stream_reset(dcid,f.id) ->
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
 	        #remove for stream limit test
@@ -1970,10 +1970,14 @@ action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
     # var idhi_cid : cid := id / 4;
     var idhi : stream_id := id / 4;
 
-    if zero_rtt_allowed { # TODO
-        ok := idhi < 2;
+    call show_condi(is_client(dcid));
+
+    if zero_rtt_allowed & ~zero_rtt_sent { # TODO
+        ok := idhi <= 2;
+        call show_act1;
     }
-    else if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
+    else 
+    if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
         if kind = unidir {
             if initial_max_stream_id_uni.is_set(tp) {
                 ok := idhi < (initial_max_stream_id_uni.value(tp).stream_id_16)  # [3]
@@ -1983,9 +1987,13 @@ action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
                 ok := idhi < (initial_max_stream_id_bidi.value(tp).stream_id_16);  # [4]
             }
         };
-        ok := ok | max_stream_set(dcid,kind) & idhi < max_stream(dcid,kind)
+        ok := ok | max_stream_set(dcid,kind) & idhi < max_stream(dcid,kind);
+        call show_act2;
     }
-    else ok := stream_seen(dcid, id) # TODO: locally initiated streams must have been seen!
+    else  {
+        ok := stream_seen(dcid, id); # TODO: locally initiated streams must have been seen!
+        call show_act3;
+    }
 }
 
 action stream_id_to_cid(bytes:stream_id) returns (val:cid) = {
@@ -2050,3 +2058,11 @@ import action show_stream_retransmission(i:stream_id,o:stream_pos,
                                           l:stream_pos,d:stream_data,c:stream_pos)
 
 import action show_offset(o:stream_pos)
+
+import action show_act1
+
+import action show_act2
+
+import action show_act3
+
+import action show_condi(b:bool)

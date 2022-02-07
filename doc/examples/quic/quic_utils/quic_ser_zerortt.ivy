@@ -745,8 +745,8 @@ object quic_ser_zerortt = {}
             if (state == quic_s_payload) {
                 if (long_format && (hdr_type & 0x30) == 0x00) {
                     is_rtt = true;
-                   // while (res.size() < 1200)
-                   //     res.push_back(0);  // pad initial packet to 1200 bytes
+                    while (res.size() < 1200)
+                        res.push_back(0);  // pad initial packet to 1200 bytes
                 }
                 // for(unsigned i = 0; i < 26; i++)
                 //     res.push_back(0);

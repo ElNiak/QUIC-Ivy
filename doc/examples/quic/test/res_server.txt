@@ -16,14 +16,14 @@ ser-open_field: name 1: "quic_transport_parameters"
 ser-open_field: flb : 2
 ser-open_field: field_start.push_back(res.size()) : 4
 ser-open_field: ffield_length_bytes.push_back(flb) : 2
-ser-open_field: name_field_bytes 2: -623947520
-ser-open_field: field_bytes: -623947520
+ser-open_field: name_field_bytes 2: 1390135328
+ser-open_field: field_bytes: 1390135328
 ser-open_field: res.size() : 4
 ser-open_field: name 1: "transport_parameters"
 ser-open_field: field_start.push_back(res.size()) : 4
 ser-open_field: ffield_length_bytes.push_back(flb) : 0
-ser-open_field: name_field_bytes 2: -623947520
-ser-open_field: field_bytes: -623947520
+ser-open_field: name_field_bytes 2: 1390135328
+ser-open_field: field_bytes: 1390135328
 ser-open_field: res.size() : 4
 ser-open_tag: bytes : 1
 ser-open_tag: tag : 5
@@ -33,8 +33,8 @@ ser-open_field: name 1: "initial_max_stream_data_bidi_local"
 ser-open_field: flb : 1
 ser-open_field: field_start.push_back(res.size()) : 6
 ser-open_field: ffield_length_bytes.push_back(flb) : 1
-ser-open_field: name_field_bytes 2: -623947520
-ser-open_field: field_bytes: -623947520
+ser-open_field: name_field_bytes 2: 1390135328
+ser-open_field: field_bytes: 1390135328
 ser-open_field: res.size() : 6
 ser-open_field: name 1: "stream_pos_32"
 ser-open_field: field_start.push_back(res.size()) : 6
@@ -159,7 +159,7 @@ etype =65445
 len =38
 ptls_exts[i].type = 65445
 ptls_exts[i].len = 38
-TEST_IMPL quant
+TEST_IMPL quinn
 is_server 0
 ptls_get_data_ptr
 cid_map[c] = s;
@@ -168,7 +168,7 @@ picotls_do_handshake start 0
 
 picotls_do_handshake ptls_handle_message end 
 PICOTLS RETURNED PTLS_ERROR_IN_PROGRESS 514
-[1,0,0,238,3,3,207,224,226,99,19,230,154,62,19,44,227,96,76,35,21,88,25,168,198,56,23,230,100,213,44,19,26,107,185,93,232,218,0,0,6,19,2,19,1,19,3,1,0,0,191,0,51,0,71,0,69,0,23,0,65,4,135,5,191,239,245,191,143,207,244,21,57,146,76,20,176,128,234,98,146,22,141,207,253,0,69,226,12,122,109,111,204,154,170,124,186,212,145,150,100,150,180,225,174,11,5,39,68,103,105,225,74,79,75,112,117,13,6,234,185,87,68,182,130,124,0,0,0,15,0,13,0,0,10,115,101,114,118,101,114,110,97,109,101,0,16,0,8,0,6,5,104,113,45,50,57,0,43,0,9,8,3,4,127,28,127,27,127,26,0,13,0,10,0,8,8,4,4,3,4,1,2,1,0,10,0,6,0,4,0,23,0,29,255,165,0,38,5,2,96,0,4,4,128,0,64,0,1,2,71,208,6,2,96,0,7,2,96,0,15,8,0,0,0,0,0,0,0,1,12,0,8,2,96,0,0,45,0,2,1,1]
+[1,0,0,238,3,3,230,14,92,137,66,151,73,156,198,219,215,121,162,157,210,27,239,60,160,62,106,142,81,64,143,1,58,96,222,131,67,166,0,0,6,19,2,19,1,19,3,1,0,0,191,0,51,0,71,0,69,0,23,0,65,4,132,55,18,195,195,243,131,85,152,176,190,74,29,11,134,250,173,95,198,21,195,43,168,73,148,132,168,67,118,89,16,191,47,78,61,176,3,63,203,157,6,60,143,61,181,249,40,215,98,38,188,126,233,35,51,227,166,120,110,110,161,52,35,42,0,0,0,15,0,13,0,0,10,115,101,114,118,101,114,110,97,109,101,0,16,0,8,0,6,5,104,113,45,50,57,0,43,0,9,8,3,4,127,28,127,27,127,26,0,13,0,10,0,8,8,4,4,3,4,1,2,1,0,10,0,6,0,4,0,23,0,29,255,165,0,38,5,2,96,0,4,4,128,0,64,0,1,2,71,208,6,2,96,0,7,2,96,0,15,8,0,0,0,0,0,0,0,1,12,0,8,2,96,0,0,45,0,2,1,1]
 0
 
 tag v1: 1
@@ -407,15 +407,15 @@ iv_size level 0
 iv_size end 16
 encrypt_aead start l 0
 encrypt_aead start c 0
-encrypt_aead aead 0x55c5de34b5c0
+encrypt_aead aead 0x559255df8440
 encrypt_aead encrypted  1
 encrypt_aead encrypted 1202
 encrypt_aead finish 
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [184,62,221,113,66,61,117,239,27,106,175,122,144,143,238,136]
-encrypt_cipher pn_enc 0x55c5de2cc380
-encrypt_cipher end [120,102,108,89,61]
+encrypt_cipher iv [184,62,221,113,66,61,117,239,27,106,134,148,46,101,191,249]
+encrypt_cipher pn_enc 0x559255e4a4d0
+encrypt_cipher end [45,197,75,90,190]
 sending socket: 6
 sending id: client addr: 2130706433 port: 4443
 sending id finish
@@ -428,24 +428,24 @@ iv_size level 0
 iv_size end 16
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [84,69,178,86,143,92,44,194,148,194,129,242,152,9,250,190]
-encrypt_cipher pn_dec 0x55c5de3228b0
-encrypt_cipher end [129,138,152,227,223]
+encrypt_cipher iv [166,69,180,86,207,39,46,194,148,181,130,241,37,140,61,62]
+encrypt_cipher pn_dec 0x559255e785d0
+encrypt_cipher end [143,67,182,38,155]
 decrypt_aead start 
-decrypt_aead ad 23
-aead == 0x55c5de2d73b0
+decrypt_aead ad 27
+aead == 0x559255da2090
 checksum_length == 16
 seq == 0
-bytes.size() == 23
+bytes.size() == 27
 decrypted <= input.size() == 1
 decrypt_aead finish 
 dstID size 8
 dstID res 1
-sourceID size 4
-sourceID res 4151140020
+sourceID size 8
+sourceID res 2975379875883057897
 sourceID data_remaining 0
 quic_crypto_length 
-[2,0,0,119,3,3,12,106,131,191,30,72,99,170,211,33,7,112,137,91,44,214,173,237,69,172,16,152,176,76,149,38,65,167,149,241,13,47,0,19,2,0,0,79,0,43,0,2,3,4,0,51,0,69,0,23,0,65,4,166,184,177,235,227,81,165,135,225,89,98,138,223,247,72,28,84,116,166,224,116,168,188,147,123,110,3,217,161,119,83,150,120,198,0,39,245,1,42,156,107,229,155,231,161,151,167,96,153,254,180,47,125,6,43,61,226,73,180,162,160,80,48,228]
+[2,0,0,119,3,3,189,133,199,128,155,209,239,224,63,217,134,25,191,59,242,182,81,142,123,149,177,236,102,88,131,220,31,38,21,244,241,26,0,19,2,0,0,79,0,51,0,69,0,23,0,65,4,148,152,247,73,215,164,192,116,7,228,198,118,84,236,53,190,48,100,252,51,31,25,4,128,42,21,148,215,43,164,40,146,43,1,221,60,156,11,210,160,62,64,175,228,161,194,11,242,76,177,75,53,221,38,20,124,124,218,232,9,250,79,144,101,0,43,0,2,3,4]
 0
 
 tag v1: 2
@@ -478,20 +478,6 @@ deser-open_field: field_bytes : 1
 deser-open_field: name : "extensions"
 deser-open_field: length_field_bytes : 2
 deser-open_field: flength : 79
-tag v1: 43
-Tag size: 1
-tags[0]: "tls.unknown_extension"
-value_size: 0
-deser-open_field: name : "tls.unknown_extension"
-4) pkt-pos =  123
-deser-open_field: name : "etype"
-4) pkt-pos =  123
-deser-open_field: field_bytes : 2
-deser-open_field: name : "content"
-deser-open_field: length_field_bytes : 2
-deser-open_field: flength : 2
-deser-open_field: tls_field_bytes_map["content"] : 2
-deser-open_field: field_bytes : 1
 tag v1: 51
 Tag size: 1
 tags[0]: "tls.unknown_extension"
@@ -506,53 +492,62 @@ deser-open_field: length_field_bytes : 2
 deser-open_field: flength : 69
 deser-open_field: tls_field_bytes_map["content"] : 69
 deser-open_field: field_bytes : 1
-lower.recv   s 0x55c5dacbcb50
-picotls_do_handshake start 0x55c5dc4dd930
+tag v1: 43
+Tag size: 1
+tags[0]: "tls.unknown_extension"
+value_size: 0
+deser-open_field: name : "tls.unknown_extension"
+4) pkt-pos =  123
+deser-open_field: name : "etype"
+4) pkt-pos =  123
+deser-open_field: field_bytes : 2
+deser-open_field: name : "content"
+deser-open_field: length_field_bytes : 2
+deser-open_field: flength : 2
+deser-open_field: tls_field_bytes_map["content"] : 2
+deser-open_field: field_bytes : 1
+lower.recv   s 0x559252d928f0
+picotls_do_handshake start 0x55925582d140
 picotls_do_handshake start 123
 
 tls_on_extension_cb 
-tls_on_extension_cb 43
-tls_on_extension_cb 2
-tls_on_extension_cb 
 tls_on_extension_cb 51
 tls_on_extension_cb 69
-quic_update_traffic_key_cb 0x55c5dacf1318
-quic_update_traffic_key_cb 0x55c5dacf1318
+tls_on_extension_cb 
+tls_on_extension_cb 43
+tls_on_extension_cb 2
+quic_update_traffic_key_cb 0x559252df54a8
+quic_update_traffic_key_cb 0x559252df54a8
 quic_update_traffic_key_cb SERVER_HANDSHAKE_TRAFFIC_SECRET
-quic_update_traffic_key_cb 0x55c5dacf1370
-quic_update_traffic_key_cb 0x55c5dacf1370
+quic_update_traffic_key_cb 0x559252df5500
+quic_update_traffic_key_cb 0x559252df5500
 quic_update_traffic_key_cb CLIENT_HANDSHAKE_TRAFFIC_SECRET
 picotls_do_handshake ptls_handle_message end 
 PICOTLS RETURNED PTLS_ERROR_IN_PROGRESS 514
-net.recv 2 
-RECEIVING finsh
-RECEIVING start
-RECEIVING __deser
-net.recv 1
 iv_size start 
 iv_size cid 0
 iv_size level 2
 iv_size end 16
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [185,15,69,178,47,48,44,13,183,161,225,211,185,235,15,6]
-encrypt_cipher pn_dec 0x55c5de243e20
-encrypt_cipher end [16,230,192,95,140]
+encrypt_cipher iv [162,126,73,198,162,209,160,92,228,99,76,202,50,108,77,23]
+encrypt_cipher pn_dec 0x559255dacb50
+encrypt_cipher end [216,110,52,155,153]
 decrypt_aead start 
-decrypt_aead ad 22
-aead == 0x55c5dad2cc30
+decrypt_aead ad 26
+aead == 0x559255dc3ec0
 checksum_length == 16
 seq == 0
-bytes.size() == 22
+bytes.size() == 26
 decrypted <= input.size() == 1
 decrypt_aead finish 
 dstID size 8
 dstID res 1
-sourceID size 4
-sourceID res 4151140020
+sourceID size 8
+sourceID res 2975379875883057897
 sourceID data_remaining 0
 quic_crypto_length 
-[8,0,0,156,0,154,0,0,0,0,0,16,0,8,0,6,5,104,113,45,50,57,255,165,0,134,8,2,64,128,0,8,0,0,0,0,0,0,0,2,13,45,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,17,91,4,33,231,136,201,184,45,223,60,47,8,243,236,137,99,96,156,190,201,180,44,192,0,0,1,211,125,32,202,15,59,121,224,82,4,106,230,203,119,44,237,217,143,60,227,2,16,155,13,5,57,58,241,235,37,137,67,206,225,204,26,52,203,5,4,128,0,127,255,4,4,128,63,255,128,15,4,247,109,94,180,3,2,71,228,6,4,128,0,127,255,14,1,4,11,0,3,193,0,0,3,189,0,3,184,48,130,3,180,48,130,2,156,160,3,2,1,2,2,1,1,48,13,6,9,42,134,72,134,247,13,1,1,11,5,0,48,30,49,28,48,26,6,3,85,4,3,12,19,81,85,73,67,32,83,101,114,118,101,114,32,82,111,111,116,32,67,65,48,30,23,13,49,56,48,51,49,54,50,48,48,52,51,49,90,23,13,49,56,48,51,49,57,50,48,48,52,51,49,90,48,100,49,11,48,9,6,3,85,4,6,19,2,85,83,49,19,48,17,6,3,85,4,8,12,10,67,97,108,105,102,111,114,110,105,97,49,22,48,20,6,3,85,4,7,12,13,77,111,117,110,116,97,105,110,32,86,105,101,119,49,20,48,18,6,3,85,4,10,12,11,81,85,73,67,32,83,101,114,118,101,114,49,18,48,16,6,3,85,4,3,12,9,49,50,55,46,48,46,48,46,49,48,130,1,34,48,13,6,9,42,134,72,134,247,13,1,1,1,5,0,3,130,1,15,0,48,130,1,10,2,130,1,1,0,177,33,203,110,50,92,216,230,239,130,5,215,21,151,102,147,230,90,154,89,59,203,64,182,201,148,35,233,97,215,69,231,64,4,253,185,115,195,69,59,105,167,210,195,129,78,234,34,71,233,192,14,171,130,39,217,166,133,190,209,234,113,60,81,175,211,109,42,39,214,86,255,216,15,49,233,165,130,245,116,5,114,55,15,26,83,76,195,105,161,111,17,179,81,46,252,93,216,121,117,151,127,93,96,161,188,152,241,37,60,108,158,75,29,174,236,112,89,49,166,9,150,246,239,153,23,95,96,53,78,234,44,0,233,22,115,44,95,212,232,88,120,173,129,150,124,163,222,201,158,212,201,154,121,101,29,97,215,161,145,117,181,63,22,81,57,146,38,25,87,57,184,54,250,227,47,51,215,72,236,134,100,138,195,59,182,105,148,209,44,121,119,189,182,210,120,37,230,203,233,178,21,224,129,201,83,43,121,169,82,165,230,251,64,57,236,185,87,254,209,155,136,241,134,224,125,191,35,216,81,188,117,1,36,45,36,25,116,216,149,71,218,150,117,69,27,88,252,19,167,222,14,35,78,117,203,2,3,1,0,1,163,129,182,48,129,179,48,12,6,3,85,29,19,1,1,255,4,2,48,0,48,29,6,3,85,29,14,4,22,4,20,44,23,199,124,194,46,198,147,201,11,188,114,65,64,133,102,98,104,16,49,48,31,6,3,85,29,35,4,24,48,22,128,20,204,141,135,35,123,196,133,36,135,17,31,95,111,212,108,141,46,84,115,12,48,29,6,3,85,29,37,4,22,48,20,6,8,43,6,1,5,5,7,3,1,6,8,43,6,1,5,5,7,3,2,48,68,6,3,85,29,17,4,61,48,59,130,15,119,119,119,46,101,120,97,109,112,108,101,46,111,114,103,130,16,109,97,105,108,46,101,120,97,109,112,108,101,46,111,114,103,130,16,109,97,105,108,46,101,120,97,109,112,108,101,46,99,111,109,135,4,127,0,0,1,48,13,6,9,42,134,72,134,247,13,1,1,11,5,0,3,130,1,1,0,211,236,209,24,179,143,138,229,12,25,255,255,81,116,216,196,64,96,89,213,127,80,210,212,251,57,168,124,152,17,15,89,15,39,191,231,75,167,249,100,33,54,210,131,231,3,37,126,183,118,105,32,189,173,152,106,11,205,254,102,35,20,205,7,136,0,183,20,89,2,218,136,182,168,46,140,98,192,180,239,244,75,213,101,115,132,4,156,140,181,106,18,217,53,35,148,159,174,144,181,167,225,165,26,140,110,149,141,209,162,255,115,112,66,148,233,224,143,238,21,212,90,7,246,67,172,215,18,180,109,170,133,20,25,198,44,247,234,93,164,23,42,81,90,120,251,33,235,12,139,129,102,211,166,62,210,127,29,229,122,245,62,99,169,59,163,9,132,43,204,151,238,170,139,129,73,234,254,176,138,148,242,222,213,151,221,56,151,159,23,114,28,239,152,238,85,205,189,59,65,120,45,186,102,233,182,107,157,1,105,232,121,74,82,183,205,170,151,236,203,44,250,62,119,144,105,123,178,123,197,172,233,168,102,198,104,87,73,180,114,78,26,56,224,195,240,9,241,150,40,250,22,77,143,62,121,0,0,15,0,1,4,8,4,1,0,127,216,208,131,72,166,106,199,97,3,68,161,236,69,32,125,50,92,76,149,234,208,159,133,239,69,70,145,193,116,42,99,195,65,18,193,3,163,72,49,3,145,65,211,72,15,18,64,33,225,85,240,157,96,129]
+[8,0,0,115,0,113,0,16,0,8,0,6,5,104,113,45,50,57,0,0,0,0,255,165,0,93,1,2,103,16,3,2,69,200,4,8,255,255,255,255,255,255,255,255,5,4,128,19,18,208,6,4,128,19,18,208,7,4,128,19,18,208,8,2,64,100,11,1,0,14,1,5,64,182,0,2,16,191,155,108,85,216,113,108,153,73,96,117,107,212,21,125,226,32,4,128,0,255,255,0,8,0,0,0,0,0,0,0,2,15,8,41,74,172,59,157,219,2,233,11,0,1,94,0,0,1,90,0,1,85,48,130,1,81,48,129,248,160,3,2,1,2,2,8,79,245,13,196,6,66,59,1,48,10,6,8,42,134,72,206,61,4,3,2,48,33,49,31,48,29,6,3,85,4,3,12,22,114,99,103,101,110,32,115,101,108,102,32,115,105,103,110,101,100,32,99,101,114,116,48,32,23,13,55,53,48,49,48,49,48,48,48,48,48,48,90,24,15,52,48,57,54,48,49,48,49,48,48,48,48,48,48,90,48,33,49,31,48,29,6,3,85,4,3,12,22,114,99,103,101,110,32,115,101,108,102,32,115,105,103,110,101,100,32,99,101,114,116,48,89,48,19,6,7,42,134,72,206,61,2,1,6,8,42,134,72,206,61,3,1,7,3,66,0,4,15,40,116,187,10,137,8,225,158,57,41,135,159,169,64,222,130,213,54,236,54,216,113,227,142,14,79,155,57,95,242,62,233,231,112,147,174,186,145,45,55,104,86,173,99,18,255,126,125,241,11,96,63,157,37,42,75,132,91,235,232,253,15,190,163,24,48,22,48,20,6,3,85,29,17,4,13,48,11,130,9,108,111,99,97,108,104,111,115,116,48,10,6,8,42,134,72,206,61,4,3,2,3,72,0,48,69,2,32,45,32,142,124,140,107,76,67,5,138,102,147,92,85,79,155,46,56,170,165,120,134,148,119,85,232,198,192,153,141,12,135,2,33,0,232,15,168,49,180,111,130,102,235,189,7,130,211,147,169,149,161,159,64,109,144,245,168,226,208,220,161,200,18,206,5,119,0,0,15,0,0,76,4,3,0,72,48,70,2,33,0,189,123,241,201,227,168,77,115,165,245,54,26,76,218,59,144,167,112,173,48,235,92,115,18,202,167,154,111,146,227,13,137,2,33,0,248,94,9,86,251,219,72,212,25,122,49,217,205,187,215,163,34,102,27,154,126,102,118,179,220,150,15,165,87,173,65,73,20,0,0,48,20,140,166,114,237,115,147,131,11,140,53,57,94,108,251,194,134,99,203,24,176,215,178,157,249,194,51,183,7,57,30,21,105,246,28,6,219,154,176,80,166,128,13,107,161,103,34,47]
 0
 
 tag v1: 8
@@ -561,37 +556,37 @@ tags[0]: "tls.client_hello"
 value_size: 0
 deser-open_field: name : "tls.encrypted_extensions"
 deser-open_field: length_field_bytes : 3
-deser-open_field: flength : 156
+deser-open_field: flength : 115
 deser-open_field: name : "extensions"
 deser-open_field: length_field_bytes : 2
-deser-open_field: flength : 154
-tag v1: 0
-Tag size: 1
-tags[0]: "tls.unknown_extension"
-value_size: 0
-deser-open_field: name : "tls.unknown_extension"
-4) pkt-pos =  160
-deser-open_field: name : "etype"
-4) pkt-pos =  160
-deser-open_field: field_bytes : 2
-deser-open_field: name : "content"
-deser-open_field: length_field_bytes : 2
-deser-open_field: flength : 0
-deser-open_field: tls_field_bytes_map["content"] : 0
-deser-open_field: field_bytes : 1
+deser-open_field: flength : 113
 tag v1: 16
 Tag size: 1
 tags[0]: "tls.unknown_extension"
 value_size: 0
 deser-open_field: name : "tls.unknown_extension"
-4) pkt-pos =  160
+4) pkt-pos =  119
 deser-open_field: name : "etype"
-4) pkt-pos =  160
+4) pkt-pos =  119
 deser-open_field: field_bytes : 2
 deser-open_field: name : "content"
 deser-open_field: length_field_bytes : 2
 deser-open_field: flength : 8
 deser-open_field: tls_field_bytes_map["content"] : 8
+deser-open_field: field_bytes : 1
+tag v1: 0
+Tag size: 1
+tags[0]: "tls.unknown_extension"
+value_size: 0
+deser-open_field: name : "tls.unknown_extension"
+4) pkt-pos =  119
+deser-open_field: name : "etype"
+4) pkt-pos =  119
+deser-open_field: field_bytes : 2
+deser-open_field: name : "content"
+deser-open_field: length_field_bytes : 2
+deser-open_field: flength : 0
+deser-open_field: tls_field_bytes_map["content"] : 0
 deser-open_field: field_bytes : 1
 tag v1: 65445
 Tag size: 4
@@ -599,9 +594,69 @@ tags[0]: "tls.unknown_extension"
 value_size: 0
 deser-open_field: name : "quic_transport_parameters"
 deser-open_field: length_field_bytes : 2
-deser-open_field: flength : 134
+deser-open_field: flength : 93
 deser-open_field: name : "transport_parameters"
-4) pkt-pos =  160
+4) pkt-pos =  119
+tag v1: 1
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+value_size: 0
+deser-open_field: name : "max_idle_timeout"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 2
+deser-open_field: name : "seconds_16"
+4) pkt-pos =  30
+deser-open_field: field_bytes : -1
+tag v1: 3
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+value_size: 0
+deser-open_field: name : "max_packet_size"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 2
+deser-open_field: name : "stream_pos_16"
+4) pkt-pos =  34
+deser-open_field: field_bytes : -1
+tag v1: 4
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+value_size: 0
+deser-open_field: name : "initial_max_data"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 8
+deser-open_field: name : "stream_pos_32"
+4) pkt-pos =  44
+deser-open_field: field_bytes : -1
+tag v1: 5
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+value_size: 0
+deser-open_field: name : "initial_max_stream_data_bidi_local"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 4
+deser-open_field: name : "stream_pos_32"
+4) pkt-pos =  50
+deser-open_field: field_bytes : -1
+tag v1: 6
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+value_size: 0
+deser-open_field: name : "initial_max_stream_data_bidi_remote"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 4
+deser-open_field: name : "stream_pos_32"
+4) pkt-pos =  56
+deser-open_field: field_bytes : -1
+tag v1: 7
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+value_size: 0
+deser-open_field: name : "initial_max_stream_data_uni"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 4
+deser-open_field: name : "stream_pos_32"
+4) pkt-pos =  62
+deser-open_field: field_bytes : -1
 tag v1: 8
 Tag size: 1
 tags[0]: "original_destination_connection_id"
@@ -610,8 +665,62 @@ deser-open_field: name : "initial_max_stream_id_bidi"
 deser-open_field: length_field_bytes : 1
 deser-open_field: flength : 2
 deser-open_field: name : "stream_id_16"
-4) pkt-pos =  30
+4) pkt-pos =  66
 deser-open_field: field_bytes : -1
+tag v1: 11
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+value_size: 0
+deser-open_field: name : "max_ack_delay"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 1
+deser-open_field: name : "exponent_8"
+4) pkt-pos =  69
+deser-open_field: field_bytes : -1
+tag v1: 14
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+value_size: 0
+deser-open_field: name : "active_connection_id_limit"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 1
+deser-open_field: name : "stream_pos_32"
+4) pkt-pos =  72
+deser-open_field: field_bytes : -1
+tag v1: 64
+Tag size: 2
+tags[0]: "original_destination_connection_id"
+tag: 64
+value_size: 0
+value_size: 0
+deser-open_field: name : "unknown_transport_parameter"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 0
+deser-open_field: name : "unknown"
+4) pkt-pos =  75
+deser-open_field: field_bytes : 0
+tag v1: 2
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+value_size: 0
+deser-open_field: name : "stateless_reset_token"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 16
+deser-open_field: name : "data_8"
+4) pkt-pos =  93
+deser-open_field: field_bytes : 16
+tag v1: 32
+Tag size: 1
+tags[0]: "original_destination_connection_id"
+tag: 32
+value_size: 4
+value_size: 4
+deser-open_field: name : "unknown_transport_parameter"
+deser-open_field: length_field_bytes : 1
+deser-open_field: flength : 4
+deser-open_field: name : "unknown"
+4) pkt-pos =  99
+deser-open_field: field_bytes : 4
 tag v1: 0
 Tag size: 1
 tags[0]: "original_destination_connection_id"
@@ -622,124 +731,20 @@ deser-open_field: name : "original_destination_connection_id"
 deser-open_field: length_field_bytes : 1
 deser-open_field: flength : 8
 deser-open_field: name : "dcid"
-4) pkt-pos =  40
+4) pkt-pos =  109
 deser-open_field: field_bytes : 8
-tag v1: 13
-Tag size: 1
-tags[0]: "original_destination_connection_id"
-tag: 13
-value_size: 45
-pcil: 4
-pref_add: 45
-value_size: 45
-deser-open_field: name : "preferred_address"
-deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 45
-deser-open_field: name : "ip_addr"
-4) pkt-pos =  87
-deser-open_field: field_bytes : 4
-deser-open_field: name : "ip_port"
-4) pkt-pos =  87
-deser-open_field: field_bytes : 2
-deser-open_field: name : "ip6_addr"
-4) pkt-pos =  87
-deser-open_field: field_bytes : 16
-deser-open_field: name : "ip6_port"
-4) pkt-pos =  87
-deser-open_field: field_bytes : 2
-deser-open_field: name : "pcid_len"
-4) pkt-pos =  87
-deser-open_field: field_bytes : 1
-deser-open_field: name : "pcid"
-4) pkt-pos =  87
-deser-open_field: field_bytes : 4
-deser-open_field: name : "pref_token"
-4) pkt-pos =  87
-deser-open_field: field_bytes : 16
-tag v1: 192
-Tag size: 8
-tags[0]: "original_destination_connection_id"
-tag: 192
-value_size: 15
-value_size: 15
-deser-open_field: name : "unknown_transport_parameter"
-deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 15
-deser-open_field: name : "unknown"
-4) pkt-pos =  111
-deser-open_field: field_bytes : 15
-tag v1: 2
-Tag size: 1
-tags[0]: "original_destination_connection_id"
-value_size: 0
-deser-open_field: name : "stateless_reset_token"
-deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 16
-deser-open_field: name : "data_8"
-4) pkt-pos =  129
-deser-open_field: field_bytes : 16
-tag v1: 5
-Tag size: 1
-tags[0]: "original_destination_connection_id"
-value_size: 0
-deser-open_field: name : "initial_max_stream_data_bidi_local"
-deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 4
-deser-open_field: name : "stream_pos_32"
-4) pkt-pos =  135
-deser-open_field: field_bytes : -1
-tag v1: 4
-Tag size: 1
-tags[0]: "original_destination_connection_id"
-value_size: 0
-deser-open_field: name : "initial_max_data"
-deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 4
-deser-open_field: name : "stream_pos_32"
-4) pkt-pos =  141
-deser-open_field: field_bytes : -1
 tag v1: 15
 Tag size: 1
 tags[0]: "original_destination_connection_id"
 tag: 15
-value_size: 4
-value_size: 4
+value_size: 8
+value_size: 8
 deser-open_field: name : "initial_source_connection_id"
 deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 4
+deser-open_field: flength : 8
 deser-open_field: name : "scid"
-4) pkt-pos =  147
-deser-open_field: field_bytes : 4
-tag v1: 3
-Tag size: 1
-tags[0]: "original_destination_connection_id"
-value_size: 0
-deser-open_field: name : "max_packet_size"
-deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 2
-deser-open_field: name : "stream_pos_16"
-4) pkt-pos =  151
-deser-open_field: field_bytes : -1
-tag v1: 6
-Tag size: 1
-tags[0]: "original_destination_connection_id"
-value_size: 0
-deser-open_field: name : "initial_max_stream_data_bidi_remote"
-deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 4
-deser-open_field: name : "stream_pos_32"
-4) pkt-pos =  157
-deser-open_field: field_bytes : -1
-tag v1: 14
-Tag size: 1
-tags[0]: "original_destination_connection_id"
-value_size: 0
-deser-open_field: name : "active_connection_id_limit"
-deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 1
-deser-open_field: name : "stream_pos_32"
-4) pkt-pos =  160
-deser-open_field: field_bytes : -1
+4) pkt-pos =  119
+deser-open_field: field_bytes : 8
 tag v1: 11
 Tag size: 1
 tags[0]: "tls.client_hello"
@@ -749,55 +754,7 @@ deser-open_field: name : "mtype"
 deser-open_field: field_bytes : 1
 deser-open_field: name : "unknown_message_bytes"
 deser-open_field: length_field_bytes : 3
-deser-open_field: flength : 961
-lower.recv   s 0x55c5dacbcb50
-picotls_do_handshake start 0x55c5de4f1130
-picotls_do_handshake start 1125
-
-tls_on_extension_cb 
-tls_on_extension_cb 0
-tls_on_extension_cb 0
-tls_on_extension_cb 
-tls_on_extension_cb 16
-tls_on_extension_cb 8
-tls_on_extension_cb 
-tls_on_extension_cb 65445
-tls_on_extension_cb 134
-tls_collect_extensions_cb 65445
-tls_collected_extensions_cb 65445
-picotls_do_handshake ptls_handle_message end 
-PICOTLS RETURNED PTLS_ERROR_IN_PROGRESS 514
-net.recv 2 
-RECEIVING finsh
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 2
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [210,1,23,160,144,194,164,89,119,173,208,28,210,65,3,74]
-encrypt_cipher pn_dec 0x55c5de243e20
-encrypt_cipher end [235,6,84,204,62]
-decrypt_aead start 
-decrypt_aead ad 22
-aead == 0x55c5dad2cc30
-checksum_length == 16
-seq == 1
-bytes.size() == 22
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID size 8
-dstID res 1
-sourceID size 4
-sourceID res 4151140020
-sourceID data_remaining 0
-quic_crypto_length 
-[15,0,1,4,8,4,1,0,127,216,208,131,72,166,106,199,97,3,68,161,236,69,32,125,50,92,76,149,234,208,159,133,239,69,70,145,193,116,42,99,195,65,18,193,3,163,72,49,3,145,65,211,72,15,18,64,33,225,85,240,157,96,129,8,247,145,98,37,99,225,149,67,34,226,202,20,230,255,154,207,30,212,175,240,13,169,71,229,143,76,104,163,25,75,189,110,1,198,205,175,154,234,156,179,206,67,148,244,208,139,171,87,25,57,147,218,139,77,165,152,20,174,195,127,188,183,137,72,111,150,237,254,13,82,31,224,40,166,28,235,243,156,120,230,109,25,180,34,214,233,194,243,197,111,204,7,161,215,5,149,245,2,231,165,164,15,150,48,32,102,98,130,24,211,53,126,172,74,183,236,222,7,68,200,115,253,198,2,115,186,37,230,160,7,158,64,62,159,156,113,164,248,177,201,197,67,124,16,80,160,108,148,15,240,79,187,96,247,67,78,114,171,194,14,164,153,154,189,127,231,27,246,239,184,209,154,73,16,249,24,51,198,14,211,101,1,70,58,46,110,184,97,242,224,251,158,187,245,250,153,144,178,249,26,20,0,0,48,6,199,166,248,246,151,113,91,141,21,82,156,43,120,71,225,142,101,82,26,197,170,93,146,207,139,137,218,153,143,178,107,167,211,150,209,135,207,35,111,145,115,63,157,165,130,240,77]
-0
-
+deser-open_field: flength : 350
 tag v1: 15
 Tag size: 1
 tags[0]: "tls.client_hello"
@@ -807,7 +764,7 @@ deser-open_field: name : "mtype"
 deser-open_field: field_bytes : 1
 deser-open_field: name : "unknown_message_bytes"
 deser-open_field: length_field_bytes : 3
-deser-open_field: flength : 260
+deser-open_field: flength : 76
 tag v1: 20
 Tag size: 1
 tags[0]: "tls.client_hello"
@@ -816,23 +773,34 @@ deser-open_field: name : "tls.finished"
 deser-open_field: length_field_bytes : 3
 deser-open_field: flength : 48
 deser-open_field: name : "mtype"
-4) pkt-pos =  316
+4) pkt-pos =  605
 deser-open_field: field_bytes : 1
 deser-open_field: name : "unknown_message_bytes"
 deser-open_field: length_field_bytes : 3
-deser-open_field: flength : 13084408
-lower.recv   s 0x55c5dacbcb50
-picotls_do_handshake start 0x55c5de4f1130
-picotls_do_handshake start 316
+deser-open_field: flength : 9217650
+lower.recv   s 0x559252d928f0
+picotls_do_handshake start 0x55925347ae60
+picotls_do_handshake start 605
 
-quic_update_traffic_key_cb 0x55c5dacf1318
-quic_update_traffic_key_cb 0x55c5dacf1318
+tls_on_extension_cb 
+tls_on_extension_cb 16
+tls_on_extension_cb 8
+tls_on_extension_cb 
+tls_on_extension_cb 0
+tls_on_extension_cb 0
+tls_on_extension_cb 
+tls_on_extension_cb 65445
+tls_on_extension_cb 93
+tls_collect_extensions_cb 65445
+tls_collected_extensions_cb 65445
+quic_update_traffic_key_cb 0x559252df54a8
+quic_update_traffic_key_cb 0x559252df54a8
 quic_update_traffic_key_cb SERVER_TRAFFIC_SECRET_0
-quic_update_traffic_key_cb 0x55c5dacf1370
-quic_update_traffic_key_cb 0x55c5dacf1370
+quic_update_traffic_key_cb 0x559252df5500
+quic_update_traffic_key_cb 0x559252df5500
 quic_update_traffic_key_cb CLIENT_TRAFFIC_SECRET_0
 picotls_do_handshake ptls_handle_message end 
-[20,0,0,48,147,207,146,71,227,246,103,66,247,215,222,186,220,220,16,140,15,1,185,245,194,111,204,104,29,43,165,16,72,100,186,73,141,216,253,162,194,75,58,124,63,69,32,185,176,221,44,15]
+[20,0,0,48,98,112,111,241,52,178,161,1,145,64,237,57,170,152,46,62,134,109,81,3,51,16,56,165,120,85,148,173,123,32,191,243,207,56,241,108,161,120,4,249,170,168,77,242,59,150,45,135]
 0
 
 tag v1: 20
@@ -847,19 +815,24 @@ deser-open_field: name : "mtype"
 deser-open_field: field_bytes : 1
 deser-open_field: name : "unknown_message_bytes"
 deser-open_field: length_field_bytes : 3
-deser-open_field: flength : 13603399
+deser-open_field: flength : 7368689
+net.recv 2 
+RECEIVING finsh
+RECEIVING start
+RECEIVING __deser
+net.recv 1
 iv_size start 
 iv_size cid 0
 iv_size level 3
 iv_size end 16
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [195,19,6,169,3,82,232,199,204,90,255,245,241,26,220,32]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [68,88,239,155,144]
+encrypt_cipher iv [156,142,173,70,232,238,118,148,212,201,77,207,179,17,139,4]
+encrypt_cipher pn_dec 0x559255c79620
+encrypt_cipher end [77,12,94,73,123]
 decrypt_aead start 
 decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
+aead == 0x559255f34ca0
 checksum_length == 16
 seq == 0
 bytes.size() == 10
@@ -868,8 +841,57 @@ decrypt_aead finish
 dstID res 1
 sourceID res 0
 sourceID data_remaining 0
+net.recv 2 
+RECEIVING finsh
+ser res init 2
+ser res dcid 1 2975379875883057897
+ser res dcid 2 2975379875883057897
+ser res scid_h 1 1
+ser res scid_h 1 1
+ser: quic_crypto_offset   = 0
+iv_size start 
+iv_size cid 0
+iv_size level 2
+iv_size end 16
+encrypt_aead start l 2
+encrypt_aead start c 0
+encrypt_aead aead 0x559255da2710
+encrypt_aead encrypted  1
+encrypt_aead encrypted 87
+encrypt_aead finish 
+encrypt_cipher start 
+encrypt_cipher c 0
+encrypt_cipher iv [133,110,123,243,254,232,192,93,207,138,64,106,113,125,19,193]
+encrypt_cipher pn_enc 0x559255a5f370
+encrypt_cipher end [140,69,251,2,201]
+sending socket: 6
+sending id: client addr: 2130706433 port: 4443
+sending id finish
+RECEIVING start
+RECEIVING __deser
+net.recv 1
+iv_size start 
+iv_size cid 0
+iv_size level 3
+iv_size end 16
+encrypt_cipher start 
+encrypt_cipher c 0
+encrypt_cipher iv [192,90,211,228,121,237,253,32,229,84,22,34,200,188,200,30]
+encrypt_cipher pn_dec 0x559255c79620
+encrypt_cipher end [27,119,78,162,7]
+decrypt_aead start 
+decrypt_aead ad 10
+aead == 0x559255f34ca0
+checksum_length == 16
+seq == 1
+bytes.size() == 10
+decrypted <= input.size() == 1
+decrypt_aead finish 
+dstID res 1
+sourceID res 0
+sourceID data_remaining 0
 quic_crypto_length 
-[4,0,0,140,0,1,81,128,64,75,146,107,0,0,119,0,192,172,58,92,166,187,222,186,19,70,182,223,38,181,68,104,102,191,44,208,6,164,162,131,81,185,208,2,107,212,214,229,225,125,103,79,17,208,175,179,197,154,250,112,73,31,185,216,219,233,84,63,98,72,132,148,10,82,142,95,206,69,106,168,242,188,203,254,222,180,116,93,214,139,128,14,114,81,13,169,228,243,109,167,152,24,35,233,207,73,118,184,75,56,16,88,140,202,97,85,152,163,164,151,243,218,58,76,12,148,167,30,88,35,229,235,80,2,0,8,0,42,0,4,255,255,255,255]
+[4,0,0,85,0,1,81,128,226,135,224,80,32,220,142,208,206,159,133,52,95,43,56,190,25,147,194,171,143,88,142,218,67,69,157,147,213,131,31,120,251,255,116,161,3,0,32,152,58,147,76,165,191,34,174,131,221,192,82,244,254,23,225,113,16,111,41,50,247,210,226,52,155,15,10,117,29,37,156,0,8,0,42,0,4,255,255,255,255]
 0
 
 tag v1: 4
@@ -878,25 +900,25 @@ tags[0]: "tls.client_hello"
 value_size: 0
 deser-open_field: name : "tls.new_session_ticket"
 deser-open_field: length_field_bytes : 3
-deser-open_field: flength : 140
+deser-open_field: flength : 85
 deser-open_field: name : "ticket_lifetime"
-4) pkt-pos =  144
+4) pkt-pos =  89
 deser-open_field: name BITE : "ticket_lifetime"
 deser-open_field: field_bytes : 4
 deser-open_field: name : "ticket_age_add"
-4) pkt-pos =  144
+4) pkt-pos =  89
 deser-open_field: name BITE : "ticket_age_add"
 deser-open_field: field_bytes : 4
 deser-open_field: name : "ticket_nonce"
 deser-open_field: length_field_bytes : 1
-deser-open_field: flength : 0
-deser-open_field: tls_field_bytes_map["ticket_nonce"] : 0
+deser-open_field: flength : 32
+deser-open_field: tls_field_bytes_map["ticket_nonce"] : 32
 deser-open_field: name BITE : "ticket_nonce"
 deser-open_field: field_bytes : 1
 deser-open_field: name : "ticket"
 deser-open_field: length_field_bytes : 2
-deser-open_field: flength : 119
-deser-open_field: tls_field_bytes_map["ticket"] : 119
+deser-open_field: flength : 32
+deser-open_field: tls_field_bytes_map["ticket"] : 32
 deser-open_field: name BITE : "ticket"
 deser-open_field: field_bytes : 1
 deser-open_field: name : "extensions"
@@ -914,46 +936,45 @@ deser-open_field: length_field_bytes : 2
 deser-open_field: flength : 4
 deser-open_field: name BITE : "tls.early_data"
 deser-open_field: name : "max_early_data_size"
-4) pkt-pos =  144
+4) pkt-pos =  89
 deser-open_field: field_bytes : 4
-lower.recv   s 0x55c5dacbcb50
-picotls_do_handshake start 0x55c5de4f1130
-picotls_do_handshake start 144
+lower.recv   s 0x559252d928f0
+picotls_do_handshake start 0x55925347ae60
+picotls_do_handshake start 89
 
 tls_on_extension_cb 
 tls_on_extension_cb 42
 tls_on_extension_cb 4
 tls_client_save_ticket_cb
-205
+150
 
-  ~íÓç4   å QÄ@Kík  w ¿¨:\¶ªﬁ∫F∂ﬂ&µDhfø,–§¢ÉQπ–k‘÷Â·}gO–Ø≥≈ö˙pIπÿ€ÈT?bHÑî
-Ré_ŒEj®ÚºÀ˛ﬁ¥t]÷ãÄrQ©‰Ûmßò#ÈœIv∏K8Xå aUò£§óÛ⁄:LîßX#ÂÎP  * ˇˇˇˇ 0¸˘\q:iËºın'eÇÊ FHN≤e3“û\†‘‰ØXI˝ÈÇËﬂNº»]OŸ
+  ~”¢eó   U QÄ‚á‡P ‹é–ŒüÖ4_+8æì¬´èXé⁄CEùì’Éx˚ˇt°  ò:ìL•ø"ÆÉ›¿RÙ˛·qo)2˜“‚4õ
+u%ú  * ˇˇˇˇ 0˙WßQ¬±!ëŒsLâÂ∫ÚÁâ¬¢©6T≤•e¬ñ®a„7¯≈U˝G4D¯SˇZè
 picotls_do_handshake ptls_handle_message end 
-export_session_ticket 119
-export_session_ticket 0x7fffd6503ce0
+export_session_ticket 32
+export_session_ticket 0x7fff6a337830
 net.recv 2 
 RECEIVING finsh
-ser res init 2
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 1
-ser res scid_h 1 1
-ser: quic_crypto_offset   = 0
+ser res init 3
+ser res dcid 1 2975379875883057897
+ser res dcid 2 2975379875883057897
+ser res scid_h 1 6
+ser res scid_h 1 6
 iv_size start 
 iv_size cid 0
-iv_size level 2
+iv_size level 3
 iv_size end 16
-encrypt_aead start l 2
+encrypt_aead start l 3
 encrypt_aead start c 0
-encrypt_aead aead 0x55c5de40c460
+encrypt_aead aead 0x559255795030
 encrypt_aead encrypted  1
-encrypt_aead encrypted 87
+encrypt_aead encrypted 42
 encrypt_aead finish 
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [92,3,18,217,94,35,72,66,17,231,95,200,131,112,223,45]
-encrypt_cipher pn_enc 0x55c5de06ccc0
-encrypt_cipher end [24,79,198,33,131]
+encrypt_cipher iv [22,178,181,18,38,231,141,184,165,178,153,43,57,203,190,248]
+encrypt_cipher pn_enc 0x559253c101e0
+encrypt_cipher end [152,229,132,247,114]
 sending socket: 6
 sending id: client addr: 2130706433 port: 4443
 sending id finish
@@ -966,14 +987,14 @@ iv_size level 3
 iv_size end 16
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [40,5,183,15,76,72,189,78,123,249,192,199,23,15,126,30]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [183,237,74,72,97]
+encrypt_cipher iv [223,173,127,18,189,90,35,125,125,147,152,118,232,233,104,212]
+encrypt_cipher pn_dec 0x559255c79620
+encrypt_cipher end [100,205,183,229,186]
 decrypt_aead start 
 decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
+aead == 0x559255f34ca0
 checksum_length == 16
-seq == 1
+seq == 2
 bytes.size() == 10
 decrypted <= input.size() == 1
 decrypt_aead finish 
@@ -983,25 +1004,25 @@ sourceID data_remaining 0
 net.recv 2 
 RECEIVING finsh
 ser res init 3
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 4
-ser res scid_h 1 4
+ser res dcid 1 2975379875883057897
+ser res dcid 2 2975379875883057897
+ser res scid_h 1 6
+ser res scid_h 1 6
 iv_size start 
 iv_size cid 0
 iv_size level 3
 iv_size end 16
 encrypt_aead start l 3
 encrypt_aead start c 0
-encrypt_aead aead 0x55c5dd1cd0c0
+encrypt_aead aead 0x559255795030
 encrypt_aead encrypted  1
-encrypt_aead encrypted 97
+encrypt_aead encrypted 37
 encrypt_aead finish 
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [23,123,80,91,255,170,87,235,108,206,46,44,249,35,213,84]
-encrypt_cipher pn_enc 0x55c5de06c290
-encrypt_cipher end [25,33,72,94,183]
+encrypt_cipher iv [14,18,3,247,211,9,81,182,110,45,107,130,208,10,20,212]
+encrypt_cipher pn_enc 0x559253c101e0
+encrypt_cipher end [107,163,221,179,18]
 sending socket: 6
 sending id: client addr: 2130706433 port: 4443
 sending id finish
@@ -1014,38 +1035,12 @@ iv_size level 3
 iv_size end 16
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [231,228,11,69,120,201,197,58,84,172,225,225,230,50,43,180]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [205,170,239,19,223]
+encrypt_cipher iv [64,148,113,108,33,40,191,211,122,134,159,53,47,169,19,171]
+encrypt_cipher pn_dec 0x559255c79620
+encrypt_cipher end [70,14,107,200,79]
 decrypt_aead start 
 decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
-checksum_length == 16
-seq == 2
-bytes.size() == 10
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID res 1
-sourceID res 0
-sourceID data_remaining 0
-quic_crypto_length 
-net.recv 2 
-RECEIVING finsh
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [57,111,188,92,237,215,178,114,193,66,128,252,241,65,159,42]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [33,74,122,161,80]
-decrypt_aead start 
-decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
+aead == 0x559255f34ca0
 checksum_length == 16
 seq == 3
 bytes.size() == 10
@@ -1065,12 +1060,12 @@ iv_size level 3
 iv_size end 16
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [221,65,196,231,61,26,7,220,120,153,211,255,104,173,252,253]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [4,7,202,38,25]
+encrypt_cipher iv [220,10,180,95,9,41,239,168,17,8,113,223,235,24,213,200]
+encrypt_cipher pn_dec 0x559255c79620
+encrypt_cipher end [100,129,58,9,186]
 decrypt_aead start 
 decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
+aead == 0x559255f34ca0
 checksum_length == 16
 seq == 4
 bytes.size() == 10
@@ -1082,404 +1077,114 @@ sourceID data_remaining 0
 net.recv 2 
 RECEIVING finsh
 ser res init 3
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 2
-ser res scid_h 1 2
+ser res dcid 1 3000944919140526467
+ser res dcid 2 3000944919140526467
+ser res scid_h 1 7
+ser res scid_h 1 7
 iv_size start 
 iv_size cid 0
 iv_size level 3
 iv_size end 16
 encrypt_aead start l 3
 encrypt_aead start c 0
-encrypt_aead aead 0x55c5dd1cd0c0
+encrypt_aead aead 0x559255795030
 encrypt_aead encrypted  1
 encrypt_aead encrypted 37
 encrypt_aead finish 
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [250,179,106,116,144,151,194,138,205,187,211,44,97,204,207,90]
-encrypt_cipher pn_enc 0x55c5de06c290
-encrypt_cipher end [187,0,56,222,229]
+encrypt_cipher iv [120,10,52,75,129,2,192,136,180,226,108,74,46,34,86,203]
+encrypt_cipher pn_enc 0x559253c101e0
+encrypt_cipher end [112,158,9,210,59]
 sending socket: 6
 sending id: client addr: 2130706433 port: 4443
 sending id finish
 ser res init 3
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 4
-ser res scid_h 1 4
+ser res dcid 1 2975379875883057897
+ser res dcid 2 2975379875883057897
+ser res scid_h 1 7
+ser res scid_h 1 7
 iv_size start 
 iv_size cid 0
 iv_size level 3
 iv_size end 16
 encrypt_aead start l 3
 encrypt_aead start c 0
-encrypt_aead aead 0x55c5dd1cd0c0
+encrypt_aead aead 0x559255795030
 encrypt_aead encrypted  1
 encrypt_aead encrypted 37
 encrypt_aead finish 
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [49,43,98,247,129,26,211,235,180,173,125,243,119,87,255,191]
-encrypt_cipher pn_enc 0x55c5de06c290
-encrypt_cipher end [0,5,159,179,43]
+encrypt_cipher iv [169,126,210,9,78,158,119,215,206,137,203,35,0,198,100,135]
+encrypt_cipher pn_enc 0x559253c101e0
+encrypt_cipher end [3,69,82,228,99]
 sending socket: 6
 sending id: client addr: 2130706433 port: 4443
 sending id finish
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [102,183,131,223,203,121,254,247,7,172,63,173,17,195,118,27]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [232,199,200,86,255]
-decrypt_aead start 
-decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
-checksum_length == 16
-seq == 5
-bytes.size() == 10
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID res 1
-sourceID res 0
-sourceID data_remaining 0
-net.recv 2 
-RECEIVING finsh
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [48,52,160,99,80,123,65,237,137,212,224,21,48,6,203,27]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [197,178,201,150,203]
-decrypt_aead start 
-decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
-checksum_length == 16
-seq == 6
-bytes.size() == 10
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID res 1
-sourceID res 0
-sourceID data_remaining 0
-quic_crypto_length 
-net.recv 2 
-RECEIVING finsh
 ser res init 3
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 4
-ser res scid_h 1 4
+ser res dcid 1 3000944919140526467
+ser res dcid 2 3000944919140526467
+ser res scid_h 1 7
+ser res scid_h 1 7
 iv_size start 
 iv_size cid 0
 iv_size level 3
 iv_size end 16
 encrypt_aead start l 3
 encrypt_aead start c 0
-encrypt_aead aead 0x55c5dd1cd0c0
+encrypt_aead aead 0x559255795030
 encrypt_aead encrypted  1
-encrypt_aead encrypted 47
+encrypt_aead encrypted 37
 encrypt_aead finish 
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [170,143,170,42,216,98,229,156,82,143,22,95,231,61,164,25]
-encrypt_cipher pn_enc 0x55c5de06c290
-encrypt_cipher end [8,41,137,140,248]
+encrypt_cipher iv [242,98,184,254,239,60,19,214,173,205,17,93,69,252,134,231]
+encrypt_cipher pn_enc 0x559253c101e0
+encrypt_cipher end [152,104,179,106,242]
 sending socket: 6
 sending id: client addr: 2130706433 port: 4443
 sending id finish
 ser res init 3
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 2
-ser res scid_h 1 2
+ser res dcid 1 2975379875883057897
+ser res dcid 2 2975379875883057897
+ser res scid_h 1 6
+ser res scid_h 1 6
 iv_size start 
 iv_size cid 0
 iv_size level 3
 iv_size end 16
 encrypt_aead start l 3
 encrypt_aead start c 0
-encrypt_aead aead 0x55c5dd1cd0c0
+encrypt_aead aead 0x559255795030
 encrypt_aead encrypted  1
-encrypt_aead encrypted 57
+encrypt_aead encrypted 37
 encrypt_aead finish 
 encrypt_cipher start 
 encrypt_cipher c 0
-encrypt_cipher iv [11,96,165,230,191,228,199,218,190,145,107,200,133,172,78,230]
-encrypt_cipher pn_enc 0x55c5de06c290
-encrypt_cipher end [176,147,45,195,198]
+encrypt_cipher iv [68,248,33,148,138,208,84,80,96,100,146,44,195,39,113,152]
+encrypt_cipher pn_enc 0x559253c101e0
+encrypt_cipher end [172,234,12,249,226]
 sending socket: 6
 sending id: client addr: 2130706433 port: 4443
 sending id finish
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [167,157,177,64,52,62,30,162,6,26,114,33,30,168,179,153]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [101,49,246,75,85]
-decrypt_aead start 
-decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
-checksum_length == 16
-seq == 7
-bytes.size() == 10
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID res 1
-sourceID res 0
-sourceID data_remaining 0
-net.recv 2 
-RECEIVING finsh
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [51,46,61,218,35,255,79,99,234,59,225,35,54,248,156,126]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [205,30,151,109,161]
-decrypt_aead start 
-decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
-checksum_length == 16
-seq == 8
-bytes.size() == 10
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID res 1
-sourceID res 0
-sourceID data_remaining 0
-net.recv 2 
-RECEIVING finsh
-ser res init 3
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 4
-ser res scid_h 1 4
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_aead start l 3
-encrypt_aead start c 0
-encrypt_aead aead 0x55c5dd1cd0c0
-encrypt_aead encrypted  1
-encrypt_aead encrypted 62
-encrypt_aead finish 
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [21,252,54,192,194,57,175,95,39,52,19,65,148,230,212,110]
-encrypt_cipher pn_enc 0x55c5de06c290
-encrypt_cipher end [14,133,11,101,96]
-sending socket: 6
-sending id: client addr: 2130706433 port: 4443
-sending id finish
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [171,105,200,254,192,143,55,5,169,142,178,111,141,238,171,183]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [202,172,38,148,173]
-decrypt_aead start 
-decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
-checksum_length == 16
-seq == 9
-bytes.size() == 10
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID res 1
-sourceID res 0
-sourceID data_remaining 0
-net.recv 2 
-RECEIVING finsh
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [130,76,148,153,50,82,56,123,175,40,202,231,114,61,91,128]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [127,165,115,107,252]
-decrypt_aead start 
-decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
-checksum_length == 16
-seq == 10
-bytes.size() == 10
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID res 1
-sourceID res 0
-sourceID data_remaining 0
-net.recv 2 
-RECEIVING finsh
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [238,131,114,155,241,198,70,182,194,181,168,120,99,136,52,50]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [222,184,217,223,15]
-decrypt_aead start 
-decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
-checksum_length == 16
-seq == 11
-bytes.size() == 10
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID res 1
-sourceID res 0
-sourceID data_remaining 0
-net.recv 2 
-RECEIVING finsh
-RECEIVING start
-RECEIVING __deser
-net.recv 1
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [0,198,11,19,122,101,76,143,114,177,99,54,110,73,74,8]
-encrypt_cipher pn_dec 0x55c5de2d4f40
-encrypt_cipher end [105,155,154,98,108]
-decrypt_aead start 
-decrypt_aead ad 10
-aead == 0x55c5dca0d3d0
-checksum_length == 16
-seq == 12
-bytes.size() == 10
-decrypted <= input.size() == 1
-decrypt_aead finish 
-dstID res 1
-sourceID res 0
-sourceID data_remaining 0
-net.recv 2 
-RECEIVING finsh
-ser res init 3
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 4
-ser res scid_h 1 4
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_aead start l 3
-encrypt_aead start c 0
-encrypt_aead aead 0x55c5dd1cd0c0
-encrypt_aead encrypted  1
-encrypt_aead encrypted 132
-encrypt_aead finish 
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [83,212,47,57,243,3,127,80,28,5,163,173,91,53,39,194]
-encrypt_cipher pn_enc 0x55c5de06c290
-encrypt_cipher end [207,52,12,123,141]
-sending socket: 6
-sending id: client addr: 2130706433 port: 4443
-sending id finish
-ser res init 3
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 2
-ser res scid_h 1 2
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_aead start l 3
-encrypt_aead start c 0
-encrypt_aead aead 0x55c5dd1cd0c0
-encrypt_aead encrypted  1
-encrypt_aead encrypted 72
-encrypt_aead finish 
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [252,69,240,149,116,198,249,73,220,222,88,114,155,198,232,115]
-encrypt_cipher pn_enc 0x55c5de06c290
-encrypt_cipher end [186,19,55,206,11]
-sending socket: 6
-sending id: client addr: 2130706433 port: 4443
-sending id finish
-ser res init 3
-ser res dcid 1 4151140020
-ser res dcid 2 4151140020
-ser res scid_h 1 2
-ser res scid_h 1 2
-iv_size start 
-iv_size cid 0
-iv_size level 3
-iv_size end 16
-encrypt_aead start l 3
-encrypt_aead start c 0
-encrypt_aead aead 0x55c5dd1cd0c0
-encrypt_aead encrypted  1
-encrypt_aead encrypted 92
-encrypt_aead finish 
-encrypt_cipher start 
-encrypt_cipher c 0
-encrypt_cipher iv [203,234,192,138,197,126,80,227,84,75,32,186,110,111,63,0]
-encrypt_cipher pn_enc 0x55c5de06c290
-encrypt_cipher end [147,103,27,84,143]
-sending socket: 6
-sending id: client addr: 2130706433 port: 4443
-sending id finish
+"    require conn_total_data(the_cid) > 0;
+"
+quic_server_test_0rtt_stream.ivy: line 653: error: assumption failed
 SOCKET 6
 binding id: client addr: 2130706433 port: 4987
 SOCKET 7
 binding id: client_alt addr: 2130706433 port: 4988
 XXXXXXXXXXXX
-get_session_ticket_size 1 0000017e92ee8d340017130200008c00015180404b926b00007700c0ac3a5ca6bbdeba1346b6df26b5446866bf2cd006a4a28351b9d0026bd4d6e5e17d674f11d0afb3c59afa70491fb9d8dbe9543f624884940a528e5fce456aa8f2bccbfedeb4745dd68b800e72510da9e4f36da7981823e9cf4976b84b3810588cca615598a3a497f3da3a4c0c94a71e5823e5eb50020008002a0004ffffffff0030fc03f95c71043a69e8bcf56e276582e6ca1646484eb2136533d29e5ca0d47fe4af58491efde982e87fdf4ebcc85d4fd9
-get_session_ticket 1 0000017e92ee8d340017130200008c00015180404b926b00007700c0ac3a5ca6bbdeba1346b6df26b5446866bf2cd006a4a28351b9d0026bd4d6e5e17d674f11d0afb3c59afa70491fb9d8dbe9543f624884940a528e5fce456aa8f2bccbfedeb4745dd68b800e72510da9e4f36da7981823e9cf4976b84b3810588cca615598a3a497f3da3a4c0c94a71e5823e5eb50020008002a0004ffffffff0030fc03f95c71043a69e8bcf56e276582e6ca1646484eb2136533d29e5ca0d47fe4af58491efde982e87fdf4ebcc85d4fd9
-get_session_ticket hex_len 205
-pipi 205
+get_session_ticket_size 1 0000017ed3a265970017130200005500015180e287e05020dc8ed0ce9f85345f2b38be1993c2ab8f588eda43459d93d5831f78fbff74a1030020983a934ca5bf22ae83ddc052f4fe17e171106f2932f7d2e2349b0f0a751d259c0008002a0004ffffffff0030fa57a71f51c2b12191ce734c89e5baf2e789c2a20d12a93654b2a565c296a861e33717f81ac555fd473444f853ff5a8f
+get_session_ticket 1 0000017ed3a265970017130200005500015180e287e05020dc8ed0ce9f85345f2b38be1993c2ab8f588eda43459d93d5831f78fbff74a1030020983a934ca5bf22ae83ddc052f4fe17e171106f2932f7d2e2349b0f0a751d259c0008002a0004ffffffff0030fa57a71f51c2b12191ce734c89e5baf2e789c2a20d12a93654b2a565c296a861e33717f81ac555fd473444f853ff5a8f
+get_session_ticket hex_len 150
+pipi 150
 OK OK
-0x00 00 01 7e 92 ee 8d 34 00 17 13 02 00 00 8c 00 01 51 80 40 4b 92 6b 00 00 77 00 c0 ac 3a 5c a6 bb de ba 13 46 b6 df 26 b5 44 68 66 bf 2c d0 06 a4 a2 83 51 b9 d0 02 6b d4 d6 e5 e1 7d 67 4f 11 d0 af b3 c5 9a fa 70 49 1f b9 d8 db e9 54 3f 62 48 84 94 0a 52 8e 5f ce 45 6a a8 f2 bc cb fe de b4 74 5d d6 8b 80 0e 72 51 0d a9 e4 f3 6d a7 98 18 23 e9 cf 49 76 b8 4b 38 10 58 8c ca 61 55 98 a3 a4 97 f3 da 3a 4c 0c 94 a7 1e 58 23 e5 eb 50 02 00 08 00 2a 00 04 ff ff ff ff 00 30 fc 03 f9 5c 71 04 3a 69 e8 bc f5 6e 27 65 82 e6 ca 16 46 48 4e b2 13 65 33 d2 9e 5c a0 d4 7f e4 af 58 49 1e fd e9 82 e8 7f df 4e bc c8 5d 4f d9 
+0x00 00 01 7e d3 a2 65 97 00 17 13 02 00 00 55 00 01 51 80 e2 87 e0 50 20 dc 8e d0 ce 9f 85 34 5f 2b 38 be 19 93 c2 ab 8f 58 8e da 43 45 9d 93 d5 83 1f 78 fb ff 74 a1 03 00 20 98 3a 93 4c a5 bf 22 ae 83 dd c0 52 f4 fe 17 e1 71 10 6f 29 32 f7 d2 e2 34 9b 0f 0a 75 1d 25 9c 00 08 00 2a 00 04 ff ff ff ff 00 30 fa 57 a7 1f 51 c2 b1 21 91 ce 73 4c 89 e5 ba f2 e7 89 c2 a2 0d 12 a9 36 54 b2 a5 65 c2 96 a8 61 e3 37 17 f8 1a c5 55 fd 47 34 44 f8 53 ff 5a 8f 
 vec_to_ptls_iovec 
-  ~íÓç4   å QÄ@Kík  w ¿¨:\¶ªﬁ∫F∂ﬂ&µDhfø,–§¢ÉQπ–k‘÷Â·}gO–Ø≥≈ö˙pIπÿ€ÈT?bHÑî
-Ré_ŒEj®ÚºÀ˛ﬁ¥t]÷ãÄrQ©‰Ûmßò#ÈœIv∏K8Xå aUò£§óÛ⁄:LîßX#ÂÎP  * ˇˇˇˇ 0¸˘\q:iËºın'eÇÊ FHN≤e3“û\†‘‰ØXI˝ÈÇËﬂNº»]OŸ
+  ~”¢eó   U QÄ‚á‡P ‹é–ŒüÖ4_+8æì¬´èXé⁄CEùì’Éx˚ˇt°  ò:ìL•ø"ÆÉ›¿RÙ˛·qo)2˜“‚4õ
+u%ú  * ˇˇˇˇ 0˙WßQ¬±!ëŒsLâÂ∫ÚÁâ¬¢©6T≤•e¬ñ®a„7¯≈U˝G4D¯SˇZè
 PROUT true
 TEST_ALPN hq-29
 etype =
@@ -1491,14 +1196,14 @@ ser-open_field: name 1: "quic_transport_parameters"
 ser-open_field: flb : 2
 ser-open_field: field_start.push_back(res.size()) : 4
 ser-open_field: ffield_length_bytes.push_back(flb) : 2
-ser-open_field: name_field_bytes 2: 1446885472
-ser-open_field: field_bytes: 1446885472
+ser-open_field: name_field_bytes 2: 1203443024
+ser-open_field: field_bytes: 1203443024
 ser-open_field: res.size() : 4
 ser-open_field: name 1: "transport_parameters"
 ser-open_field: field_start.push_back(res.size()) : 4
 ser-open_field: ffield_length_bytes.push_back(flb) : 0
-ser-open_field: name_field_bytes 2: 1446885472
-ser-open_field: field_bytes: 1446885472
+ser-open_field: name_field_bytes 2: 1203443024
+ser-open_field: field_bytes: 1203443024
 ser-open_field: res.size() : 4
 ser-open_tag: bytes : 1
 ser-open_tag: tag : 5
@@ -1508,8 +1213,8 @@ ser-open_field: name 1: "initial_max_stream_data_bidi_local"
 ser-open_field: flb : 1
 ser-open_field: field_start.push_back(res.size()) : 6
 ser-open_field: ffield_length_bytes.push_back(flb) : 1
-ser-open_field: name_field_bytes 2: 1446885472
-ser-open_field: field_bytes: 1446885472
+ser-open_field: name_field_bytes 2: 1203443024
+ser-open_field: field_bytes: 1203443024
 ser-open_field: res.size() : 6
 ser-open_field: name 1: "stream_pos_32"
 ser-open_field: field_start.push_back(res.size()) : 6
@@ -1632,14 +1337,14 @@ ser-open_field: field_bytes: -1
 ser-open_field: res.size() : 40
 etype =65445
 len =38
-ptls_exts =0x560d565481d0
+ptls_exts =0x557047c6a890
 ptls_exts[i].type = 65445
 ptls_exts[i].len = 38
 add_extensions 2 
-ticket_psk 205
+ticket_psk 150
 ticket_psk 
-TEST_IMPL quant
-TEST_IMPL quant
+TEST_IMPL quinn
+TEST_IMPL quinn
 is_server 0
 picotls_do_handshake start 0
 picotls_do_handshake start 0
@@ -1647,12 +1352,12 @@ picotls_do_handshake start 0
 tls_on_extension_cb 
 tls_on_extension_cb 42
 tls_on_extension_cb 4
-quic_update_traffic_key_cb 0x560d563d44b0
-quic_update_traffic_key_cb 0x560d563d44b0
+quic_update_traffic_key_cb 0x557047baa600
+quic_update_traffic_key_cb 0x557047baa600
 quic_update_traffic_key_cb CLIENT_EARLY_TRAFFIC_SECRET
 picotls_do_handshake ptls_handle_message end 
 PICOTLS RETURNED PTLS_ERROR_IN_PROGRESS 514
-[1,0,1,168,3,3,43,181,152,64,127,195,174,62,15,36,222,236,177,42,22,6,226,107,116,120,9,5,106,120,156,202,34,196,82,234,104,170,0,0,6,19,2,19,1,19,3,1,0,1,121,0,51,0,71,0,69,0,23,0,65,4,221,199,100,146,250,20,214,149,207,211,99,138,226,114,199,9,163,54,9,13,58,196,190,213,105,115,113,89,145,70,54,99,160,13,136,99,216,119,78,0,60,125,33,202,49,31,56,141,107,208,53,68,108,6,107,197,34,142,244,223,153,1,135,214,0,0,0,15,0,13,0,0,10,115,101,114,118,101,114,110,97,109,101,0,16,0,8,0,6,5,104,113,45,50,57,0,43,0,9,8,3,4,127,28,127,27,127,26,0,13,0,10,0,8,8,4,4,3,4,1,2,1,0,10,0,6,0,4,0,23,0,29,255,165,0,38,5,2,96,0,4,4,128,0,64,0,1,2,71,208,6,2,96,0,7,2,96,0,15,8,0,0,0,0,0,0,0,1,12,0,8,2,96,0,0,45,0,2,1,1,0,42,0,0,0,41,0,178,0,125,0,119,0,192,172,58,92,166,187,222,186,19,70,182,223,38,181,68,104,102,191,44,208,6,164,162,131,81,185,208,2,107,212,214,229,225,125,103,79,17,208,175,179,197,154,250,112,73,31,185,216,219,233,84,63,98,72,132,148,10,82,142,95,206,69,106,168,242,188,203,254,222,180,116,93,214,139,128,14,114,81,13,169,228,243,109,167,152,24,35,233,207,73,118,184,75,56,16,88,140,202,97,85,152,163,164,151,243,218,58,76,12,148,167,30,88,35,229,235,80,2,64,75,176,255,0,49,48,251,105,219,225,113,19,4,142,245,93,158,69,2,161,131,50,174,46,210,103,41,116,238,178,14,76,106,174,113,78,162,158,103,80,56,87,70,158,190,98,53,175,231,134,138,183,228,201]
+[1,0,1,81,3,3,238,197,44,53,117,139,111,177,25,200,211,99,204,221,38,236,51,56,70,131,187,48,22,100,180,23,172,37,13,89,122,90,0,0,6,19,2,19,1,19,3,1,0,1,34,0,51,0,71,0,69,0,23,0,65,4,142,195,209,43,116,10,223,129,99,5,32,21,166,216,0,43,82,117,98,164,123,68,116,93,99,52,124,240,133,130,241,218,111,163,138,1,152,224,145,25,131,6,225,216,61,178,32,196,181,57,1,24,252,128,151,58,108,125,19,28,250,237,184,36,0,0,0,15,0,13,0,0,10,115,101,114,118,101,114,110,97,109,101,0,16,0,8,0,6,5,104,113,45,50,57,0,43,0,9,8,3,4,127,28,127,27,127,26,0,13,0,10,0,8,8,4,4,3,4,1,2,1,0,10,0,6,0,4,0,23,0,29,255,165,0,38,5,2,96,0,4,4,128,0,64,0,1,2,71,208,6,2,96,0,7,2,96,0,15,8,0,0,0,0,0,0,0,1,12,0,8,2,96,0,0,45,0,2,1,1,0,42,0,0,0,41,0,91,0,38,0,32,152,58,147,76,165,191,34,174,131,221,192,82,244,254,23,225,113,16,111,41,50,247,210,226,52,155,15,10,117,29,37,156,226,135,243,225,0,49,48,99,5,185,178,186,25,67,102,93,91,227,18,35,53,171,225,153,29,205,63,55,98,105,102,49,177,104,204,222,167,105,229,42,170,135,162,126,206,192,161,199,44,88,133,212,177,83,252]
 0
 
 tag v1: 1
@@ -1661,14 +1366,14 @@ tags[0]: "tls.client_hello"
 value_size: 0
 deser-open_field: name : "tls.client_hello"
 deser-open_field: length_field_bytes : 3
-deser-open_field: flength : 424
+deser-open_field: flength : 337
 deser-open_field: name : "client_version"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: field_bytes : 2
 deser-open_field: name : "rand_info"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: name : "gmt_unix_time"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: field_bytes : 4
 deser-open_field: name : "random_bytes"
 deser-open_field: name : "session_id"
@@ -1688,15 +1393,15 @@ deser-open_field: tls_field_bytes_map["compression_methods"] : 1
 deser-open_field: field_bytes : 1
 deser-open_field: name : "extensions"
 deser-open_field: length_field_bytes : 2
-deser-open_field: flength : 377
+deser-open_field: flength : 290
 tag v1: 51
 Tag size: 1
 tags[0]: "tls.unknown_extension"
 value_size: 0
 deser-open_field: name : "tls.unknown_extension"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: name : "etype"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: field_bytes : 2
 deser-open_field: name : "content"
 deser-open_field: length_field_bytes : 2
@@ -1708,9 +1413,9 @@ Tag size: 1
 tags[0]: "tls.unknown_extension"
 value_size: 0
 deser-open_field: name : "tls.unknown_extension"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: name : "etype"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: field_bytes : 2
 deser-open_field: name : "content"
 deser-open_field: length_field_bytes : 2
@@ -1722,9 +1427,9 @@ Tag size: 1
 tags[0]: "tls.unknown_extension"
 value_size: 0
 deser-open_field: name : "tls.unknown_extension"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: name : "etype"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: field_bytes : 2
 deser-open_field: name : "content"
 deser-open_field: length_field_bytes : 2
@@ -1736,9 +1441,9 @@ Tag size: 1
 tags[0]: "tls.unknown_extension"
 value_size: 0
 deser-open_field: name : "tls.unknown_extension"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: name : "etype"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: field_bytes : 2
 deser-open_field: name : "content"
 deser-open_field: length_field_bytes : 2
@@ -1750,9 +1455,9 @@ Tag size: 1
 tags[0]: "tls.unknown_extension"
 value_size: 0
 deser-open_field: name : "tls.unknown_extension"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: name : "etype"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: field_bytes : 2
 deser-open_field: name : "content"
 deser-open_field: length_field_bytes : 2
@@ -1764,9 +1469,9 @@ Tag size: 1
 tags[0]: "tls.unknown_extension"
 value_size: 0
 deser-open_field: name : "tls.unknown_extension"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: name : "etype"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: field_bytes : 2
 deser-open_field: name : "content"
 deser-open_field: length_field_bytes : 2
@@ -1866,7 +1571,7 @@ Tag size: 1
 tags[0]: "tls.unknown_extension"
 value_size: 0
 deser-open_field: name : "tls.psk_key_exchange_modes"
-4) pkt-pos =  428
+4) pkt-pos =  341
 deser-open_field: name : "content"
 deser-open_field: length_field_bytes : 2
 deser-open_field: flength : 2
@@ -1889,26 +1594,83 @@ tag v1: 41
 Tag size: 2
 tags[0]: "tls.unknown_extension"
 tag: 41
-value_size: 178
-value_size: 178
+value_size: 91
+value_size: 91
 deser-open_field: name : "tls.pre_shared_key_client"
 deser-open_field: length_field_bytes : 2
-deser-open_field: flength : 178
+deser-open_field: flength : 91
 deser-open_field: name : "psk_identities"
 deser-open_field: length_field_bytes : 2
-deser-open_field: flength : 125
-deser-open_field: tls_field_bytes_map["psk_identities"] : 125
+deser-open_field: flength : 38
+deser-open_field: tls_field_bytes_map["psk_identities"] : 38
 deser-open_field: field_bytes : -1
 deser-open_field: name : "identity"
 deser-open_field: length_field_bytes : 2
-deser-open_field: flength : 119
-deser-open_field: tls_field_bytes_map["identity"] : 119
+deser-open_field: flength : 32
+deser-open_field: tls_field_bytes_map["identity"] : 32
 deser-open_field: field_bytes : 1
 deser-open_field: name : "obfuscated_ticket_age"
-4) pkt-pos =  377
+4) pkt-pos =  290
 deser-open_field: field_bytes : 4
 deser-open_field: name : "psk_binder"
 deser-open_field: length_field_bytes : 2
 deser-open_field: flength : 49
 deser-open_field: tls_field_bytes_map["psk_binder"] : 49
 deser-open_field: field_bytes : 1
+dcid_size_cl size: 8
+scid_size_pos size: 8
+setup_initial_traffic_keys start
+[0,0,0,0,0,0,0,2]setup_initial_traffic_keys stop
+setup_initial_traffic_keys salt: [175,191,236,40,153,147,210,76,158,151,134,241,156,97,17,224,67,144,168,153]
+setup_initial_traffic_keys ikm: [0,0,0,0,0,0,0,2]
+ser res init 0
+ser res init hdr_type C
+ser res dcid 1 
+ser res dcid 2 2
+ser res scid_h 1 1
+ser res scid_h 1 1
+open_list len 0
+quic_ser_zerortt close_list len 68
+ser res init_z 1
+ser res init_z hdr_type S
+ser res dcid 1 rtt 
+ser res dcid 2 2
+ser res scid_h 1 rtt
+ser res scid_h 1 1
+ser res quic_s_pkt_num_z rtt 1 1223
+quic_ser_zerortt close_list2 len 64
+iv_size start 
+iv_size cid 0
+iv_size level 0
+iv_size end 16
+show_pnuml 2: 4
+encrypt_aead start l 0
+encrypt_aead start c 0
+encrypt_aead aead 0x55704b7bfac0
+encrypt_aead encrypted  1
+encrypt_aead encrypted 1186
+encrypt_aead finish 
+encrypt_cipher start 
+encrypt_cipher c 0
+encrypt_cipher iv [144,253,238,11,162,252,146,4,231,255,71,1,165,183,220,166]
+encrypt_cipher pn_enc 0x55704bd3f0a0
+encrypt_cipher end [138,61,154,182,202]
+iv_size start 
+iv_size cid 0
+iv_size level 1
+iv_size end 16
+show_pnuml 2: 4
+encrypt_aead start l 1
+encrypt_aead start c 0
+encrypt_aead aead 0x557047cd4230
+encrypt_aead encrypted  1
+encrypt_aead encrypted 72
+encrypt_aead finish 
+encrypt_cipher start 
+encrypt_cipher c 0
+encrypt_cipher iv [43,119,149,114,10,140,14,254,100,213,198,124,164,22,169,231]
+encrypt_cipher pn_enc 0x557047c96df0
+encrypt_cipher end [94,113,213,230,247]
+sending socket: 6
+sending id: client addr: 2130706433 port: 4443
+sending id finish

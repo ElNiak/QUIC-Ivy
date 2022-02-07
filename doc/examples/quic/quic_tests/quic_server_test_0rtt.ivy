@@ -709,7 +709,7 @@ around client_send_event {
     };
 
     require dst = server.ep;
-    #require connected(the_cid) & dcid = connected_to(the_cid);
+    require (connected(the_cid) & dcid = connected_to(the_cid)) | ~zero_rtt_sent;
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);
     require stream_length(dcid,s) < end & end <= http_request.end;
     require current_stream < 60;

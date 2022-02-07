@@ -377,9 +377,7 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
         conn_requested(src,dst,the_cid) := true;
     };
 
-    if _generating{
-        zero_rtt_sent := true;
-    };
+    zero_rtt_sent := true;
 
     queued_frames_rtt(scid) := frame.arr.empty;
     queued_non_probing(scid) := false;

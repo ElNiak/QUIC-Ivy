@@ -211,7 +211,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                     & bvand(ppkt.value(0),0xf0) = 0xc0   { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
                 # for client test
                 #if (retry_client_test -> retry_sent) { # TODO bug 0rtt
-                #call tls_client_initial_response(src,dst,ppkt)
+                call tls_client_initial_response(src,dst,ppkt)
                 #};
             };
             if ~ host = endpoint_id.server  
