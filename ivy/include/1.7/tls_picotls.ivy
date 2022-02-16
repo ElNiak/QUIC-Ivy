@@ -111,12 +111,16 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
 
         st_ptls_buffer_t message;
 
+        void * ticket_aead_encrypt;
+        void * ticket_aead_decrypt;
+
         picotls_connection(`cid` id, ptls_t *gs, ptls_context_t *cctx , tls_callbacks cb,
             ptls_handshake_properties_t *hsp, bool is_server)
             : id(id),gs(gs),cctx(cctx),cb(cb),hsp(hsp),is_server(is_server) {
             handshake_status = 0;
             session_ticket = NULL;
             crypto_context.resize(4);
+            ticket_aead_encrypt = ticket_aead_decrypt = 0;
         }
     };
 
@@ -163,11 +167,118 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         return ret;
     }
 
+    static uint64_t public_random_seed[16] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+    static int public_random_index = 0;
+    static const uint64_t public_random_multiplier = 1181783497276652981ull;
+    static uint64_t public_random_obfuscator = 0x5555555555555555ull;
+
+    static uint64_t quic_public_random_step(void)
+    {
+        uint64_t s1;
+        const uint64_t s0 = public_random_seed[public_random_index++];
+        public_random_index &= 15;
+        s1 = public_random_seed[public_random_index];
+        s1 ^= (s1 << 31); // a
+        s1 ^= (s1 >> 11); // b
+        s1 ^= (s0 ^ (s0 >> 30)); // c
+        public_random_seed[public_random_index] = s1;
+        return s1;
+    }
+
+    uint64_t quic_public_random_64(void)
+    {
+        uint64_t s1 = quic_public_random_step();
+        s1 *= public_random_multiplier;
+        s1 ^= public_random_obfuscator;
+        return s1;
+    }
+
+    /* Integer parsing macros */
+    #define PICOPARSE_16(b) ((((uint16_t)(b)[0]) << 8) | (uint16_t)((b)[1]))
+    #define PICOPARSE_24(b) ((((uint32_t)PICOPARSE_16(b)) << 8) | (uint32_t)((b)[2]))
+    #define PICOPARSE_32(b) ((((uint32_t)PICOPARSE_16(b)) << 16) | (uint32_t)PICOPARSE_16((b) + 2))
+    #define PICOPARSE_64(b) ((((uint64_t)PICOPARSE_32(b)) << 32) | (uint64_t)PICOPARSE_32((b) + 4))
+
+    void picoformat_64(uint8_t* bytes, uint64_t n64)
+    {
+        bytes[0] = (uint8_t)(n64 >> 56);
+        bytes[1] = (uint8_t)(n64 >> 48);
+        bytes[2] = (uint8_t)(n64 >> 40);
+        bytes[3] = (uint8_t)(n64 >> 32);
+        bytes[4] = (uint8_t)(n64 >> 24);
+        bytes[5] = (uint8_t)(n64 >> 16);
+        bytes[6] = (uint8_t)(n64 >> 8);
+        bytes[7] = (uint8_t)(n64);
+    }
+
+
     static int tls_server_encrypt_ticket_cb(ptls_encrypt_ticket_t* encrypt_ticket_ctx,
         ptls_t* tls, int is_encrypt, ptls_buffer_t* dst, ptls_iovec_t src)
     {
-        int ret = 0;
         std::cerr << "tls_server_encrypt_ticket_cb\n";
+        int ret = 0;
+
+        picotls_connection *s = (picotls_connection*)*ptls_get_data_ptr(tls);
+
+        std::cerr << "tls_server_encrypt_ticket_cb 1\n";
+
+        if (is_encrypt != 0) {
+            std::cerr << "tls_server_encrypt_ticket_cb 2a\n";
+            ptls_aead_context_t *aead_enc = (ptls_aead_context_t *)(s->ticket_aead_encrypt);
+            std::cerr << "tls_server_encrypt_ticket_cb 3a " << s->ticket_aead_encrypt << "\n";
+            std::cerr << "tls_server_encrypt_ticket_cb 3a " << aead_enc << "\n";
+            std::cerr << "tls_server_encrypt_ticket_cb 3a " << aead_enc->algo << "\n";
+            std::cerr << "tls_server_encrypt_ticket_cb 3a " << aead_enc->algo->tag_size << "\n";
+            //ptls_aead_context_t* aead_enc = (ptls_aead_context_t*)quic->aead_encrypt_ticket_ctx;
+            /* Encoding*/
+            if (aead_enc == NULL) {
+                ret = -1;
+            } else if ((ret = ptls_buffer_reserve(dst, 8 + src.len + aead_enc->algo->tag_size)) == 0) {
+                std::cerr << "tls_server_encrypt_ticket_cb 4a\n";
+                /* Create and store the ticket sequence number */
+                uint64_t seq_num = quic_public_random_64();
+                picoformat_64(dst->base + dst->off, seq_num);
+                dst->off += 8;
+                /* Run AEAD encryption */
+                dst->off += ptls_aead_encrypt(aead_enc, dst->base + dst->off,
+                    src.base, src.len, seq_num, NULL, 0);
+                /* Remember issued ticket ID in connection context */
+                //quic->cnx_in_progress->issued_ticket_id = seq_num;
+            }
+        } else {
+            std::cerr << "tls_server_encrypt_ticket_cb 2b\n";
+            ptls_aead_context_t *aead_dec = (ptls_aead_context_t *)(s->ticket_aead_decrypt);
+            std::cerr << "tls_server_encrypt_ticket_cb 3b\n";
+            //ptls_aead_context_t* aead_dec = (ptls_aead_context_t*)quic->aead_decrypt_ticket_ctx;
+            /* Encoding*/
+            if (aead_dec == NULL) {
+                ret = -1;
+            } else if (src.len < 8 + aead_dec->algo->tag_size) {
+                ret = -1;
+            } else if ((ret = ptls_buffer_reserve(dst, src.len)) == 0) {
+                /* Decode the ticket sequence number */
+                uint64_t seq_num = PICOPARSE_64(src.base);
+                /* Decrypt */
+                size_t decrypted = ptls_aead_decrypt(aead_dec, dst->base + dst->off,
+                    src.base + 8, src.len - 8, seq_num, NULL, 0);
+
+                if (decrypted > src.len - 8) {
+                    /* decryption error */
+                    ret = -1;
+                } else {
+                    dst->off += decrypted;
+                    /* Remember resumed ticket ID in connection context */
+                    //quic->cnx_in_progress->resumed_ticket_id = seq_num;
+                    const char * session_file = getenv("RSTFILE");
+                    FILE *fp;
+                    if(session_file != NULL) {
+                        fp = fopen(session_file,"w");
+                        fprintf(fp,"%" PRIu64,  seq_num); //length field
+                        fclose(fp);
+                    }                    
+                }
+            }
+        }
         return ret;
     }
 
@@ -213,6 +324,21 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
     void *aead_from_secret(ptls_cipher_suite_t * cipher, int is_enc, const void *secret)
     {
         return ptls_aead_new(cipher->aead, cipher->hash, is_enc, secret, QUIC_LABEL_QUIC_BASE);
+    }
+
+    static int quic_set_aead_from_secret(void ** v_aead,ptls_cipher_suite_t * cipher, int is_enc, const void *secret, const char *prefix_label)
+    {
+        int ret = 0;
+        std::cerr << "quic_set_aead_from_secret 1 " << *v_aead << "\n";
+        if (*v_aead != NULL) {
+            ptls_aead_free((ptls_aead_context_t*)*v_aead);
+        }
+        std::cerr << "quic_set_aead_from_secret 2" <<"\n";
+        if ((*v_aead = ptls_aead_new(cipher->aead, cipher->hash, is_enc, secret, prefix_label)) == NULL) {
+            ret = PTLS_ERROR_NO_MEMORY;
+        }
+        std::cerr << "quic_set_aead_from_secret 3" <<"\n";
+        return ret;
     }
 
     void *pn_enc_from_secret(ptls_cipher_suite_t * cipher, int is_enc, const void *secret)
@@ -625,6 +751,123 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             fclose(fp);
         }
         if(keylogfile_0rtt != NULL &&  (!is_rtt || strcmp(secret_label, "CLIENT_EARLY_TRAFFIC_SECRET") == 0)) {
+            fclose(fp_0rtt);
+        }
+        return 0;
+    }
+
+        int convert(const char *hex_str, uint8_t *byte_array, int byte_array_max)
+    {   
+        std::cerr << "convert 1" <<"\n";
+        int hex_str_len = strnlen(hex_str,byte_array_max);
+        int i = 0, j = 0;
+
+        // The output array size is half the hex_str length (rounded up)
+        int byte_array_size = (hex_str_len)/2;
+        fprintf(stderr,"pipi %d\n",byte_array_size);
+        std::cerr << "convert 2" <<"\n";
+
+        if (byte_array_size > byte_array_max)
+        {
+            // Too big for the output array
+            return -1;
+        }
+
+        if (hex_str_len % 2 == 1)
+        {
+            // hex_str is an odd length, so assume an implicit "0" prefix
+            if (sscanf(&(hex_str[0]), "%1hhx", &(byte_array[0])) != 1)
+            {
+                return -1;
+            }
+
+            i = j = 1;
+        }
+
+        for (; i < hex_str_len; i+=2, j++)
+        {
+            if (sscanf(&(hex_str[i]), "%2hhx", &(byte_array[j])) != 1)
+            {
+                return -1;
+            }
+        }
+
+        return byte_array_size;
+    }
+
+    // TODO finish
+    static int quic_set_secret_from_file(ptls_t *tls, int is_enc, size_t epoch)
+    {
+        bool is_rtt_key = false;
+        if(epoch == 1) {
+            epoch = 3; 
+            is_rtt_key = true;
+        }
+
+	    static const char *log_labels[2][4] = {
+            {NULL, "CLIENT_EARLY_TRAFFIC_SECRET", "CLIENT_HANDSHAKE_TRAFFIC_SECRET", "CLIENT_TRAFFIC_SECRET_0"},
+            {NULL, NULL, "SERVER_HANDSHAKE_TRAFFIC_SECRET", "SERVER_TRAFFIC_SECRET_0"}};
+        const char * keylogfile_0rtt = getenv("ZRTTSSLKEYLOGFILE");
+
+        size_t len = 0;
+        ssize_t read;
+        char * line = NULL;
+
+
+        FILE *fp_0rtt;
+        fp_0rtt = fopen(keylogfile_0rtt,"r");
+        if (fp_0rtt == NULL) {
+            perror("Error while opening the file.\n");
+            exit(EXIT_FAILURE);
+        }
+
+        const char *secret_label = log_labels[ptls_is_server(tls) == is_enc][epoch];
+        std::cerr << "quic_set_secret_from_file " << secret_label <<"\n";
+
+        picotls_connection* cnx = (picotls_connection*)*ptls_get_data_ptr(tls);
+        //ptls_cipher_suite_t * cipher = ptls_get_cipher(tls);
+        ptls_cipher_suite_t cipher = { 0, &ptls_openssl_aes128gcm, &ptls_openssl_sha256 };
+        const size_t* nelem = &cipher.hash->digest_size;
+        std::cerr << "quic_set_secret_from_file 2 " << *nelem <<"\n";
+        uint8_t *secret = (uint8_t *) malloc(*nelem * sizeof(uint8_t *));
+
+        std::cerr << "quic_set_secret_from_file 2 " << secret_label <<"\n";
+
+        if(keylogfile_0rtt != NULL) {
+            for(int j = 0; j < 4; j++) {
+                read = getline(&line, &len, fp_0rtt);
+                char * ret = strstr(line, secret_label);
+                std::cerr << "quic_set_secret_from_file 3 " << line <<"\n";
+                if(ret) {
+                    char * token = strtok(line, " ");
+                    // loop through the string to extract all other tokens
+                    for(int i = 0; i < 2 && token != NULL; i++) { 
+                        token = strtok(NULL, " ");
+                        std::cerr << "quic_set_secret_from_file 4 " << token <<"\n";
+                        if(i == 1) { //secret
+                            // int kk = 0;
+                            // std::cerr << "quic_set_secret_from_file 5 " <<"\n";
+                            // for(int k = 0; k <  *nelem ; k++) {
+                            //     int r =  sscanf(&token[k], "%u", ((uint8_t *) secret)[k]);
+                            //     kk=kk+2;
+                            // }
+                            int sizze = convert(token, secret, 526);
+                        }
+                    }
+                }
+            }
+        }
+
+        if(is_rtt_key) {
+            epoch = 1;
+        }
+        quic_set_key_from_secret(&cipher, is_enc, &cnx->crypto_context[epoch], secret);
+        
+        if (cnx->crypto_context[epoch].aead_encrypt && cnx->crypto_context[epoch].aead_decrypt) {
+            cnx->cb.use(cnx->id,epoch);
+        }
+
+        if(keylogfile_0rtt != NULL) {
             fclose(fp_0rtt);
         }
         return 0;
@@ -1083,44 +1326,6 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         fprintf(stderr,"%s","\n");
     }
 
-    int convert(const char *hex_str, uint8_t *byte_array, int byte_array_max)
-    {
-        int hex_str_len = strlen(hex_str);
-        int i = 0, j = 0;
-
-        // The output array size is half the hex_str length (rounded up)
-        int byte_array_size = (hex_str_len)/2;
-        fprintf(stderr,"pipi %d\n",byte_array_size);
-
-        if (byte_array_size > byte_array_max)
-        {
-            // Too big for the output array
-            return -1;
-        }
-
-        if (hex_str_len % 2 == 1)
-        {
-            // hex_str is an odd length, so assume an implicit "0" prefix
-            if (sscanf(&(hex_str[0]), "%1hhx", &(byte_array[0])) != 1)
-            {
-                return -1;
-            }
-
-            i = j = 1;
-        }
-
-        for (; i < hex_str_len; i+=2, j++)
-        {
-            if (sscanf(&(hex_str[i]), "%2hhx", &(byte_array[j])) != 1)
-            {
-                return -1;
-            }
-        }
-
-        return byte_array_size;
-    }
-
-
     void get_session_ticket(uint8_t* secret, int size)  {
             //free(secret);
             const char * session_file = getenv("STFILE3");
@@ -1160,8 +1365,6 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             }
             //return secret;
     }
-
-
 
     // void get_session_ticket(uint8_t* secret, int* size)  {
     //         //free(secret);
@@ -1480,14 +1683,17 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
     implement create(c:cid, is_server:bool, e:extens) {
         <<< impure
 
+        //is_rtt = true; //todo
+
         std::cerr << "create cid = " << c << std::endl;  
-    
+
         // We create a new picootls session, and add an entry in the cid_map
         // for it.
 
         ptls_context_t* ctx;
         ctx = new ptls_context_t;
         memset(ctx, 0, sizeof(ptls_context_t));
+
         /*
         HelloRetryRequest random:
             CF 21 AD 74 E5 9A 61 11 BE 1D 8C 02 1E 65 B8 91
@@ -1533,9 +1739,15 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             ctx->require_dhe_on_psk = 1;
         }
         else {
-            // ptls_encrypt_ticket_t* encrypt_ticket = (ptls_encrypt_ticket_t*)malloc(sizeof(ptls_encrypt_ticket_t));
-            // encrypt_ticket->cb = tls_server_encrypt_ticket_cb;
-            // ctx->encrypt_ticket = encrypt_ticket;
+            if(is_server){
+                ptls_iovec_t ticket_psk = ptls_iovec_init(NULL, 0);
+                std::cerr << "ptls_encrypt_ticket_t " << is_zrtt << std::endl;
+                ptls_encrypt_ticket_t* encrypt_ticket = (ptls_encrypt_ticket_t*)malloc(sizeof(ptls_encrypt_ticket_t)+ sizeof(ptls_iovec_t*));
+                encrypt_ticket->cb = tls_server_encrypt_ticket_cb;
+                ptls_iovec_t** ppreceiver = (ptls_iovec_t**)(((char*)encrypt_ticket) + sizeof(ptls_encrypt_ticket_t));
+                *ppreceiver = &ticket_psk;
+                ctx->encrypt_ticket = encrypt_ticket;
+            }
             std::cerr << "PROUT " << is_zrtt << std::endl;
             ctx->ticket_lifetime = 60 * 60 * 24;  //server only
             ctx->require_dhe_on_psk = 1; //server only
@@ -1543,16 +1755,20 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             //static size_t m; //0xFFFFFFFF
             // handshake_properties->client.session_ticket = ptls_iovec_init(NULL, 0);
             // handshake_properties->client.max_early_data_size = &m; 
-            ptls_iovec_t ticket_psk = ptls_iovec_init(NULL, 0); // = ptls_iovec_init(bytes, sizeof(bytes)); //cipher->hash->digest_size
-            ptls_save_ticket_t* save_ticket = NULL;
-            save_ticket = (ptls_save_ticket_t*)malloc(sizeof(ptls_save_ticket_t)+ sizeof(ptls_iovec_t*)); // + sizeof(ptls_iovec_t*)
-            if (save_ticket != NULL) {
-                save_ticket->cb = tls_client_save_ticket_cb; //memory error
-                ptls_iovec_t** ppreceiver = (ptls_iovec_t**)(((char*)save_ticket) + sizeof(ptls_save_ticket_t));
-                *ppreceiver = &ticket_psk;
-                //std::cerr << "tls_client_save_ticket_cb ppreceiver \n" << ticket_psk.len << "\n" << ticket_psk.base;
-                ctx->save_ticket = save_ticket;
+            if(!is_server){
+                std::cerr << "ptls_save_ticket_t " << is_zrtt << std::endl;
+                ptls_iovec_t ticket_psk = ptls_iovec_init(NULL, 0); // = ptls_iovec_init(bytes, sizeof(bytes)); //cipher->hash->digest_size
+                ptls_save_ticket_t* save_ticket = NULL;
+                save_ticket = (ptls_save_ticket_t*)malloc(sizeof(ptls_save_ticket_t)+ sizeof(ptls_iovec_t*)); // + sizeof(ptls_iovec_t*)
+                if (save_ticket != NULL) {
+                    save_ticket->cb = tls_client_save_ticket_cb; //memory error
+                    ptls_iovec_t** ppreceiver = (ptls_iovec_t**)(((char*)save_ticket) + sizeof(ptls_save_ticket_t));
+                    *ppreceiver = &ticket_psk;
+                    //std::cerr << "tls_client_save_ticket_cb ppreceiver \n" << ticket_psk.len << "\n" << ticket_psk.base;
+                    ctx->save_ticket = save_ticket;
+                }
             }
+            
         }
         
         std::cerr << "PROUT 4 " << std::endl;
@@ -1572,17 +1788,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         handshake_properties->client.negotiated_protocols.list  = alpn_vec;
 
         // add the extensions
-        int add = 1;
-        const char* env_p = std::getenv("ZERORTT_TEST");
-        /*if (!is_server) {
-            add = 2;
-        } */
-        if((env_p != NULL && !is_server) && false) {  //
-            std::cerr << "ZERORTT_TEST " << env_p << std::endl;
-            add = 2;
-        }
-
-        ptls_raw_extension_t *ptls_exts = new ptls_raw_extension_t[e.size()+add];
+        ptls_raw_extension_t *ptls_exts = new ptls_raw_extension_t[e.size()+1];
         for (unsigned i = 0; i < e.size(); i++) {
             `exten_ser` ser;
 	        std::cerr << "etype =" << std::endl;  
@@ -1605,68 +1811,9 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             //     exit(1);
             // }
         }
-        
-        // A client MUST provide a "psk_key_exchange_modes" extension if it
-        // offers a "pre_shared_key" extension. 
-        if((env_p != NULL && !is_server) && false) {  //env_p != NULL && 
-            //Extension: psk_key_exchange_modes (len=2)
-            ptls_exts[e.size()].type = 0x2D;
-            unsigned char datas [] =  {0x01, 0x01};
-            ptls_exts[e.size()].data.base =  datas;
-            ptls_exts[e.size()].data.len = 2;
-
-            /*//early_data
-            ptls_exts[e.size()+1].type = 0x2A;
-            ptls_exts[e.size()+1].data.base = NULL;
-            ptls_exts[e.size()+1].data.len = 0;
-
-            //psk
-            ptls_exts[e.size()+2].type = 0x29;
-            unsigned char data [] =  {
-                0x00, 0x6c, 0x00, 0x66, 0x00, 0xff, 0x35, 0x5f, 0x0e, 0x8b, 0x50, 0xe8, 0xcc, 0xb2, 0x94, 0x66,
-                0x13, 0xb6, 0x42, 0x93, 0x40, 0x41, 0x43, 0x9c, 0x58, 0x9f, 0xb9, 0x41, 0xed, 0xa7, 0xef, 0xfe,
-                0x2f, 0xc0, 0xcc, 0xfb, 0x9f, 0xd8, 0x8b, 0x47, 0x72, 0xb0, 0x74, 0x35, 0xa3, 0x5b, 0x4d, 0xb4,
-                0xae, 0xd7, 0xad, 0x57, 0xf6, 0x3a, 0xff, 0x1b, 0xce, 0x1f, 0x37, 0xb2, 0xb4, 0xdd, 0x25, 0xee,
-                0xbc, 0xd1, 0xc1, 0x7e, 0x07, 0x8b, 0xee, 0x0d, 0x34, 0xd1, 0xe8, 0xfb, 0x99, 0xc4, 0x29, 0x3e,
-                0xdb, 0x20, 0xbd, 0x3b, 0x0e, 0xa3, 0xbe, 0x4c, 0xe4, 0x1c, 0x63, 0x55, 0x3f, 0xc6, 0x2a, 0xc7,
-                0xb3, 0x78, 0x90, 0x6d, 0x3a, 0x5a, 0x4b, 0x4a, 0xac, 0xaa, 0x44, 0xae, 0x1c, 0x58, 0x00, 0x21,
-                0x20, 0xda, 0x01, 0xaa, 0xa6, 0x02, 0xdd, 0x87, 0xee, 0x2f, 0x9d, 0x5f, 0x66, 0xe5, 0xb9, 0xff,
-                0xf6, 0x1f, 0x2b, 0x25, 0xa3, 0xd5, 0x91, 0x28, 0xe7, 0xd1, 0x1c, 0x84, 0xc8, 0xaa, 0x54, 0x9a,
-                0x17
-            };
-            ptls_exts[e.size()+2].data.base = data;
-            ptls_exts[e.size()+2].data.len = 145;*/
-            
-            ptls_exts[e.size()+1].type = 0xffff;
-            ptls_exts[e.size()+1].data.base = NULL;
-            ptls_exts[e.size()+1].data.len = 0;
-        } /*else if (!is_server) {
-            //psk
-            ptls_exts[e.size()].type = 0x29;
-            unsigned char data [] =  {
-                0x00, 0x6c, 0x00, 0x66, 0x00, 0xff, 0x35, 0x5f, 0x0e, 0x8b, 0x50, 0xe8, 0xcc, 0xb2, 0x94, 0x66,
-                0x13, 0xb6, 0x42, 0x93, 0x40, 0x41, 0x43, 0x9c, 0x58, 0x9f, 0xb9, 0x41, 0xed, 0xa7, 0xef, 0xfe,
-                0x2f, 0xc0, 0xcc, 0xfb, 0x9f, 0xd8, 0x8b, 0x47, 0x72, 0xb0, 0x74, 0x35, 0xa3, 0x5b, 0x4d, 0xb4,
-                0xae, 0xd7, 0xad, 0x57, 0xf6, 0x3a, 0xff, 0x1b, 0xce, 0x1f, 0x37, 0xb2, 0xb4, 0xdd, 0x25, 0xee,
-                0xbc, 0xd1, 0xc1, 0x7e, 0x07, 0x8b, 0xee, 0x0d, 0x34, 0xd1, 0xe8, 0xfb, 0x99, 0xc4, 0x29, 0x3e,
-                0xdb, 0x20, 0xbd, 0x3b, 0x0e, 0xa3, 0xbe, 0x4c, 0xe4, 0x1c, 0x63, 0x55, 0x3f, 0xc6, 0x2a, 0xc7,
-                0xb3, 0x78, 0x90, 0x6d, 0x3a, 0x5a, 0x4b, 0x4a, 0xac, 0xaa, 0x44, 0xae, 0x1c, 0x58, 0x00, 0x21,
-                0x20, 0xda, 0x01, 0xaa, 0xa6, 0x02, 0xdd, 0x87, 0xee, 0x2f, 0x9d, 0x5f, 0x66, 0xe5, 0xb9, 0xff,
-                0xf6, 0x1f, 0x2b, 0x25, 0xa3, 0xd5, 0x91, 0x28, 0xe7, 0xd1, 0x1c, 0x84, 0xc8, 0xaa, 0x54, 0x9a,
-                0x17
-            };
-            ptls_exts[e.size()].data.base = data;
-            ptls_exts[e.size()].data.len = 145;
-
-            ptls_exts[e.size()+1].type = 0xffff;
-            ptls_exts[e.size()+1].data.base = NULL;
-            ptls_exts[e.size()+1].data.len = 0;
-        } */
-        else {
-            ptls_exts[e.size()].type = 0xffff;
-            ptls_exts[e.size()].data.base = NULL;
-            ptls_exts[e.size()].data.len = 0;
-        }
+        ptls_exts[e.size()].type = 0xffff;
+        ptls_exts[e.size()].data.base = NULL;
+        ptls_exts[e.size()].data.len = 0;
 
         for (unsigned i = 0; i < e.size(); i++) {
             std::cerr << "ptls_exts[i].type = " << ptls_exts[i].type << std::endl;  
@@ -1710,7 +1857,60 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         }
 
         picotls_connection *s = new picotls_connection(c, session, ctx, *`cb`, handshake_properties, is_server);
-        *ptls_get_data_ptr(session) = s;        
+        *ptls_get_data_ptr(session) = s;   
+        
+        if(is_server){
+            int zrtt_key_set = quic_set_secret_from_file(session,false,1);
+        }
+        // set 0rtt key based on application keys from previous connection
+        // ptls_cipher_suite_t cipher_0rtt = { 0, &ptls_openssl_aes128gcm, &ptls_openssl_sha256 };
+        // const void *secret_0rtt = NULL;
+        // quic_set_key_from_secret(&cipher_0rtt, false, s->crypto_context[1], secret_0rtt);
+
+        if(is_server){
+            /**
+            * @brief picoquic_server_setup_ticket_aead_contexts
+            */
+            uint8_t temp_secret[256]; /* secret_max */
+            int ret = 0;
+            // uint8_t tick_secret[256]; /* tick_secret */
+            // int secret_length  = 256;
+            std::cerr << "picoquic_server_setup_ticket_aead_contexts 1 " << std::endl;
+            ptls_cipher_suite_t cipher_ticket = { 0, &ptls_openssl_aes128gcm, &ptls_openssl_sha256 };
+            if (cipher_ticket.hash->digest_size > sizeof(temp_secret)) {
+                ret = -1;
+            } else {
+                // if (tick_secret != NULL && secret_length > 0) {
+                //     memset(temp_secret, 0, cipher_ticket.hash->digest_size);
+                //     memcpy(temp_secret, tick_secret, (secret_length > cipher_ticket.hash->digest_size) ? cipher_ticket.hash->digest_size : secret_length);
+                // } else {
+                std::cerr << "picoquic_server_setup_ticket_aead_contexts 2 " << std::endl;
+                ctx->random_bytes(temp_secret, cipher_ticket.hash->digest_size);
+                std::cerr << "picoquic_server_setup_ticket_aead_contexts 3 " << std::endl;
+                //}
+                /* Create the AEAD contexts */
+                ret = quic_set_aead_from_secret(&s->ticket_aead_encrypt, &cipher_ticket, 1, temp_secret, "random label");
+                if (ret == 0) {
+                    ret = quic_set_aead_from_secret(&s->ticket_aead_decrypt, &cipher_ticket, 0, temp_secret, "random label");
+                }
+                std::cerr << "picoquic_server_setup_ticket_aead_contexts 4 " << std::endl;
+                /* erase the temporary secret */
+                ptls_clear_memory(temp_secret, cipher_ticket.hash->digest_size);
+            } 
+        }
+
+        if(is_server){
+            ptls_iovec_t ticket_psk = ptls_iovec_init(NULL, 0);
+            std::cerr << "ptls_encrypt_ticket_t " << std::endl;
+            ptls_encrypt_ticket_t* encrypt_ticket = (ptls_encrypt_ticket_t*)malloc(sizeof(ptls_encrypt_ticket_t)+ sizeof(ptls_iovec_t*));
+            encrypt_ticket->cb = tls_server_encrypt_ticket_cb;
+            ptls_iovec_t** ppreceiver = (ptls_iovec_t**)(((char*)encrypt_ticket) + sizeof(ptls_encrypt_ticket_t));
+            *ppreceiver = &ticket_psk;
+            ctx->encrypt_ticket = encrypt_ticket;
+            ctx->ticket_lifetime = 100000; /* 100,000 seconds, a bit more than one day */
+            ctx->require_dhe_on_psk = 1;
+            ctx->max_early_data_size = 0xFFFFFFFF;
+        }
 
         std::cerr << "ptls_get_data_ptr"  << std::endl;
 
@@ -2134,11 +2334,11 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
     implement start_handshake(c:cid) {
         <<< impure
         picotls_connection *s = `cid_map`[c];
-        /*if(ptls_is_psk_handshake(s->gs)) { //segfault without ??
+        if(ptls_is_psk_handshake(s->gs)) { //segfault without ?? binderpsk
             std::cerr << "ptls_is_psk_handshake "  << ptls_is_psk_handshake(s->gs) << std::endl;
         } else {
             std::cerr << "!!!ptls_is_psk_handshake "  <<  ptls_is_psk_handshake(s->gs) << std::endl;
-        }*/
+        }
         std::cerr << "start_handshake 1 " <<  std::endl;
         picotls_do_handshake(s,0,0,0);
         std::cerr << "start_handshake 2 " <<  std::endl;
@@ -2944,6 +3144,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                 std::copy(output.begin(),output.end(),res.data.begin());
             }
         } else {
+            std::cerr << "decrypt_aead failure " << "\n";
             res.ok = false;
         }
         std::cerr << "decrypt_aead finish " << "\n";

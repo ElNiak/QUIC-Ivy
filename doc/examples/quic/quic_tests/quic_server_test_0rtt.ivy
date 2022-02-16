@@ -453,7 +453,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         #require pkt.ptype = quic_packet_type.handshake -> zero_rtt_sent;
         #require pkt.ptype = quic_packet_type.one_rtt -> zero_rtt_sent;
         #if pkt.ptype = quic_packet_type.initial {
-            #call packet_event_0rtt(src,dst);
+            #call packet_event_0rtt_coal(src,dst);
             #established_0rtt_keys(the_cid) := true;
         #};
     };
@@ -467,7 +467,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     };
 }
 
-before packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
+before packet_event_0rtt_coal(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt_coal) {
     if _generating {
         #require established_0rtt_keys(the_cid); # := true;
         #require pkt.ptype ~= quic_packet_type.initial;
@@ -545,11 +545,11 @@ before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) 
         require scid = the_cid;
         require f.length > 0;
         call show_crypto_length(crypto_length(scid,e));
-        if e = quic_packet_type.initial & false {
-            require f.offset = 0;
-        } else {
-            require f.offset = crypto_length(scid,e);
-        };
+        # if e = quic_packet_type.initial & false {
+        #     require f.offset = 0;
+        # } else {
+        require f.offset = crypto_length(scid,e);
+        # };
         require f.length = (crypto_data_end(scid,e)) - f.offset;
     }
 }
@@ -736,7 +736,7 @@ export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
 export packet_event
-export packet_event_0rtt
+export packet_event_0rtt_coal
 export client_send_event
 export tls_recv_event
 #export frame.new_connection_id.handle

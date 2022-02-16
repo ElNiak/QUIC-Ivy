@@ -947,10 +947,10 @@ action handle_tls_handshake(
     else if some(fh:tls.finished) hs *> fh {
         tls_handshake_finished := true;
     }
-    else if some(st:tls.new_session_ticket) hs *> st {
-        call export_session_ticket(st.ticket, st.ticket_lifetime, st.ticket_age_add);
-        #call export_session_ticket_full(st);
-    }
+    # else if some(st:tls.new_session_ticket) hs *> st {
+    #     #call export_session_ticket(st.ticket, st.ticket_lifetime, st.ticket_age_add);
+    #     #call export_session_ticket_full(st);
+    # }
     else if some(ee:tls.encrypted_extensions) hs *> ee {
         call handle_tls_extensions(src,dst,scid,ee.extensions,false);
     }

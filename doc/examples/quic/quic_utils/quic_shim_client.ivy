@@ -70,6 +70,21 @@ after packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) 
     }
 }
 
+after packet_event_0rtt_coal(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt_coal) {
+   # if src = server.ep  {
+    if dst_is_generated(src) { # _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid)
+        var spkt := pkt_serdes_0rtt_coal.to_bytes(pkt);
+        var rnum := reference_pkt_num(spkt,false);
+        call clear_packet(rnum,spkt);
+        var ppkt := prot.encrypt(server.tls_id,rnum,spkt);
+        call cipher_packet(ppkt);
+        var pkts := prot.arr.empty;
+        pkts := pkts.append(ppkt);
+        call net.send(endpoint_id.server,endpoint_to_socket(src),dst,pkts);
+        zero_rtt_sent := true;
+    }
+}
+
 after packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
    # if src = server.ep  {
     if dst_is_generated(src) { # _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid)

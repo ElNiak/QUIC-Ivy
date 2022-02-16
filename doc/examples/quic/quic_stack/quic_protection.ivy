@@ -341,8 +341,11 @@ module quic_protection(tls_id,tls) = {
 
     implement decrypt {
         var h := get_header_info(pkt,true);
-	    #call show_header(h);
+	    call show_header(h);
         var level := get_level(pkt);
+        # if level = 1 {
+        #     level := 3;
+        # };
         var sample_size := tls.iv_size(c,level);
 	    #call show_iv_size(sample_size);
         if sample_size = 0 {
@@ -490,7 +493,7 @@ module quic_protection(tls_id,tls) = {
             } 
             else if hdr_type = 0x10 {
                 # 0RTT
-               level := 1;
+                level := 1;
             } 
             else  { # if hdr_type = 0x20, TODO: other packet types
                 level := 2;
@@ -898,6 +901,7 @@ object quic_prot_deser = {}
                 unsigned scil = peek(pos+6+dcil);
                 unsigned pnum_pos = pos + 7 + dcil + scil;
                 unsigned ptype = peek(pos) & 0x30;
+                //std::cerr << "quic_prot_deser a long packet of type " << ptype <<  std::endl;
                 if (ptype == 0x00) { // initial packets have tokens
                     unsigned len = get_var_int_len(pnum_pos);
                     unsigned retry_token_len = get_var_int(pnum_pos,len);
@@ -917,7 +921,7 @@ object quic_prot_deser = {}
                     unsigned remain = inp.size() - pnum_pos;
                     data_remaining = (pnum_pos-pos) + remain;
                 }
-                else if ((ptype == 0x00 || ptype == 0x20)) { 
+                else if ((ptype == 0x00 || ptype == 0x20 || ptype == 0x10)) { 
                     // Only for Handshake and initial
                     unsigned len = get_var_int_len(pnum_pos);
                     unsigned pyld_len = get_var_int(pnum_pos,len);

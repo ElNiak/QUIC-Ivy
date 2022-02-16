@@ -225,7 +225,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                     & ~host = endpoint_id.server & ~(bversion = 0)  {
                 #for server test, Retry packet
                 call tls_client_retry_response(src,dst,ppkt);
-            }       
+            } 
             # else if is_pad { #is_pad | is_rand_pad
             #     call padding_packet_event(src,dst,ppkt); # For quic-go and quand  client
             # } 
@@ -236,6 +236,10 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                     var is_pad := is_padding_packet(res.payload); # For picoquic  client
                     if is_pad { #is_pad | is_rand_pad
                         call padding_packet_event(src,dst,ppkt);
+                    } else if tt = 0x10 
+                        & host = endpoint_id.server & ~(bversion = 0) {
+                        #for client test, 0rtt packet
+                        call tls_client_0rtt_response(src,dst,ppkt);
                     } else {
                         var pkt := pkt_serdes.from_bytes(res.data);
                         pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
@@ -244,7 +248,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                         call packet_event(src,dst,pkt);       # also an inferred event
                         # if zero_rtt_allowed & ~zero_rtt_sent 
                         #     & ~host = endpoint_id.server {
-                        #     call packet_event_0rtt(src,dst,pkt);       # also an inferred event
+                        #     call packet_event_0rtt_coal(src,dst,pkt);       # also an inferred event
                         #     zero_rtt_sent := true;
                         # };
                         if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
@@ -306,8 +310,16 @@ import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:str
 #TODO merge shim for client
 
 implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.lower.level) {
+    var early_data_end := stream_data.empty;
+    early_data_end := early_data_end.append(0xff);
+    early_data_end := early_data_end.append(0xff);
+    early_data_end := early_data_end.append(0xff);
+    early_data_end := early_data_end.append(0xff);
     var e := quic_packet_type.initial if lev = 0
              else (quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt);
+    if(bytes.value(0) = 0x4 & bytes.segment(bytes.end-4,bytes.end) = early_data_end) {
+        e := quic_packet_type.one_rtt;
+    };
     var scid := tls_id_to_cid(tls_id);
     call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
                         0, bytes,crypto_data_end(scid,e),e);
@@ -907,6 +919,7 @@ action is_random_padding_packet(spkt:stream_data) returns (is_padding:bool) = {
 instance pkt_serdes : serdes(quic_packet,stream_data,quic_ser,quic_deser)
 instance pkt_serdes_vn : serdes(quic_packet_vn,stream_data,quic_ser_vn,quic_deser_vn)
 instance pkt_serdes_retry : serdes(quic_packet_retry,stream_data,quic_ser_retry,quic_deser_retry)
+instance pkt_serdes_0rtt_coal : serdes(quic_packet_0rtt_coal,stream_data,quic_ser_zerortt,quic_deser_zerortt)
 instance pkt_serdes_0rtt : serdes(quic_packet_0rtt,stream_data,quic_ser_zerortt,quic_deser_zerortt)
 
 
