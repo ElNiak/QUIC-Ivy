@@ -46,7 +46,7 @@ include byte_stream
 # - *seq_num*: the packet sequence number  [7]
 # - *payload*: the payload, a sequence of frames  [8]
 
-object quic_packet_0rtt_coal = {
+object quic_packet_coal_0rtt = {
     # coalesed
     type this = struct {
         # Initial packet
@@ -95,7 +95,7 @@ object quic_packet_0rtt_coal = {
 # - `dst`: the destination endpoint
 # - `pkt` : the packet contents
 
-action packet_event_0rtt_coal(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt_coal) = {}
+action packet_event_coal_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_coal_0rtt) = {}
 
 # Packet protocol state
 # ---------------------
@@ -181,7 +181,7 @@ action packet_event_0rtt_coal(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0r
 
 
 
-around packet_event_0rtt_coal(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt_coal) {    
+around packet_event_coal_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_coal_0rtt) {    
     # Extract the source and destination cid's and packet number from the packet.
 
     require pkt.src_cid = pkt.src_cid_i;
@@ -370,7 +370,7 @@ around packet_event_0rtt_coal(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0r
 
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
-        call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
+        call tls_api.upper.create(0,true,extns);  # false means this instance of tls is not a server
         call show_initial_request_retry;
         #call tls_client_initial_request(src,dst,server_cid,final_version); #TODO 
         #call tls_client_initial_response(src,dst,spkt);

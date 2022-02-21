@@ -453,7 +453,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         #require pkt.ptype = quic_packet_type.handshake -> zero_rtt_sent;
         #require pkt.ptype = quic_packet_type.one_rtt -> zero_rtt_sent;
         #if pkt.ptype = quic_packet_type.initial {
-            #call packet_event_0rtt_coal(src,dst);
+            #call packet_event_coal_0rtt(src,dst);
             #established_0rtt_keys(the_cid) := true;
         #};
     };
@@ -467,7 +467,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     };
 }
 
-before packet_event_0rtt_coal(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt_coal) {
+before packet_event_coal_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_coal_0rtt) {
     if _generating {
         #require established_0rtt_keys(the_cid); # := true;
         #require pkt.ptype ~= quic_packet_type.initial;
@@ -736,7 +736,7 @@ export frame.stream.handle
 export frame.crypto.handle
 export frame.path_response.handle
 export packet_event
-export packet_event_0rtt_coal
+export packet_event_coal_0rtt
 export client_send_event
 export tls_recv_event
 #export frame.new_connection_id.handle

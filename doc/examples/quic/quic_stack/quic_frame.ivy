@@ -960,7 +960,7 @@ object frame = {
 	        #};
             require ~conn_closed(scid);  # [1]
             #chris
-            #require e ~= quic_packet_type.zero_rtt;  # [4]
+            require e ~= quic_packet_type.zero_rtt;  # [4]
             #chris
 	        #if  ~is_crypto_limit_test | ~_generating { #For crypto limit test
                 require ((f.offset) + (f.length)) <= crypto_data_end(scid,e);  # [2]
