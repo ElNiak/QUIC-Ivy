@@ -171,7 +171,20 @@ action packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) =
 #   If a zero-length connection ID is selected, the corresponding
 #   transport parameter is included with a zero-length value.
 
+# 0-RTT allows application data to be sent by a
+#    client before receiving any response from the server.  However, 0-RTT
+#    lacks certain key security guarantees.  In particular, there is no
+#    protection against replay attacks in 0-RTT; see [QUIC-TLS].
 
+function last_zrtt_pkt : stream_data
+relation last_zrtt_pkt_set
+relation last_zrtt_pkt_process
+
+after init {
+    last_zrtt_pkt_set := false;
+    last_zrtt_pkt_process := false;
+    last_zrtt_pkt := stream_data.empty;
+}
 
 around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {    
     # Extract the source and destination cid's and packet number from the packet.
@@ -281,32 +294,13 @@ around packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
     # TODO: the following should not be here
 
     if pkt.ptype = quic_packet_type.zero_rtt & ~_generating {
-        conn_requested(src,dst,scid) := false;
-        conn_requested(src,dst,dcid) := false;
-        connected(dcid) :=  false;
-        connected(scid) :=  false;
-        
-        conn_seen(dcid) := false;
-        conn_seen(scid) := false;
-        conn_seen(server_cid) := false;
-        conn_seen(the_cid) := false;
-
-        #the_cid := server_cid; # 0x0;
-        server_cid := scid; # 0x1;
-
-        connected(the_cid) :=  false;
-        connected(server_cid) :=  false;
-
-        var extns := tls_extensions.empty;
-        extns := extns.append(make_transport_parameters);
-        call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
-        call show_initial_request_retry;
-        #call tls_client_initial_request(src,dst,server_cid,final_version); #TODO 
-        #call tls_client_initial_response(src,dst,spkt);
-        conn_requested(src,dst,the_cid) := true;
+        connected(the_cid) := true;
+        connected(scid) := true;
+        connected_to(the_cid) := scid;
+        connected_to(scid) := the_cid;
     };
 
-    #zero_rtt_sent := true;
+    zero_rtt_sent := true;
 
     queued_frames_rtt(scid) := frame.arr.empty;
     queued_non_probing(scid) := false;

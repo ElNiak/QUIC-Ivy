@@ -85,6 +85,12 @@ object tls = {
         }
     }
 
+    object end_of_early_data = {
+        variant this of extension = struct {
+            #etype : extension_type,
+        }
+    }
+
     object psk_key_exchange_modes = {
         variant this of extension = struct {
             #etype : extension_type,

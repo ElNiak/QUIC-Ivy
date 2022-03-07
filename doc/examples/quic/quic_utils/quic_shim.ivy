@@ -69,7 +69,7 @@ relation retry_client_test
 
 var h_retry : stream_pos
 
-
+relation zero_rtt_client
 relation multiple_client
 relation is_mim
 
@@ -85,7 +85,8 @@ var server_cid_2 : cid
 
 after init {
     multiple_client := false;
-    is_mim := false;
+    is_mim := false; 
+    zero_rtt_client := false;
 }
 
 after init {
@@ -207,6 +208,24 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             call export_length_cid_extension(dcil,scil);
         }
         else {
+            call show_act2;
+            if last_zrtt_pkt_set & ~last_zrtt_pkt_process {
+                last_zrtt_pkt_process := true;
+                call show_act1;
+                #call tls_api.upper.set_0rtt_keys(0);
+                var rnum := reference_pkt_num(last_zrtt_pkt,true);
+                var res := prot.decrypt(tls_id,rnum,last_zrtt_pkt);
+                if res.ok {
+                    call show_act1;
+                    if host = endpoint_id.server & ~(bversion = 0) {
+                            #for client test, 0rtt packet
+                        call tls_client_0rtt_response(src,dst,res.data);
+                    };
+                    # last_zrtt_pkt_process := true;
+                } else {
+                    call undecryptable_packet_event(src,dst,last_zrtt_pkt);
+                };
+            };
             if host = endpoint_id.server 
                     & bvand(ppkt.value(0),0xf0) = 0xc0   { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
                 # for client test
@@ -239,7 +258,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                     } else if tt = 0x10 
                         & host = endpoint_id.server & ~(bversion = 0) {
                         #for client test, 0rtt packet
-                        call tls_client_0rtt_response(src,dst,ppkt);
+                        call tls_client_0rtt_response(src,dst,res.data);
                     } else {
                         var pkt := pkt_serdes.from_bytes(res.data);
                         pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
@@ -549,7 +568,11 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         # };
 	    call export_length_cid_extension(dcil,scil);
         #call tls_api.upper.destroy(0);
-        call tls_api.upper.create(0,true,extns);  
+        if zero_rtt_client {
+            call tls_api.upper.create_0rtt_client(0,true,extns);  
+        } else {
+            call tls_api.upper.create(0,true,extns);  
+        }
         # 'true' means this instance of tls is a server
         tp_client_set := true;
 	}; 

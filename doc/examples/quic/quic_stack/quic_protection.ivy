@@ -342,13 +342,20 @@ module quic_protection(tls_id,tls) = {
     implement decrypt {
         var h := get_header_info(pkt,true);
 	    call show_header(h);
+
         var level := get_level(pkt);
-        # if level = 1 {
-        #     level := 3;
-        # };
+        if level = 1 & ~last_zrtt_pkt_set {
+            #level := 3;
+            call show_header(h);
+            last_zrtt_pkt_set := true;
+            last_zrtt_pkt := pkt;
+        };
+
         var sample_size := tls.iv_size(c,level);
 	    #call show_iv_size(sample_size);
-        if sample_size = 0 {
+        if ~last_zrtt_pkt_process & level = 1 {
+            res.ok := false;
+        } else if sample_size = 0 {
             res.ok := false;
         } 
         else {
@@ -399,7 +406,7 @@ module quic_protection(tls_id,tls) = {
                 #pnum_len := get_pnum_len2(pkt);
             #};
 
-            # call show_seqnum_pos(pnum_len);
+            call show_seqnum_pos(pnum_len);
             # var x := show_pnum2(pnum_len);
 
             # pn_offset is the start of the Packet Number field.
@@ -407,15 +414,15 @@ module quic_protection(tls_id,tls) = {
             #pnum := stream_data_xor(pnum.segment(0,pnum_len),mask.segment(1,1+pnum_len));
             pnum := stream_data_xor(pkt.segment(pnum_pos,pnum_pos+pnum_len),mask.segment(1,1+pnum_len));
 
-    	    # call show_seqnum_data(pnum);
+    	    call show_seqnum_data(pnum);
             # var y := show_pnum(pnum);
             
             hdr := hdr.extend(pnum);
             var new_seq := get_pnum(pnum,0,pnum_len);
             # y := show_corrected_pnum(new_seq); 
-    	    # call show_seqnum(new_seq);
+    	    call show_seqnum(seq);
             new_seq := correct_pnum(seq,new_seq,pnum_len);
-    	    # call show_seqnum(new_seq);
+    	    call show_seqnum(new_seq);
             var pyld := pkt.segment(pnum_pos+pnum_len,pkt.end);
             res := tls.decrypt_aead(c,level,pyld,new_seq,hdr); #
             if res.ok {

@@ -28,7 +28,6 @@ object quic_deser_zerortt = {}
 	          quic_s_scil,
               quic_s_dcid,
               quic_s_scid,
-              quic_s_retry_token,
 	          quic_s_payload_length,
               quic_s_pkt_num,
               quic_s_payload,
@@ -96,6 +95,7 @@ object quic_deser_zerortt = {}
         }
         virtual void  get(int128_t &res) {
         //virtual void  get(long long &res) {
+            //std::cerr << "get state " << state << std::endl;
             switch (state) {
             case quic_s_init:
             {
@@ -104,6 +104,7 @@ object quic_deser_zerortt = {}
                 //0x7f is 0111 1111 in binary. This means the lower 7 bits of res are significant.
                 //0x30    0011 0000
                 hdr_type = res & 0x7f; //0x7f;
+                std::cerr << "hdr_type " << std::hex <<  hdr_type << std::endl;
                 //This is then shifted by 4 so that only the original 0xxx 0000 (3) bits are significant.
                 res = long_format ? ((hdr_type & 0x30) >> 4) : 3;
                 state = quic_s_version;
@@ -111,27 +112,18 @@ object quic_deser_zerortt = {}
             break;
             case quic_s_version:
             {
-                if (long_format) {
-                    ivy_binary_deser_128::getn(res,4);
-                    //ivy_binary_deser::getn(res,4);
-	        	}
-                else
-                    res = 0;
+                ivy_binary_deser_128::getn(res,4);
                 state = quic_s_dcid;
             }
             break;
             case quic_s_dcid:
             {   
-                if (long_format) {
-                    int128_t cil;
-                    //long long cil;
-                    getn(cil,1);
-                    std::cerr << "dstID size " << cil << std::endl;
-                    dcil = cil;
-                    dcid_h = cil;
-                } else {
-                    dcil = dcid_h; //dcil_long
-                }
+                int128_t cil;
+                //long long cil;
+                getn(cil,1);
+                std::cerr << "dstID size " << cil << std::endl;
+                dcil = cil;
+                dcid_h = cil;
 		        getn(res,(dcil));
                 std::cerr << "dstID res " << res << std::endl;
                 state = quic_s_scid;
@@ -139,45 +131,33 @@ object quic_deser_zerortt = {}
             break;
             case quic_s_scid:
             {
-                if (long_format) {
-                    int128_t cil;
-                    //long long cil;
-                    getn(cil,1);
-                    std::cerr << "sourceID size " << cil << std::endl;  
-                    if(cil > 0)
-                        have_scid = true;
-                    else 
-                        have_scid = false;
-                    scil = cil;
-                    scid_h = cil;
-                } else {
-                    scil = 0;
-                }
+                int128_t cil;
+                getn(cil,1);
+                std::cerr << "sourceID size " << cil << std::endl;  
+                if(cil > 0) have_scid = true;
+                else have_scid = false;
+                scil = cil;
+                scid_h = cil;
                 getn(res,scil);
-                /*if(scil != 8) { //tricks
-                tls_field_bytes_map["scid"] = scil;
-                }*/
                 std::cerr << "sourceID res " << res << std::endl;
-                int128_t len;
-                //long long len;
-                if (long_format & ((hdr_type & 0x30) == 0x00)){
-                    get_var_int(len);
-		        }
-                else len = 0;
-                data_remaining = len;
-		        std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
-                state = quic_s_payload_length;//quic_s_pkt_num;
+                state = quic_s_pkt_num; //quic_s_payload_length;//
             }
             break;
             case quic_s_pkt_num:
             {
+                int128_t len;
+                get_var_int(len);
+                payload_length = len; //length field
+		        std::cerr << "sourceID payload_length " << payload_length << std::endl;
                 fence = 0;
                 if (payload_length > 0) {
                     fence = pos + payload_length - QUIC_DESER_FAKE_CHECKSUM_LENGTH;
                 } else {
+		            std::cerr << "sourceID inp.size() " << inp.size() << std::endl;
                     fence = inp.size() - QUIC_DESER_FAKE_CHECKSUM_LENGTH;
                 }
                 get_pkt_num(res);
+		        std::cerr << "sourceID pkt_num " << res << std::endl;
                 state = quic_s_payload;
             }
             break;
@@ -221,10 +201,19 @@ object quic_deser_zerortt = {}
                     res = fence - pos;
                 }
                 data_remaining = res;
+                // std::cerr << "quic_stream_length state " << state << std::endl;  
+                // std::cerr << "quic_stream_length next state " << quic_stream_data << std::endl;  
+                // std::cerr << "quic_stream_length data_remaining " << data_remaining << std::endl;
                 state = quic_stream_data;
             }
             break;
             case quic_stream_data:
+            {
+                getn(res,1);
+                state = quic_stream_data;
+                //std::cerr << "quic_stream_data data_remaining " << data_remaining << std::endl;
+            }
+            break;
             case quic_path_challenge_data:
             case quic_connection_close_reason:
             case quic_padding:
@@ -266,6 +255,7 @@ object quic_deser_zerortt = {}
             break;
             case quic_ack_delay:
             {
+		        std::cerr << "deser: quic_ack_delay  " << std::endl; 
                 get_var_int(res);
                 state = quic_ack_block_count;
             }
@@ -381,7 +371,7 @@ object quic_deser_zerortt = {}
             }
             break;
             default:
-                std::cerr << "quic_deser_zerortt 3" << std::endl;  
+                std::cerr << "quic_deser_zerortt 3 " << state << std::endl;  
                 throw deser_err();
             }
         }
@@ -431,6 +421,7 @@ object quic_deser_zerortt = {}
                 */
 
                 frame_type = ft;
+                std::cerr << "quic_deser_zerortt 2 open_tag " << frame_type  << std::endl;  
                 if (frame_type == 0x01) {
                     state = quic_ping;
                     return 0;
@@ -556,7 +547,9 @@ object quic_deser_zerortt = {}
         }
 
         virtual bool open_list_elem() {
+            std::cerr << "quic_deser_zerortt 1 state 1 " << state << std::endl;  
             if (state == quic_s_payload) {
+                std::cerr << "quic_deser_zerortt 1 quic_s_payload " << data_remaining << std::endl;  
                 // We must use/take in count the padding frame since Picoquic client sometimes send packet
                 // only with 1 padding frame which make fails the requirement saying that a 
                 // packet cannot be empty
@@ -585,9 +578,11 @@ object quic_deser_zerortt = {}
                     return data_remaining-- > 0;
             if (state == quic_ack_frequency_packet_tolerence)
                     return data_remaining-- > 0;
-
-
-            std::cerr << "quic_deser_zerortt 1" << std::endl;  
+            
+            if (state == quic_ack_frequency_packet_tolerence || state == quic_ack_largest) //todo not normal
+                    return data_remaining-- > 0;
+            std::cerr << "quic_deser_zerortt 1 state 2 " << state << std::endl;  
+            std::cerr << "quic_deser_zerortt 1 data_remaining " << data_remaining << std::endl;  
             throw deser_err();
         }
 
@@ -600,6 +595,7 @@ object quic_deser_zerortt = {}
             }
         }
         void close_list() {
+            std::cerr << "close_list 1 state " << state << std::endl;  
             if (state == quic_s_payload) {
                 state = quic_s_init;
                 pos += QUIC_DESER_FAKE_CHECKSUM_LENGTH; // skip the fake checksum
@@ -624,12 +620,5 @@ object quic_deser_zerortt = {}
 
         ~quic_deser_zerortt(){}
     };
-
->>>
-
-
-<<< init
-    
-    transport_error_name_map(transport_error_codes,transport_error_codes_map);
 
 >>>

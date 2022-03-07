@@ -579,6 +579,9 @@ relation handshake_done_send
 
 function last_cid_seq(C:cid):cid_seq
 
+function first_zrtt_pkt : cid
+relation zrtt_pkt_update 
+
 #relation is_stream_limit_test
 var is_stream_limit_test : bool
 relation is_crypto_limit_test
@@ -618,6 +621,7 @@ after init {
     is_stream_limit_test := false;
     is_crypto_limit_test := false;
     last_cid_seq(C) := 0;
+    zrtt_pkt_update := false;
 #chris
 }
 
@@ -843,11 +847,15 @@ object frame = {
             #     require num_queued_frames_rtt(scid) > 0 -> e = queued_level_rtt(scid); # TODO
             # };
 
-            if ~zero_rtt_allowed | zero_rtt_sent {
+            if (~zero_rtt_allowed | zero_rtt_sent) & ~(e = quic_packet_type.zero_rtt) {
                 require tls_handshake_finished;
                 require (connected(dcid) & connected_to(dcid) = scid);# | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); #e = quic_packet_type.zero_rtt & 
                 require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid));# | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)  
             } else {
+                require e = quic_packet_type.one_rtt | e = quic_packet_type.zero_rtt;
+                #require dcid ~= the_cid;
+                # dcid := 2;
+                #require e = quic_packet_type.zero_rtt;
                 #require (connected(dcid) & connected_to(dcid) = scid) | (established_0rtt_keys(scid)); #e = quic_packet_type.zero_rtt & 
                 #require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid)) | (established_0rtt_keys(scid)); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)  
             }
@@ -887,14 +895,18 @@ object frame = {
             if ~zero_rtt_allowed | zero_rtt_sent {
                 require conn_seen(scid);  # [9]
                 #quinn bug: +-deadlock
-                require ((offset) + (f.length)) <= stream_max_data(dcid,f.id);  # [2]
             }
+            require ((offset) + (f.length)) <= stream_max_data(dcid,f.id,e);  # [2]
 
             
             require stream_reset(dcid,f.id) ->
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
 	        #remove for stream limit test
-            require stream_id_allowed(dcid,f.id);  # [6]
+            if ~zero_rtt_allowed | zero_rtt_sent  { # | ~_generating
+                require stream_id_allowed(dcid,f.id,e);  # [6]
+            } else if _generating {
+                require  f.id = 4; #  f.id = 8 |f.id = 4 |
+            }
 	        ...
             # count_stream_frame(f.id,f.offset,f.length,f.data) := count_stream_frame(f.id,f.offset,f.length,f.data) + 1;
             # if count_stream_frame(f.id,f.offset,f.length,f.data) > 1 {
@@ -924,9 +936,10 @@ object frame = {
                 #     call handle_receiving_sizeKnown(f.id,seq_num);
                 # };
             };
-            if ~zero_rtt_allowed | zero_rtt_sent  { #TODO
+            if (~zero_rtt_allowed | zero_rtt_sent) & ~(e = quic_packet_type.zero_rtt) { #TODO
                 call enqueue_frame(scid,f,e,false);
             } else {
+                first_zrtt_pkt := dcid;
                 call enqueue_frame_rtt(scid,f,e,false);
             }
         }
@@ -1032,7 +1045,7 @@ object frame = { ...
             stream_reset(dcid,f.id) := true;  # [2]
             stream_length(dcid,f.id) := f.final_offset;  #[3]
             #require stream_seen(dcid,f.id);  # [8]
-            require stream_id_allowed(dcid,f.id);  # [4]
+            require stream_id_allowed(dcid,f.id,e);  # [4]
             # if ~_generating & stop_sending_in_bad_state {
             #     stop_sending_in_bad_state := true;
             # };
@@ -1095,7 +1108,7 @@ object frame = { ...
             require connected(scid) & connected_to(scid) = dcid;
             if ~_generating { # For tests
                 require stream_seen(dcid,f.id);  # [8]
-                require stream_id_allowed(dcid,f.id);  # [4]
+                require stream_id_allowed(dcid,f.id,e);  # [4]
             };
 	    ...
             if ~_generating {
@@ -1923,7 +1936,7 @@ action enqueue_frame_rtt(scid:cid, f:frame, e:quic_packet_type, probing:bool) = 
 # An aid is the initiator of a stream if its protocol role (client or
 # server) matches the role of the stream id.
 
-action stream_max_data(dcid:cid,id:stream_id) returns (max:stream_pos) = {
+action stream_max_data(dcid:cid,id:stream_id, e:quic_packet_type) returns (max:stream_pos) = {
     var tp := trans_params(dcid);
     max := 0;
     if get_stream_kind(id) = unidir {
@@ -1947,6 +1960,10 @@ action stream_max_data(dcid:cid,id:stream_id) returns (max:stream_pos) = {
     };
     var alt_max := max_additional_data(dcid) + stream_length(dcid,id);
     max := alt_max if alt_max < max else max;
+    if (zero_rtt_allowed & ~zero_rtt_sent) | (e = quic_packet_type.zero_rtt) { # TODO
+        max := 1000;
+    };
+    call show_md(max);
 }
 
 #
@@ -1963,18 +1980,16 @@ action stream_max_data(dcid:cid,id:stream_id) returns (max:stream_pos) = {
 # - The stream id parameter of any MAX_STREAM_ID frame sent by the
 #   aid, if it is of the same kind.
 
-action stream_id_allowed(dcid:cid,id:stream_id) returns (ok:bool) = {
+action stream_id_allowed(dcid:cid,id:stream_id,e: quic_packet_type) returns (ok:bool) = {
     ok := false;
     var tp := trans_params(dcid);
     var kind := get_stream_kind(id);
-    # var idhi_cid : cid := id / 4;
     var idhi : stream_id := id / 4;
 
     call show_condi(is_client(dcid));
 
-    if zero_rtt_allowed & ~zero_rtt_sent { # TODO
-        ok := idhi <= 2;
-        call show_act1;
+    if (zero_rtt_allowed & ~zero_rtt_sent) | e = quic_packet_type.zero_rtt { # TODO
+        ok := idhi <= 20;
     }
     else 
     if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
@@ -2058,7 +2073,7 @@ import action show_stream_retransmission(i:stream_id,o:stream_pos,
                                           l:stream_pos,d:stream_data,c:stream_pos)
 
 import action show_offset(o:stream_pos)
-
+import action show_md(o:stream_pos)
 import action show_act1
 
 import action show_act2

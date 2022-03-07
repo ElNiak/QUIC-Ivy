@@ -408,8 +408,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require dcid = rscid;
     };
 
-    # call show_pstats(scid,pkt.ptype,pkt.seq_num);
-    # call show_pstats(scid,queued_level(scid),pkt.seq_num);
+    call show_pstats(scid,pkt.ptype,pkt.seq_num);
+    call show_pstats(scid,queued_level(scid),pkt.seq_num);
 
     # The packet type must match the encryption level of the queued
     # frames at the source. 

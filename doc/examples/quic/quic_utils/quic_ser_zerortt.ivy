@@ -769,8 +769,8 @@ object quic_ser_zerortt = {}
                             while (res.size() < 2000)
                                 res.push_back(0);  // pad initial packet to 1200 bytes
                 }*/
-                for(unsigned i = 0; i < 16; i++)
-                    res.push_back(0);
+                //for(unsigned i = 0; i < 16; i++)
+                //    res.push_back(0);
                 if (long_format) {
                     int len = res.size() - (payload_length_pos_z+2);
                     std::cerr << "quic_ser_zerortt close_list2 len " <<  (0x40 | ((len >> 8) & 0x3f)) <<  std::endl;  

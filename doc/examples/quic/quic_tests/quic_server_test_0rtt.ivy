@@ -270,7 +270,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imd : initial_max_data;
     imd.stream_pos_32 := 0x4000;
     var it : max_idle_timeout;
-    it.seconds_16 := 2000;
+    it.seconds_16 := 10000;
     var imsdbr : initial_max_stream_data_bidi_remote;
     imsdbr.stream_pos_32 := 0x2000;
     var imsdu : initial_max_stream_data_uni;
@@ -368,6 +368,8 @@ import action clear_packet(rnum:pkt_num,pkt:stream_data)
 import action cipher_packet(pkt:stream_data)
 
 import action show_stream(pkt:stream_data)
+import action show_caca
+
 
 import action show_connected(c1:bool, c2:cid)
 
@@ -616,7 +618,8 @@ before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,d
 
 before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
-        require conn_total_data(the_cid) > 1000; # tricks
+        require conn_total_data(the_cid) > 100; # tricks
+        require last_pkt_num(the_cid,quic_packet_type.one_rtt) > 5;
         require scid = the_cid;
         require f.err_code = 0;
     } else {
@@ -709,7 +712,16 @@ around client_send_event {
     };
 
     require dst = server.ep;
-    require (connected(the_cid) & dcid = connected_to(the_cid)) | ~zero_rtt_sent;
+
+    if zero_rtt_sent {
+        require (connected(the_cid) & dcid = connected_to(the_cid));
+    } else {
+        require  dcid ~= the_cid;
+        #dcid := 2;
+        #require dcid ~= the_cid;
+    };
+
+    #require (connected(the_cid) & dcid = connected_to(the_cid)) | ~zero_rtt_sent;
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);
     require stream_length(dcid,s) < end & end <= http_request.end;
     require current_stream < 60;
@@ -760,5 +772,6 @@ export action _finalize = {
     # chris TODO 
     require is_no_error;
     require conn_total_data(the_cid) > 0;
+    require tls_handshake_finished;
 }
 

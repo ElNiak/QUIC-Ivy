@@ -255,7 +255,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imd : initial_max_data;
     imd.stream_pos_32 := 0x4000;
     var it : max_idle_timeout;
-    it.seconds_16 := 2000;
+    it.seconds_16 := 10000;
     var imsdbr : initial_max_stream_data_bidi_remote;
     imsdbr.stream_pos_32 := 0x2000;
     var imsdu : initial_max_stream_data_uni;
@@ -508,9 +508,13 @@ before frame.retire_connection_id.handle(f:frame.retire_connection_id,scid:cid,d
 
 before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid) {
     if _generating {
-        require conn_total_data(the_cid) > 20; # tricks
+        require conn_total_data(the_cid) > 10; # tricks
+        require last_pkt_num(the_cid,quic_packet_type.one_rtt) > 3;
         require scid = the_cid;
+        require f.frame_type = 0;
+        require f.reason_phrase_length = 0;
         require f.err_code = 0;
+
     } else {
         require is_no_error;
         call _finalize;

@@ -72,6 +72,8 @@ module tls_intf(cid,index,bytes,lower,extens,hextens,exten_ser,seq_num) = {
 
     action create(c:cid, is_server:bool, e:extens)
 
+    action create_0rtt_client(c:cid, is_server:bool, e:extens)
+
     action create_0rtt(c:cid, is_server:bool, e:extens, he:hextens)
 
     action add_extensions(c:cid, is_server:bool, e:extens, he:hextens)
@@ -92,7 +94,7 @@ module tls_intf(cid,index,bytes,lower,extens,hextens,exten_ser,seq_num) = {
 
     action save_token(token:stream_data)
 
-    action create_no_hs(c:cid, is_server:bool, e:extens)
+    #action create_no_hs(c:cid, is_server:bool, e:extens)
 
     action get_old_new_token(c:cid) returns (b:stream_data)
 
