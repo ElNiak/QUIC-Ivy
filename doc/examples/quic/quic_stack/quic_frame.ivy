@@ -848,9 +848,9 @@ object frame = {
             # };
 
             if (~zero_rtt_allowed | zero_rtt_sent) & ~(e = quic_packet_type.zero_rtt) {
-                require tls_handshake_finished;
-                require (connected(dcid) & connected_to(dcid) = scid);# | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); #e = quic_packet_type.zero_rtt & 
-                require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid));# | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)  
+                #require tls_handshake_finished;
+                require (connected(dcid) & connected_to(dcid) = scid); # | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); #e = quic_packet_type.zero_rtt & 
+                require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid)); # | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)  
             } else {
                 require e = quic_packet_type.one_rtt | e = quic_packet_type.zero_rtt;
                 #require dcid ~= the_cid;
@@ -892,16 +892,19 @@ object frame = {
             # re-ordering. QUESTION: what can we say?  require
             # ~stream_reset(dcid,f.id); # [7]
 
-            if ~zero_rtt_allowed | zero_rtt_sent {
+            if (~zero_rtt_allowed | zero_rtt_sent)  {  
                 require conn_seen(scid);  # [9]
-                #quinn bug: +-deadlock
             }
-            require ((offset) + (f.length)) <= stream_max_data(dcid,f.id,e);  # [2]
+
+            # & ~cid_mapped(f.scid)
+            #quinn bug: +-deadlock with new_connection_id
+            #require ((offset) + (f.length)) <= stream_max_data(dcid,f.id,e);  # [2]
 
             
             require stream_reset(dcid,f.id) ->
                        ((offset) + (f.length)) <= stream_length(dcid,f.id);  # [13]
-	        #remove for stream limit test
+	        
+            #remove for stream limit test
             if ~zero_rtt_allowed | zero_rtt_sent  { # | ~_generating
                 require stream_id_allowed(dcid,f.id,e);  # [6]
             } else if _generating {
@@ -910,7 +913,7 @@ object frame = {
 	        ...
             # count_stream_frame(f.id,f.offset,f.length,f.data) := count_stream_frame(f.id,f.offset,f.length,f.data) + 1;
             # if count_stream_frame(f.id,f.offset,f.length,f.data) > 1 {
-            #     stream_frame_restransmitted(f.id) := true;
+            #      stream_frame_restransmitted(f.id) := true;
             # };
             # call show_stream_retransmission(f.id,f.offset,f.length,f.data,count_stream_frame(f.id,f.offset,f.length,f.data));
             stream_seen(scid,f.id) := true;
@@ -922,7 +925,7 @@ object frame = {
             var offset := f.offset if f.off else 0;
             var length := offset + f.length;
 
-            # require stream_finished(dcid,f.id) -> length <= stream_length(dcid,f.id);  # [5]
+            # require stream_finished(dcid,f.id) -> length <= stream_length(dcid,f.id);  # [5] deadlock client
             if stream_length(dcid,f.id) < length {
                 conn_total_data(dcid) := conn_total_data(dcid) +
                                              (length - stream_length(dcid,f.id));  # [12]
@@ -1272,9 +1275,9 @@ object frame = { ...
             conn_closed(scid) := true;
             call handle_transport_error(f.err_code);
 	    ...
-            if _generating {
-                call _finalize;
-            };
+            # if _generating {
+            #     call _finalize;
+            # };
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -1654,13 +1657,13 @@ object frame = { ...
             ...
             
 	        cid_mapped(f.scid) := true;
-            #cid_mapped(f.dcid) := true;
+                #cid_mapped(f.dcid) := true;
 	        cid_to_aid(f.scid) := scid;
-            #cid_to_aid(f.dcid) := dcid;
+                #cid_to_aid(f.dcid) := dcid;
             seqnum_to_cid(scid,f.seq_num) := f.scid;
-            last_cid_seq(scid) := f.seq_num;
+            last_cid_seq(scid) := f.seq_num; # ncid quant vuln
             #seqnum_to_cid(dcid,f.seq_num) := f.dcid;
-            call map_cids(scid,dcid);
+            #call map_cids(scid,dcid); # ncid quant vuln ?
             #call map_cids(dcid,scid);
             count_newcid_frame(f.seq_num,f.retire_prior_to,f.length,f.scid,f.token) := count_newcid_frame(f.seq_num,f.retire_prior_to,f.length,f.scid,f.token) + 1;
             if  count_newcid_frame(f.seq_num,f.retire_prior_to,f.length,f.scid,f.token) = 1 {
@@ -1681,7 +1684,7 @@ object frame = { ...
                 max_seq_num(scid) := f.seq_num;
             };
             #Hamid 
-	    call enqueue_frame(scid,f,e,true);
+	        call enqueue_frame(scid,f,e,true);
         }
     }
 }
@@ -1936,6 +1939,7 @@ action enqueue_frame_rtt(scid:cid, f:frame, e:quic_packet_type, probing:bool) = 
 # An aid is the initiator of a stream if its protocol role (client or
 # server) matches the role of the stream id.
 
+# TODO manage NCI
 action stream_max_data(dcid:cid,id:stream_id, e:quic_packet_type) returns (max:stream_pos) = {
     var tp := trans_params(dcid);
     max := 0;

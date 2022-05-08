@@ -159,14 +159,30 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         std::cerr << "\n";
         const char* env_p = std::getenv("TEST_IMPL");
         int m = 0;
-        if(strncmp(env_p,"quiche",10) == 0)
-            m = 4; //strange ending extension
+        bool is_quiche = false;
+        // if(strncmp(env_p,"quiche",10) == 0) {
+        //     m = 4; //strange ending extension
+        //     std::cerr << "quiche is cool" << "\n";
+        //     is_quiche = true;
+        // }
         const char * session_file = getenv("STFILE3");
         FILE *fp;
         if(session_file != NULL) {
             fp = fopen(session_file,"w");
-            for(int j = 0; j < input.len-m; j++) {
-                fprintf(fp, "%02x",  input.base[j]); //length field
+            for(int j = 0; j < input.len-m && fp != NULL; j++) {
+                // if(is_quiche && false) {
+                //     if(j == 8)
+                //         fprintf(fp, "%02x", 0); //length field
+                //     else if (j == 9);
+                //     else if (j == input.len-m-8)
+                //         fprintf(fp, "%02x", 8); //length of extension
+                //     else if (j == input.len-m-9)
+                //         fprintf(fp, "%02x", 0); 
+                //     else 
+                //         fprintf(fp, "%02x",  input.base[j]);
+                // } else {
+                    fprintf(fp, "%02x",  input.base[j]); 
+                //}
             }
             fclose(fp);
         }
@@ -874,10 +890,10 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         res.len = vec.size();
     }  
     
-    void vec_to_ptls_iovec(ptls_iovec_t &res, uint8_t* vec, uint8_t size) {
+    void vec_to_ptls_iovec(ptls_iovec_t &res, uint8_t* vec, int size) {
         res.base = new uint8_t[size];
-        std::cerr << "vec_to_ptls_iovec " << std::endl;
-        for(uint8_t i = 0; i < size; i++) {
+        std::cerr << "vec_to_ptls_iovec " << std::dec << size << std::endl;
+        for(int i = 0; i < size; i++) {
             res.base[i] = vec[i];
             std::cerr << res.base[i];
         }
@@ -1427,8 +1443,10 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
 
     // Some parameters for picotls as used by picoquic.
 
+    //mvfst  &ptls_openssl_x25519,&ptls_openssl_secp256r1
+    //other   &ptls_openssl_secp256r1, &ptls_openssl_x25519 TODO
     ptls_key_exchange_algorithm_t *picotls_key_exchanges[] = 
-        { &ptls_openssl_secp256r1, &ptls_minicrypto_x25519, NULL };
+        {  &ptls_openssl_x25519,&ptls_openssl_secp256r1, NULL };
 
     ptls_cipher_suite_t *picotls_cipher_suites[] = { 
         &ptls_openssl_aes256gcmsha384, &ptls_openssl_aes128gcmsha256,
@@ -1474,7 +1492,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                 }
             }
         }
-
+        std::cerr << "PICOTLS handshake handle message finish" << "\n";
 	    return ret;
     }
 
@@ -1549,7 +1567,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                 if(line != NULL) { 
                     std::cerr << "get_session_ticket 1 " << line << std::endl;
                     std::cerr << "get_session_ticket hex_len " << size << std::endl;
-                    int sizze = convert(line, secret, 526);
+                    int sizze = convert(line, secret, size*2+1);
                     if (sizze < 0)
                     {
                         fprintf(stderr,"Failed to convert '%s'\n", line);
@@ -1662,7 +1680,8 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                 fclose(fp);
                 if(line != NULL) { 
                     std::cerr << "get_session_ticket_size 1 " << line << std::endl;
-                    int hex_len = (strnlen(line,1000))/2; //strnlen(line,300)-1
+                    int hex_len = (strnlen(line,2000))/2; //strnlen(line,300)-1
+                    std::cerr << "get_session_ticket_size 1 " << hex_len << std::endl;
                     return hex_len;
                 }
             }
@@ -1933,7 +1952,9 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             uint8_t temp_secret[256]; /* secret_max */
             int ret = 0;
             std::cerr << "picoquic_server_setup_ticket_aead_contexts 1 " << std::endl;
-            ptls_cipher_suite_t cipher_ticket = { 0, &ptls_openssl_aes128gcm, &ptls_openssl_sha256 };
+            ptls_cipher_suite_t cipher_ticket ={ 0, &ptls_openssl_aes128gcm, &ptls_openssl_sha256 };
+            //  { 0,  &ptls_openssl_aes256gcmsha384, &ptls_openssl_aes128gcmsha256, &ptls_minicrypto_chacha20poly1305sha256 };
+            //{ 0, &ptls_openssl_aes128gcm, &ptls_openssl_sha256, &ptls_openssl_aes128gcm };
             if (cipher_ticket.hash->digest_size > sizeof(temp_secret)) {
                 ret = -1;
             } else {
@@ -2405,10 +2426,10 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
 
         if (ticket_psk.base != NULL && !is_server) {
             std::cerr << "ticket_psk "  <<  ticket_psk.len << "\n";
-            std::cerr << "ticket_psk "  <<  ticket_psk.base << "\n";
+            //std::cerr << "ticket_psk "  <<  ticket_psk.base << "\n";
             handshake_properties->client.session_ticket.base = ticket_psk.base;
             handshake_properties->client.session_ticket.len = ticket_psk.len;
-            size_t m = 0xFFFFFFFF; //0xFFFFFFFF
+            size_t m = 0xFFFFFFFF;  //0xFFFFFFFF
             handshake_properties->client.max_early_data_size = &m;      
         }
 
@@ -2458,6 +2479,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
 
         if (!is_server) 
             picotls_do_handshake(s,0,0,0);
+        std::cerr << "create 0rtt finish"  << "\n";
         >>>
     }
 
@@ -2488,7 +2510,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             //std::cerr << "data =" << data << std::endl;  
             ptls_exts[i].data.len = len;
             std::cerr << "len =" << len << std::endl;  
-            // int eres = gnutls_session_ext_register (session, "ext_name", etype,
+            // int eres = gnutls_session_exptls_openssl_sha256t_register (session, "ext_name", etype,
             //   GNUTLS_EXT_APPLICATION, gnutls_ext_supp_recv_params,
             //   gnutls_ext_supp_send_params, 0,0,0,0);
             // if (eres != GNUTLS_E_SUCCESS) {
@@ -2685,7 +2707,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
     }
 
 
-        implement get_old_new_token(c:cid) returns (b:stream_data) {
+    implement get_old_new_token(c:cid) returns (b:stream_data) {
         <<< impure
 
             const char * session_file = getenv("NTFILE");
