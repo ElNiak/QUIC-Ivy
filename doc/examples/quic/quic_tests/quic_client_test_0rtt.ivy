@@ -15,7 +15,7 @@ parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4444
 parameter server_port_2 : ip.port = 4444
 parameter max_stream_data : stream_pos = 0x20000
-parameter initial_max_streams_bidi : stream_id = 20
+parameter initial_max_streams_bidi : stream_id = 100
 parameter client_port_vn : ip.port = 4444
 
 # Network setup
@@ -209,7 +209,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     # but some clients don't handle this correctly, so we put all parameters in.
     # Remove the following to test this client behavior.
     var imsib : initial_max_stream_id_bidi;
-    imsib.stream_id_16 := 20;
+    imsib.stream_id_16 := 100;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
 
     var icid : initial_source_connection_id; #update v29
@@ -515,6 +515,7 @@ action show_tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid,
                            pos:stream_pos, e:quic_packet_type) = {}
 
 import show_tls_send_event
+import action show_connected(c1:bool, c2:cid)
 
 # Print a packet on stdout. In the compiled tester importing `show_packet`
 # causes calls to be logged to stdout.

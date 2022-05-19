@@ -138,6 +138,7 @@ var sock_alt : net.socket
 var sock_vn : net.socket
 
 instance tls_extensions : vector(tls.extension)
+instance tls_hand_extensions : vector(tls.handshake)
 
 # This creates the sockets and also a TLS instance to be used by `the_cid`.
 # TODO: the TLS instance should be created dynamically when the application

@@ -222,6 +222,7 @@ before frame.ping.handle(f:frame.ping,scid:cid,dcid:cid) {
     }
 }
 
+import action show_connected(c1:bool, c2:cid)
 
 before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
     if _generating {

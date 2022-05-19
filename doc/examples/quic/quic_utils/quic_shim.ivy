@@ -80,8 +80,16 @@ instance mim : quic_endpoint(endpoint_id.mim)
 
 #}
 
-var the_cid_2 : cid
-var server_cid_2 : cid
+var early_data_end : stream_data
+after init {
+    # Need to be local for mvfst STRANGE
+    # TODO global -> quic-go crash if not global
+    early_data_end := stream_data.empty;
+    early_data_end := early_data_end.append(0xff);
+    early_data_end := early_data_end.append(0xff);
+    early_data_end := early_data_end.append(0xff);
+    early_data_end := early_data_end.append(0xff);
+}
 
 after init {
     multiple_client := false;
@@ -89,6 +97,8 @@ after init {
     zero_rtt_client := false;
 }
 
+var the_cid_2 : cid
+var server_cid_2 : cid
 after init {
     last_packet_type := quic_packet_type.initial;
     last_packet_length := 1200;
@@ -321,24 +331,31 @@ import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:str
 # appropriate abstract crypto stream, and later to be transmitted via
 # a generated crypto frame event.
 
+
+# TODO mvfst no helloretry
+# mvfst  &ptls_openssl_x25519,&ptls_openssl_secp256r1
+# other   &ptls_openssl_secp256r1, &ptls_openssl_x25519 TODO
+
 #TODO merge shim for client
 
 implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.lower.level) {
-    var early_data_end := stream_data.empty;
-    early_data_end := early_data_end.append(0xff);
-    early_data_end := early_data_end.append(0xff);
-    early_data_end := early_data_end.append(0xff);
-    early_data_end := early_data_end.append(0xff);
+    # var early_data_end := stream_data.empty; # TODO global -> quic-go crash if not global
+    # early_data_end := early_data_end.append(0xff);
+    # early_data_end := early_data_end.append(0xff);
+    # early_data_end := early_data_end.append(0xff);
+    # early_data_end := early_data_end.append(0xff);
     var e := quic_packet_type.initial if lev = 0
              else (quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt);
     if(bytes.value(0) = 0x4 & bytes.segment(bytes.end-4,bytes.end) = early_data_end) {
         e := quic_packet_type.one_rtt;
     };
     var scid := tls_id_to_cid(tls_id);
+    call show_tls_lower_send(bytes);
     call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
                         0, bytes,crypto_data_end(scid,e),e);
 }
 
+import action show_tls_lower_send(bytes:stream_data)
 
 # The following is just for debugging purposes.
 
@@ -377,10 +394,16 @@ import action show_tls_id_to_cid(ver:cid)
 # were any crypto frames.
 
 after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream_data) {
+    call show_dst_is_generated_handshake_data_event(dst_is_generated(dst));
+    call show_sdata(data);
     if dst_is_generated(dst) {
+        # TODO add show
         call tls_api.lower.recv(src_tls_id(dst),data,0); # TODO: fill in the encryption level
     }
 }
+
+import action show_sdata(d:stream_data)
+import action show_dst_is_generated_handshake_data_event( dst :bool)
 
 # TLS client initial request shim
 # ===============================
@@ -545,6 +568,8 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
     require dcil >= 8;
 
+    call show_caca;
+
     client_initial_dcid := bytes_to_cid(ikm);
     client_initial_scid := bytes_to_cid(skm); # skm
 
@@ -569,13 +594,17 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 	    call export_length_cid_extension(dcil,scil);
         #call tls_api.upper.destroy(0);
         if zero_rtt_client {
+            call show_caca_0rtt;
             call tls_api.upper.create_0rtt_client(0,true,extns);  
         } else {
+            call show_caca;
             call tls_api.upper.create(0,true,extns);  
         }
         # 'true' means this instance of tls is a server
         tp_client_set := true;
 	}; 
+
+    call show_caca;
 
     # if retry_client_test -> ~retry_sent {
     #     client_initial_dcid := bytes_to_cid(ikm);
@@ -588,13 +617,19 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     client_initial_version := ver;
     call show_version(client_initial_version);
 
-    if client_initial_version ~= 0xff00001d { #version_used todo
+    call show_condi(~initial_keys_set);
+    call show_condi(negocation_of_version);
+
+    if client_initial_version ~= 0xff00001d & client_initial_version ~= 0xfaceb002 { #version_used todo
         negocation_of_version := true;
     } 
     else if (~initial_keys_set & retry_client_test -> retry_sent) #  & retry_client_test -> retry_sent
         | negocation_of_version | (retry_response & ~init_token)  { # if ~initial_keys_set
         #TODO check value
         negocation_of_version := false;
+
+        call show_caca;
+
         #var lens := spkt.value(5);
         #var dcil : stream_pos := bfe[0][7](spkt.value(5));
         #var ikm := spkt.segment(6,6+dcil); # dcid
@@ -692,6 +727,8 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 #     tp := t;
 # }
 
+import action show_caca
+import action show_caca_0rtt
 import action show_set_initial_keys(ik: stream_data)
 import action show_version(ver:version)
 

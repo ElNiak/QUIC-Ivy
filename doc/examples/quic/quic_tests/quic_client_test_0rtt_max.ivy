@@ -12,7 +12,7 @@ parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4443
 parameter server_port_2 : ip.port = 4443
 parameter max_stream_data : stream_pos = 0x20000
-parameter initial_max_streams_bidi : stream_id = 20
+parameter initial_max_streams_bidi : stream_id = 100
 parameter client_port_vn : ip.port = 4444
 
 # Network setup
@@ -36,7 +36,7 @@ var client_addr : ip.addr
 var client_port : ip.port
 var client_port_alt : ip.port
 after init {
-    the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
+    the_cid := 0x0; # zero length => 0x1 mvfst and other 0x0
     version_used := 0xff00001d;
     server_cid := 0xb;
     client_addr := 0;
@@ -195,7 +195,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     # but some clients don't handle this correctly, so we put all parameters in.
     # Remove the following to test this client behavior.
     var imsib : initial_max_stream_id_bidi;
-    imsib.stream_id_16 := 20;
+    imsib.stream_id_16 := 100;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
     
     #if client_present_scid {
@@ -325,7 +325,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 # the tester. We can determine this using the built-in predicate
 # "_generating".
 
-# This is the tester constraint for the stream frame protocol. We add some requirements
+# This is thZeroRtte tester constraint for the stream frame protocol. We add some requirements
 # to make the tests more interesting. In particular, we don't want the tester to
 # produce lots of tiny frames (or empty ones) so we require that a stream frame
 # send all of the available stream data. We never allow the fin bt to be set, since
@@ -401,10 +401,11 @@ before frame.stop_sending.handle(f:frame.stop_sending,scid:cid,dcid:cid) {
 
 # Generate max_streams frames only for the client.
 
-before frame.max_streams.handle(f:frame.max_streams,scid:cid,dcid:cid) {
+before frame.max_streams_bidi.handle(f:frame.max_streams_bidi,scid:cid,dcid:cid) {
     if _generating {
         require client.ep.addr ~= 0;
         require scid = the_cid;
+        require f.id = 100;
     }
 }
 
@@ -427,14 +428,19 @@ before frame.connection_close.handle(f:frame.connection_close,scid:cid,dcid:cid)
 
 # Generate connection_close frames only for the client.
 
-before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid) {
+before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
-        require client.ep.addr ~= 0;
+        require conn_total_data(the_cid) > 30; # tricks
+        require last_pkt_num(the_cid,quic_packet_type.one_rtt) > 5;
+        require client.ep.addr ~= 0;  
+        require tls_handshake_finished;
+        require f.err_code = 0;   
         require scid = the_cid;
+        require e = quic_packet_type.one_rtt;
     } else {
         require is_no_error;
         call _finalize;
-        call net.close(endpoint_id.client,sock);
+        #call net.close(endpoint_id.client,sock);
     }
 }
 
@@ -520,6 +526,7 @@ around client_send_event {
 # events, since the frame queue for the server end will always be
 # empty. This is because server frames are only inferred in response to
 # a server packet event, which immediately dequeues them.
+import action show_connected(c1:bool, c2:cid)
 
 export frame.ack.handle
 export frame.stream.handle
@@ -531,8 +538,8 @@ export packet_event
 export client_send_event
 export tls_recv_event
 #export frame.rst_stream.handle
-#export frame.max_stream_id.handle
-export frame.connection_close.handle
+#export frame.max_streams_bidi.handle
+#export frame.connection_close.handle # for quinn no closing co
 #export frame.max_stream_data.handle
 
 #export frame.ping.handle
@@ -562,7 +569,7 @@ export action _finalize = {
 # attribute frame.max_data.handle.weight = "0.02"
 
 
-# export frame.connection_close.handle
+#export frame.connection_close.handle
 # attribute frame.connection_close.handle.weight = "0.02"
 
 #export frame.application_close.handle

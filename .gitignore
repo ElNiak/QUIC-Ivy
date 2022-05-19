@@ -10,6 +10,8 @@ ivy_formulatab.py
 ivy_parsetab.py
 ivy_termtab.py
 
+*.zip
+
 ########################
 # LATEX temp files
 ########################

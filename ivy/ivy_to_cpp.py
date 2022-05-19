@@ -5142,12 +5142,16 @@ int ask_ret(long long bound) {
 	        std::stringstream strStream;
 	        strStream << ifs.rdbuf();
 	        std::string str = strStream.str();
-
+            str.erase(std::remove(str.begin(), str.end(), \'\\n\'), str.end());
+            str.erase(std::remove(str.begin(), str.end(), \'\\t\'), str.end());
+            const std::size_t pos_str = str.find_first_not_of(' ');
+            if (pos_str != std::string::npos)
+                str.erase(0, pos_str);
             std::cerr << str << std::endl;
 	        if(std::remove("temps.txt") != 0) 
 		        std::cerr << "error: remove(temps.txt) failed\\n";
 	        std::cerr << msg << ": error: assertion failed\\n";
-            __ivy_out << "assertion_failed(\\"" << str << "\\")" << std::endl;
+            __ivy_out << "assertion_failed(" << str << ")" << std::endl;
             CLOSE_TRACE
             __ivy_exit(1);
         }
@@ -5187,12 +5191,16 @@ int ask_ret(long long bound) {
 	        std::stringstream strStream;
 	        strStream << ifs.rdbuf();
 	        std::string str = strStream.str();
-
+            str.erase(std::remove(str.begin(), str.end(), \'\\n\'), str.end());
+            str.erase(std::remove(str.begin(), str.end(), \'\\t\'), str.end());
+            const std::size_t pos_str = str.find_first_not_of(' ');
+            if (pos_str != std::string::npos)
+                str.erase(0, pos_str);
             std::cerr << str << std::endl;
 	        if(std::remove("temps.txt") != 0) 
 		        std::cerr << "error: remove(temps.txt) failed\\n";
 	        std::cerr << msg << ": error: assumption failed\\n";
-            __ivy_out << "assumption_failed(\\"" << str << "\\")" << std::endl;
+            __ivy_out << "assumption_failed(" << str << ")" << std::endl;
             CLOSE_TRACE
             __ivy_exit(1);
         }

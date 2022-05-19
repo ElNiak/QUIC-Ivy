@@ -256,7 +256,11 @@ after init {
 
 before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data : stream_data,
                       pos : stream_pos, e:quic_packet_type) {
+    
     var jdx := data.begin;
+    call start_handshake_event;
+    call show_connected(connected(scid), scid);
+    call show_connected(connected(scid), dcid);
     if retry_sent & ~crypto_reset {
         crypto_handler_pos(C,L) := 0;
         #conn_enc_level(E,C) := quic_packet_type.zero_rtt;
@@ -275,8 +279,10 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
     if end > crypto_data(scid,e).end {
         crypto_data(scid,e) := crypto_data(scid,e).resize(end,0);
     };
+    call mid_handshake_event;
     jdx := data.begin;
     while jdx < data.end {
+       # call mid_handshake_event;
         var cpos := pos+jdx;
         var byte := data.value(jdx);
         require crypto_data_present(scid,e,cpos) -> crypto_data(scid,e).value(cpos) = byte;
@@ -285,7 +291,9 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
         crypto_data_present(scid,e,cpos) := true;
 	    jdx := jdx.next
     };
+   # call mid_handshake_event;
     crypto_data_end(scid,e) := crypto_data(scid,e).end; # - 1;
+    call mid_handshake_event;
     var max_present : stream_pos := 0;
     while max_present < crypto_data_end(scid,e) & crypto_data_present(scid,e,max_present) {
         max_present := max_present.next
@@ -295,6 +303,7 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
     var res := tls.handshake_parser.deserialize(avail,0); #quicgo
     var hs := res.value;
     call tls.handshake_data_event(src,dst,avail.segment(0,res.pos));
+    call mid_handshake_event;
     crypto_handler_pos(scid,e) := crypto_handler_pos(scid,e) + res.pos;
     var idx := hs.begin;
     while idx < hs.end {
@@ -303,7 +312,13 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
         call handle_tls_handshake(src,dst,scid,dcid,h);  #[2]
         idx := idx.next
     };
+    call stop_handshake_event;
 }
+
+import action start_handshake_event
+import action mid_handshake_event
+import action stop_handshake_event
+
 
 # Receive event
 # ----------

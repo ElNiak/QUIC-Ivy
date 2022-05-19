@@ -21,6 +21,8 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
     # Stream frames on id 0 indicate that a `tls_send_event` has occurred.
     # TODO: ignore duplicate frames.
 
+    call recv_packet(src,dst,pkt);
+
     var scid := pkt.src_cid;
     var dcid := pkt.dst_cid;
     var sq   := pkt.seq_num;
@@ -62,7 +64,8 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
     while idx < pkt.payload.end {
         var f := pkt.payload.value(idx);
         if some(cf:frame.crypto) f *> cf {
-            call tls_send_event(src,dst,scid,dcid,cf.data,cf.offset,e)
+            call infer_frame(scid,dcid,f);
+            call tls_send_event(src,dst,scid,dcid,cf.data,cf.offset,e);
         };
         if some(sf:frame.stream) f *> sf {
                 # require sf.offset <= stream_app_data_end(dcid,sf.id);  # TODO: deal with gaps in stream

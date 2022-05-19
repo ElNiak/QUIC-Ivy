@@ -483,11 +483,11 @@ object quic_ser = {}
                 }
                 else if (tag == 10) {
                     state = quic_reset_stream_id; // max_stream_id state equivalent to this
-                    frame_type = 0x12;
+                    frame_type = 0x13;
                 }
                 else if (tag == 11) {
                     state = quic_reset_stream_id; // max_stream_id state equivalent to this
-                    frame_type = 0x13;
+                    frame_type = 0x12;
                 }
                 else if (tag == 12) {
                     state = quic_reset_final_offset;
