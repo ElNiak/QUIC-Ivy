@@ -1443,10 +1443,10 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
 
     // Some parameters for picotls as used by picoquic.
 
-    //mvfst  &ptls_openssl_x25519,&ptls_openssl_secp256r1
+    //mvfst -> No HelloRetry  &ptls_openssl_x25519,&ptls_openssl_secp256r1
     ptls_key_exchange_algorithm_t *picotls_key_exchanges[] = 
         {  &ptls_openssl_x25519,&ptls_openssl_secp256r1, NULL };
-    //other   &ptls_openssl_secp256r1, &ptls_openssl_x25519 TODO
+
     // ptls_key_exchange_algorithm_t *picotls_key_exchanges[] = 
     //     {  &ptls_openssl_secp256r1, &ptls_openssl_x25519, NULL };
 
