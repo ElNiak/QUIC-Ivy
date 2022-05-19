@@ -92,7 +92,7 @@ after init {
 }
 
 after init {
-    multiple_client := false;
+    multiple_client := false; # TODO
     is_mim := false; 
     zero_rtt_client := false;
 }
@@ -573,14 +573,6 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     client_initial_dcid := bytes_to_cid(ikm);
     client_initial_scid := bytes_to_cid(skm); # skm
 
-    # if retry_client_test -> ~retry_sent {
-    #     client_initial_dcid := bytes_to_cid(skm);
-    # };
-
-    # if retry_client_test -> retry_sent {
-    #     tls_api.upper.destroy(0);
-    # };
-
     call export_length_cid(dcil,scil);
     call export_length_cid_extension(dcil,scil);
 
@@ -588,51 +580,29 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         | negocation_of_version | (retry_response & ~init_token) {
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
-        # if zero_rtt_allowed {
-        #     extns := extns.append(make_tls_transport_parameters);
-        # };
 	    call export_length_cid_extension(dcil,scil);
-        #call tls_api.upper.destroy(0);
         if zero_rtt_client {
-            call show_caca_0rtt;
             call tls_api.upper.create_0rtt_client(0,true,extns);  
         } else {
-            call show_caca;
             call tls_api.upper.create(0,true,extns);  
         }
         # 'true' means this instance of tls is a server
         tp_client_set := true;
 	}; 
 
-    call show_caca;
-
-    # if retry_client_test -> ~retry_sent {
-    #     client_initial_dcid := bytes_to_cid(ikm);
-    # };
-
     if retry_sent & ~initial_keys_set {
         call export_length_cid_extension(dcil,scil);
     };
 
     client_initial_version := ver;
-    call show_version(client_initial_version);
-
-    call show_condi(~initial_keys_set);
-    call show_condi(negocation_of_version);
 
     if client_initial_version ~= 0xff00001d & client_initial_version ~= 0xfaceb002 { #version_used todo
         negocation_of_version := true;
     } 
-    else if (~initial_keys_set & retry_client_test -> retry_sent) #  & retry_client_test -> retry_sent
-        | negocation_of_version | (retry_response & ~init_token)  { # if ~initial_keys_set
-        #TODO check value
+    else if (~initial_keys_set & retry_client_test -> retry_sent) 
+        | negocation_of_version | (retry_response & ~init_token)  { 
         negocation_of_version := false;
 
-        call show_caca;
-
-        #var lens := spkt.value(5);
-        #var dcil : stream_pos := bfe[0][7](spkt.value(5));
-        #var ikm := spkt.segment(6,6+dcil); # dcid
         var salt : stream_data := stream_data.empty;
         
         #0xc3 ee f7 12 c7 2e bb 5a 11 a7 d2 43 2b b4 63 65 be f9 f5 02 QUIC-27
@@ -712,20 +682,6 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         initial_keys_set := true;
     }
 }
-
-# action make_tls_transport_parameters returns (tp:tls.new_session_ticket) = {
-#     var t : tls.new_session_ticket;
-#     t.ticket_lifetime := 86400;
-#     t.ticket_age_add := 661582663;
-#     t.ticket_nonce := stream_data.empty;
-#     t.ticket := random_stream_data(0,42,1);
-
-#     var ed : tls.early_data;
-#     ed.max_early_data_size := 0xffffffff;
-#     t.extensions := t.extensions.append(ed);
-
-#     tp := t;
-# }
 
 import action show_caca
 import action show_caca_0rtt

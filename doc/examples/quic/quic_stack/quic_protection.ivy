@@ -145,8 +145,8 @@ module quic_protection(tls_id,tls) = {
         var pkt_rtt := pkt.segment(h.payload_length,pkt.end);
         var pkt_init := pkt.segment(0,h.payload_length);
         var h_rtt := get_header_info(pkt_rtt,false);
-        call show_header(h);
-        call show_header(h_rtt);
+        #call show_header(h);
+        #call show_header(h_rtt);
 
         # ----------------------------------------------------------------------
        
@@ -341,12 +341,12 @@ module quic_protection(tls_id,tls) = {
 
     implement decrypt {
         var h := get_header_info(pkt,true);
-	    call show_header(h);
+	    #call show_header(h);
 
         var level := get_level(pkt);
         if level = 1 & ~last_zrtt_pkt_set {
             #level := 3;
-            call show_header(h);
+            #call show_header(h);
             last_zrtt_pkt_set := true;
             last_zrtt_pkt := pkt;
         };
@@ -462,34 +462,6 @@ module quic_protection(tls_id,tls) = {
         res = c.val;
     >>>
     }
-
-    # This returns the encryption level of a protected or unprotected
-    # packet.
-    # TODO check
-    # action get_level(pkt:stream_data) returns (level:tls.level) = {
-    #     if bvand(pkt.value(0),0x80) ~= 0 {
-    #         var hdr_type := bvand(pkt.value(0),0x30);
-    #         if hdr_type = 0x00 {
-    #             #INITIAL
-    #             level := 0;
-    #         } 
-    #         else if hdr_type = 0x10 {
-    #             #0RTT
-    #             level := 1;
-    #         }
-    #         else if hdr_type = 0x20 {
-    #             #HANDSHAKE
-    #             level := 2;
-    #         }
-    #         else  { 
-    #             #1RTT
-    #             level := 3;
-    #         }
-    #     } else {
-    #         #1RTT
-    #         level := 3;
-    #     }
-    # }
 
     action get_level(pkt:stream_data) returns (level:tls.level) = {
         if bvand(pkt.value(0),0x80) ~= 0 {

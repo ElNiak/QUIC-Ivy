@@ -371,7 +371,7 @@ around packet_event_coal_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_co
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
         call tls_api.upper.create(0,true,extns);  # false means this instance of tls is not a server
-        call show_initial_request_retry;
+        #call show_initial_request_retry;
         #call tls_client_initial_request(src,dst,server_cid,final_version); #TODO 
         #call tls_client_initial_response(src,dst,spkt);
         conn_requested(src,dst,the_cid) := true;

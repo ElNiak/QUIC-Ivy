@@ -88,8 +88,8 @@ action handle_sending_send(id:stream_id,seq:pkt_num) = {
         # require  ~sending_dataSent(id) & ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
         sending_ready(id) := false;
         sending_send(id)  := true;
-        call show_fsm_sending_send_event;
-        call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
+        #call show_fsm_sending_send_event;
+        #call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
     };
     # We need to record last seq num
     lastest_stream_id_sender(seq) := lastest_stream_id_sender(seq).append(id);
@@ -104,8 +104,8 @@ action handle_sending_dataSent(id:stream_id,seq:pkt_num) = {
         #require  ~sending_dataRecvd(id) & ~sending_resetSent(id) & ~sending_resetRecvd(id);
         sending_send(id) := false;
         sending_dataSent(id) := true;
-        call show_fsm_sending_dataSent_event;
-        call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
+        #call show_fsm_sending_dataSent_event;
+        #call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
     };
     # We need to record last seq num
     lastest_stream_id_sender(seq) := lastest_stream_id_sender(seq).append(id);
@@ -120,8 +120,8 @@ action handle_sending_dataRecvd(id:stream_id) = {
     sending_dataSent(id)  := false;
     sending_ready(id) := true; # needed ?
     sending_dataRecvd(id) := true;
-    call show_fsm_sending_dataRecvd_event;
-    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
+    #call show_fsm_sending_dataRecvd_event;
+    #call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
 }
 
 action handle_sending_resetSent(id:stream_id,seq:pkt_num) = {
@@ -134,8 +134,8 @@ action handle_sending_resetSent(id:stream_id,seq:pkt_num) = {
         sending_dataSent(id) := false;
         sending_send(id) := false;
         sending_resetSent(id) :=  true;
-        call show_fsm_sending_resetSent_event;
-        call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
+        #call show_fsm_sending_resetSent_event;
+        #call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
     };
     lastest_stream_id_sender(seq) := lastest_stream_id_sender(seq).append(id);
     lastest_pkt_num_sender := lastest_pkt_num_sender.append(seq);
@@ -149,8 +149,8 @@ action handle_sending_resetRecvd(id:stream_id) = {
     sending_resetSent(id) := false;
     sending_ready(id) := true;
     sending_resetRecvd(id) := true;
-    call show_fsm_sending_resetRecvd_event;
-    call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
+    #call show_fsm_sending_resetRecvd_event;
+    #call show_sending_fsm_event(sending_ready(id), sending_send(id), sending_dataSent(id), sending_dataRecvd(id), sending_resetSent(id), sending_resetRecvd(id));
 }
 
 # check if same stream_id twice, add not _generating when calling these

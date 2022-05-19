@@ -11,6 +11,13 @@ ivy_parsetab.py
 ivy_termtab.py
 
 *.zip
+ivy/include/*.h
+ivy/include/picotls/
+include/
+bin/z3
+ivy/lib/
+ivy/z3/
+lib/libz3.so
 
 ########################
 # LATEX temp files

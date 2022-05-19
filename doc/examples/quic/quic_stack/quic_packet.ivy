@@ -337,9 +337,9 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
     var dcid := pkt.dst_cid;
     var scid := pkt.src_cid;
-    call show_connected(connected(dcid), connected_to(dcid));
-    call show_connected(connected(scid), scid);
-    call show_connected(connected(scid), dcid);
+    # call show_connected(connected(dcid), connected_to(dcid));
+    # call show_connected(connected(scid), scid);
+    # call show_connected(connected(scid), dcid);
     if cid_mapped(dcid) {
 	    dcid := cid_to_aid(dcid);
     };
@@ -417,8 +417,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require dcid = rscid;
     };
 
-    call show_pstats(scid,pkt.ptype,pkt.seq_num);
-    call show_pstats(scid,queued_level(scid),pkt.seq_num);
+    # call show_pstats(scid,pkt.ptype,pkt.seq_num);
+    # call show_pstats(scid,queued_level(scid),pkt.seq_num);
 
     # The packet type must match the encryption level of the queued
     # frames at the source. 
@@ -668,76 +668,11 @@ action handle_tls_handshake(
     else if some(fh:tls.finished) hs *> fh {
         tls_handshake_finished := true;
     }
-    # else if some(st:tls.new_session_ticket) hs *> st {
-    #     #call export_session_ticket(st.ticket, st.ticket_lifetime, st.ticket_age_add);
-    #     #call export_session_ticket_full(st);
-    # }
     else if some(ee:tls.encrypted_extensions) hs *> ee {
         call handle_tls_extensions(src,dst,scid,ee.extensions,false);
     }
 }
 
-action export_session_ticket(tkt:stream_data, lf:stream_pos, obf:stream_pos) = {
-    <<<
-
-    std::cerr <<  "export_session_ticket "  << tkt.size() <<std::endl;
-	unsigned str_d[tkt.size()];
-	for (int i = 0; i < tkt.size(); i++)
-        str_d[i] = tkt[i]; //static_cast<char>(tkt[i]); // + '0'
-    //str_d[tkt.size()] = '\0';
-    std::cerr <<  "export_session_ticket "  << str_d << std::endl;
-	const char * session_file = getenv("STFILE");
-    FILE *fp;
-    time_t msec = time(NULL) * 1000;
-    if(session_file != NULL) {
-        fp = fopen(session_file,"w");
-        for (int i = 0; i < tkt.size(); i++) {
-            //std::cerr <<  "str_d[i] "  << str_d[i] << std::endl;
-            //std::cerr <<  "str_d[i] == 0 "  << (str_d[i] == 0) << std::endl;
-            if(str_d[i] < 16)
-                fprintf(fp, "0%x", str_d[i]);
-            else 
-                fprintf(fp, "%x", str_d[i]);
-        }  
-        fprintf(fp, "%s", "\n");
-        fprintf(fp, "%llu\n", lf);
-        fprintf(fp, "%llu\n", obf);
-        fprintf(fp, "%llu\n", static_cast<long long unsigned> (msec));
-        for (int i = 0; i < tkt.size(); i++) {
-            //std::cerr <<  "str_d[i] "  << str_d[i] << std::endl;
-            //std::cerr <<  "str_d[i] == 0 "  << (str_d[i] == 0) << std::endl;
-            fprintf(fp, "%x", str_d[i]);
-        }  
-        fclose(fp);
-	}
-    >>>
-}
-# action export_session_ticket_full(tkt:tls.new_session_ticket) = {
-#     <<<
-
-#     std::cerr <<  "export_session_ticket_full "  << sizeof(tkt) <<std::endl;
-# 	unsigned str_d[sizeof(tkt)];
-# 	for (int i = 0; i < sizeof(tkt); i++)
-#         str_d[i] = tkt[i]; //static_cast<char>(tkt[i]); // + '0'
-#     //str_d[tkt.size()] = '\0';
-#     std::cerr <<  "export_session_ticket_full "  << str_d << std::endl;
-# 	const char * session_file = getenv("STFILE2");
-#     FILE *fp;
-#     time_t msec = time(NULL) * 1000;
-#     if(session_file != NULL) {
-#         fp = fopen(session_file,"w");
-#         for (int i = 0; i < sizeof(tkt); i++) {
-#             //std::cerr <<  "str_d[i] "  << str_d[i] << std::endl;
-#             //std::cerr <<  "str_d[i] == 0 "  << (str_d[i] == 0) << std::endl;
-#             if(str_d[i] < 16)
-#                 fprintf(fp, "0%x", str_d[i]);
-#             else 
-#                 fprintf(fp, "%x", str_d[i]);
-#         }  
-#         fclose(fp);
-# 	}
-#     >>>
-# }
 #
 # The rules in `handle_client_transport_parameters` apply to each
 # `quic_transport_parameters` extension instance in order of

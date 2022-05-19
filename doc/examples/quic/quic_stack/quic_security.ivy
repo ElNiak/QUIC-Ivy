@@ -259,8 +259,8 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
     
     var jdx := data.begin;
     call start_handshake_event;
-    call show_connected(connected(scid), scid);
-    call show_connected(connected(scid), dcid);
+    #call show_connected(connected(scid), scid);
+    #call show_connected(connected(scid), dcid);
     if retry_sent & ~crypto_reset {
         crypto_handler_pos(C,L) := 0;
         #conn_enc_level(E,C) := quic_packet_type.zero_rtt;
@@ -354,7 +354,7 @@ around tls_recv_event {
 
 
 after tls_keys_established_event {
-    #call show_tls_keys_established_event(scid,e);
+    ##call show_tls_keys_established_event(scid,e);
     if e = quic_packet_type.zero_rtt {
         established_0rtt_keys(scid) := true
     } else if e = quic_packet_type.handshake {
