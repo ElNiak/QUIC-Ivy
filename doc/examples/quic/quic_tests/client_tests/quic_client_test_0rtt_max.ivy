@@ -3,7 +3,7 @@
 include quic_client
 
 after init {
-    the_cid := 0x0; # zero length => 0x1 mvfst and other 0x0
+    #the_cid := 0x0; # zero length => 0x1 mvfst and other 0x0
     client_addr := 0;
     client_port := 0;
     client_port_alt := 0;
@@ -13,6 +13,14 @@ after init {
 # We fix the initial transport parameters here. TODO: In principle these
 # parameters should be selected randomly by some event.
 #
+after init {
+    initial_max_stream_data_uni_server_0rtt := 5000;
+    initial_max_stream_data_bidi_remote_server_0rtt := 5000;
+    initial_max_data_server_0rtt := 5000;
+    initial_max_stream_data_bidi_local_server_0rtt := 5000;
+    initial_max_stream_id_bidi_server_0rtt := 200;
+    active_connection_id_limit_server_0rtt := 200;
+}
 
 include quic_client_0rtt_tp
 
@@ -108,8 +116,9 @@ export tls_recv_event
 
 #export frame.connection_close.handle
 # attribute frame.connection_close.handle.weight = "0.02"
-
-#export frame.application_close.handle
+#if zero_rtt_server_test {
+#export frame.application_close.handle # TODO need to be close for picoquic, but not for quant
+#}
 #attribute frame.application_close.handle.weight = "0.02"
 
 # export frame.stop_sending.handle

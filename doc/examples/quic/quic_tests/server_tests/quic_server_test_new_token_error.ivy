@@ -54,8 +54,8 @@ before frame.application_close.handle(f:frame.application_close,scid:cid,dcid:ci
 before frame.new_token.handle(f:frame.new_token,scid:cid,dcid:cid) {
     if _generating {
         require scid = the_cid;
-	require f.length = 2;
-	f.data := random_stream_data(0x10,0xfffff,2);
+	    require f.length = 2;
+	    f.data := random_stream_data(0x10,0xfffff,2);
     }
 }
 

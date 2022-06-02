@@ -23,7 +23,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
     
-    #if client_present_scid {
+    #if client_non_zero_scil {
     var icid : initial_source_connection_id; #update v29
     icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);

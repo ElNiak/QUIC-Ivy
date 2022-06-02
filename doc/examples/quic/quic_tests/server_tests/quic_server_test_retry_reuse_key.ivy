@@ -24,8 +24,8 @@ include quic_server_standard_tp
 # Mandatory for longbv else truncated
 
 after init {
-    the_cid := 0x1; # 0x0;
-    server_cid := 0x2; # 0x1;
+    # the_cid := 0x1; # 0x0;
+    # server_cid := 0x2; # 0x1;
     the_cid_2 := 0x3; # 0x0;
     server_cid_2 := 0x4; # 0x1;
 }    
@@ -317,10 +317,6 @@ import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,a
 #   connection migration before the handshake is confirmed, as defined in
 #   section 4.1.2 of [QUIC-TLS].
 
-var allowed_multiple_migration : bool
-var allowed_migration : bool
-var version_negociated : bool
-var initial_version : version
 
 after init {
 	allowed_multiple_migration := false;
@@ -385,14 +381,16 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             # call show_token_retry(expected_token);
             # #require pkt.token.end = expected_token.end;
             # pkt.token := expected_token;
-            #require pkt.token = retry_recv_token;
-            if src = second_client.ep {
-                var expected_token := tls_api.upper.get_old_new_token(2);
-                pkt.token := expected_token;
-            } else {
-                var expected_token := tls_api.upper.get_old_new_token(0);
-                pkt.token := expected_token;
-            };
+            #require pkt.token = retry_token_recv;
+            # if src = second_client.ep {
+            #     var expected_token := tls_api.upper.get_old_new_token(2); ## TODO RETRY token ??
+            #     pkt.token := expected_token;
+            # } else {
+            #     var expected_token := tls_api.upper.get_old_new_token(0);
+            #     pkt.token := expected_token;
+            # };
+            var expected_token := tls_api.upper.get_old_retry_token;
+            pkt.token := expected_token;
         } else {
             require pkt.token.end = 0; 
         };

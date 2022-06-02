@@ -25,10 +25,9 @@ parameter max_stream_data : stream_pos = 0x2000
 # establish which interface and which ports the tester will use. 
 #
 
-# Mandatory for longbv else truncated
 after init {
-    the_cid := 0x0; # 0x0;
-    server_cid := 0x1; # 0x1;
+    zero_rtt_server_test := false;
+    client_port_vn := client_port;
 }
 
 
@@ -48,6 +47,9 @@ after init {
     client_alt := endpoint_id_addr(endpoint_id.client_alt);
     client_vn := endpoint_id_addr(endpoint_id.client_vn);
 }
+
+instance second_client : quic_endpoint(endpoint_id.client_alt)
+
 
 # We create sockets and bind them to the addresses that the client can use.
 
@@ -128,7 +130,7 @@ action dst_tls_id(dst:ip.endpoint) returns (tls_id:tls_api.id) = {
 
 action src_tls_id(src:ip.endpoint) returns (tls_id:tls_api.id) = {
     tls_id := client.tls_id if src = client.ep 
-    else second_client.tls_id; #TODO
+    else second_client.tls_id; #TODO can cause error server vn eg
 }
 
 #
@@ -197,9 +199,6 @@ after init {
 #   connection migration before the handshake is confirmed, as defined in
 #   section 4.1.2 of [QUIC-TLS].
 
-var allowed_multiple_migration : bool
-var version_negociated : bool
-var initial_version : version
 
 after init {
 	allowed_multiple_migration := true;
@@ -225,7 +224,12 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             }
         };
         require dst = server.ep;
-        require pkt.token.end = 0; 
+        #require pkt.token.end = 0; 
+        if pkt.ptype = quic_packet_type.initial & retry_recv(pkt.src_cid) & ~zero_length_token {
+            require pkt.token = retry_token(pkt.src_cid);
+        } else {
+            require pkt.token.end = 0; 
+        };
     };
     if final_version = 0x00000000 {
         #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
@@ -258,10 +262,13 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 # TODO: We reuquire tje `off` and `len` bits to be true. Maybe these should
 # determined in the low-level packet encoding stage.
 
+
 before frame.stream.handle(f:frame.stream,scid:cid,dcid:cid,e:quic_packet_type) {
     if _generating {
         require scid = the_cid;
-        require connected(the_cid) & dcid = connected_to(the_cid);
+        if ~zero_rtt_server_test | zero_rtt_sent {
+            require connected(the_cid) & dcid = connected_to(the_cid);
+        };
         require f.len & f.off; 
         require f.length > 0;
         require f.offset = stream_length(dcid,f.id);
@@ -301,6 +308,17 @@ before frame.rst_stream.handle(f:frame.rst_stream,scid:cid,dcid:cid) {
         require scid = the_cid;
         require f.id = 4;
     }
+}
+
+
+before frame.new_token.handle(f:frame.new_token,scid:cid,dcid:cid) {
+    if _generating {
+        require scid = the_cid;
+        #call handle_sending_ack(f.largest_acked);
+    } 
+    # else {
+    #     call tls_api.upper.save_token(f.data);
+    # }
 }
 
 # Generate stop_sending frames only for the environment process(es).
@@ -434,7 +452,11 @@ around client_send_event {
     };
 
     require dst = server.ep;
-    require connected(the_cid) & dcid = connected_to(the_cid);
+    if ~zero_rtt_server_test | zero_rtt_sent {
+        require connected(the_cid) & dcid = connected_to(the_cid);
+    } else {
+        require  dcid ~= the_cid;
+    };
     require stream_length(dcid,s) = stream_app_data_end(dcid,s);
     require stream_length(dcid,s) < end & end <= http_request.end;
     require current_stream < 60;

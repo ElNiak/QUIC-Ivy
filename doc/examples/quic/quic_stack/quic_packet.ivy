@@ -204,12 +204,12 @@ relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
 #chris
 # We start with the initial cid
 function num_conn(C:cid) : stream_pos
-relation retry_send(C:cid)
-function retry_token(C:cid) : stream_data
 relation tls_handshake_finished
 relation migration_done
 
 relation first_initial_send
+function initial_scid : cid 
+function initial_dcid : cid 
 
 #function cid_ip_mapped(D:ip.endpoint) :cid
 #relation cid_ip_mapped(D:ip.endpoint)
@@ -323,26 +323,19 @@ after init {
 
 around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     #call show_connected(connected(the_cid), connected_to(the_cid));
-    require pkt.token.end ~= 0 -> (retry_sent | retry_recv);
 
     # TEMPORARY: Do not allow zero_rtt packets
 
-    require pkt.ptype ~= quic_packet_type.zero_rtt;
+    require pkt.ptype ~= quic_packet_type.zero_rtt & pkt.ptype ~= quic_packet_type.version_negociation & pkt.ptype ~= quic_packet_type.retry;
     
     # Extract the source and destination cid's and packet number from the packet.
 
-    if ~_generating {
-        call recv_packet(src,dst,pkt);
-    }
-
     var dcid := pkt.dst_cid;
     var scid := pkt.src_cid;
-    # call show_connected(connected(dcid), connected_to(dcid));
-    # call show_connected(connected(scid), scid);
-    # call show_connected(connected(scid), dcid);
     if cid_mapped(dcid) {
 	    dcid := cid_to_aid(dcid);
     };
+    require pkt.token.end ~= 0 -> (retry_sent(client_initial_rcid) | retry_recv(scid) | pkt.token = tls_api.upper.get_old_new_token);
 
     if (src = client_alt | dst = client_alt) & ~multiple_client {
 	    migration_done := true;
@@ -360,12 +353,6 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     #    };
     #};
 
-
-
-    #if pkt.ptype = quic_packet_type.retry {
-    #require retry_source_connection_id.is_set(trans_params(scid));
-    #};
-    
     # The destination cid must represent an existing connection,
     # except in the case of a client initial packet, when the
     # destination cid may be the nonce cid chosen by the client for
@@ -379,18 +366,6 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # packet contains an ACK frame, or a CRYPTO frame that is
     # reponsive to a server FRAME. This is trick to check, however,
     # and the actual servers do not seem to check it.
-    
-
-    # call show_cond(connected(dcid));
-    # # call show_cond(pkt.ptype = quic_packet_type.initial
-    # #     & is_client(scid)
-    # #     & dcid = nonce_cid(scid));
-
-    # call show_cond(is_client(scid));
-    # call show_cond(dcid = nonce_cid(scid));
-    # call show_cid(dcid);
-    # call show_cid(scid);
-    # call show_cid(nonce_cid(scid));
 
     require connected(dcid) |
         pkt.ptype = quic_packet_type.initial
@@ -404,21 +379,15 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     # On short headers (meaning one_rtt) the scid is not given, so we
     # use the recorded value.
 
-    # call show_connected(connected(dcid), connected_to(dcid));
-    # call show_connected(connected(scid), scid);
-
     if pkt.long {
         require connected(dcid) -> connected_to(dcid) = scid;
     } else {
         scid := connected_to(dcid);
     };
 
-    if retry_sent & ~_generating & ~zero_length_token & pkt.ptype = quic_packet_type.initial {
-        require dcid = rscid;
+    if retry_sent(dcid) & ~_generating & ~zero_length_token & pkt.ptype = quic_packet_type.initial {
+        require dcid = client_initial_rcid;
     };
-
-    # call show_pstats(scid,pkt.ptype,pkt.seq_num);
-    # call show_pstats(scid,queued_level(scid),pkt.seq_num);
 
     # The packet type must match the encryption level of the queued
     # frames at the source. 
@@ -426,7 +395,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     require pkt.ptype = queued_level(scid);
 
     # TEMPORARY: prevent big packet number jumps (work around minquic bug)
-    # Removed for MVFST that start with big PKT_NUM
+    # Removed for MVFST that start with big PKT_NUM -> OK now
     if  _generating {
         # if ~is_client(scid) {
         #     #client
@@ -436,19 +405,13 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         #server
         require pkt.seq_num = last_pkt_num(scid,pkt.ptype) + 0x1; # OK
         # };
-        
         #require pkt.seq_num < last_pkt_num(scid,pkt.ptype) + 0x1 & pkt.seq_num > last_pkt_num(scid,pkt.ptype);
     };
     last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
-    #require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
     require ~sent_pkt(scid,pkt.ptype,pkt.seq_num);  # [4]
     sent_pkt(scid,pkt.ptype,pkt.seq_num) := true;  # [1]
 
     # The payload may not be empty
-
-    #if version_negociated {
-    #    require src = client_vn;
-    #};
 
     require num_queued_frames(scid) > 0;  # [7]
 
@@ -506,46 +469,19 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    dcid := cid_to_aid(dcid);
     };
 
-    # Record the packet number as latest seen
-
-    #last_pkt_num(scid,pkt.ptype) := pkt.seq_num;
-
-    #require pkt.seq_num > last_pkt_num(scid,pkt.ptype);
-
-    if retry_sent {
-        #call show_version_retry_resp;
-        retry_response := true;
-    };
- 
     # TODO: the following should not be here
-
-    #if pkt.ptype = quic_packet_type.retry {
-    #    retry_send(dcid) := true;
-    #    retry_token(dcid) := pkt.token;
-    #};
 
     if pkt.ptype = quic_packet_type.initial {
         initial_token := pkt.token;
         # An initial packet with an unseen destination cid is a connection request.
-        if ~conn_seen(dcid)  {#TODO | (retry_response & ~init_token)
+        if ~conn_seen(dcid)  {
             call show_initial_request_initial;
             if ~zero_rtt_sent {
                 call tls_client_initial_request(src,dst,dcid,pkt.pversion,src_tls_id(src));
             };
             conn_requested(src,dst,scid) := true;
-            # if multiple_client {
-            #     call tls_client_initial_request(multiple_endpoint.second_client,dst,dcid,pkt.pversion,2);
-            #     conn_requested(multiple_endpoint.second_client,dst,0x0000000000000042) := true;
-            # };
-            if retry_response {
-                retry_rsp := false;
-            };
         };
         cid_to_token(dcid) := pkt.token;
-    };
-
-    if retry_response {
-        init_token := true;
     };
 
     conn_seen(scid) := true;  # [1]
@@ -599,14 +535,10 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         draining_pkt_sent(scid) := true
     };
 
-    # [11] In test directly now
-    #if pkt.ptype = quic_packet_type.initial {
-    #    require ~_generating & ~(pkt.token.end = 0) -> is_invalid_token;
-    #};
-
-
     if pkt.ptype = quic_packet_type.initial & ~first_initial_send & zero_rtt_allowed {
         first_initial_send := true;
+        initial_scid := scid;
+        initial_dcid := dcid;
         queued_level(the_cid) := quic_packet_type.zero_rtt; # todo multiple client
     } else {
         first_initial_send := false;
@@ -626,7 +558,6 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
 
 import action show_initial_request_initial
-import action show_version_retry_resp
 
 
 # Procedures
@@ -732,14 +663,6 @@ action handle_tls_extensions
 # - Setting a transport parameter requires that the parameter is not
 #   previously set.
 
-relation retry_sent
-relation retry_recv
-function retry_recv_token : stream_data #todo generalise with cid
-
-after init {
-    retry_sent := false;
-    retry_recv := false;
-}
 
 action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:cid,
                                           tps:quic_transport_parameters,
@@ -758,7 +681,7 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
     #require initial_max_stream_data_uni.is_set(trans_params(scid));  # [1]
     if ~ _generating  { 
         # for tests where we check that the implementation behave well if not present 
-        if client_present_scid & ~(scid = 1) & client_initial_version = 0xff00001d { # TODO 
+        if client_non_zero_scil & ~(scid = 1) & client_initial_version = 0xff00001d { # TODO 
             require initial_source_connection_id.is_set(trans_params(scid));  # [5]
         };
     };
@@ -770,42 +693,76 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
         };
     };
 
-    if ~is_client_hello & retry_recv & ~zero_length_token {
+    if ~is_client_hello & (retry_recv(client_initial_rcid) | retry_sent(client_initial_rcid)) & ~zero_length_token {
         require retry_source_connection_id.is_set(trans_params(scid));
-        require retry_source_connection_id.value(trans_params(scid)).rcid = rscid; # todo generalize
+        require retry_source_connection_id.value(trans_params(scid)).rcid = client_initial_rcid; # todo generalize
     };
-
-    if ~retry_recv & is_client_hello{
-        require ~retry_source_connection_id.is_set(trans_params(scid));
-    }
     
     # [7]
     if min_ack_delay.is_set(trans_params(scid)) & max_ack_delay.is_set(trans_params(scid)) {
         var min_ack_milli := min_ack_delay.value(trans_params(scid)).exponent_8 * 1000;
         require  min_ack_milli < max_ack_delay.value(trans_params(scid)).exponent_8;  # [1]
+    };
+
+    # var initial_max_stream_data_uni_server_0rtt : stream_pos_32;
+    # var initial_max_stream_data_bidi_remote_server_0rtt : stream_pos_32;
+    # var initial_max_data_server_0rtt : stream_pos_32;
+    # var initial_max_stream_data_bidi_local_server_0rtt : stream_pos_32;
+    # var initial_max_stream_id_bidi_server_0rtt : stream_pos_32;
+    # var active_connection_id_limit_server_0rtt : stream_pos_32;
+    # [6-0rtt]
+    if zero_rtt_server_test & ~is_client_hello {
+        if initial_max_stream_data_uni.is_set(trans_params(scid)) {
+            require initial_max_stream_data_uni.value(trans_params(scid)).stream_pos_32 >= initial_max_stream_data_uni_server_0rtt; # todo generalize
+        };
+        if initial_max_stream_data_bidi_remote.is_set(trans_params(scid)) {
+            require initial_max_stream_data_bidi_remote.value(trans_params(scid)).stream_pos_32 >= initial_max_stream_data_bidi_remote_server_0rtt; # todo generalize
+        };
+        if initial_max_data.is_set(trans_params(scid)) {
+            require initial_max_data.value(trans_params(scid)).stream_pos_32 >= initial_max_data_server_0rtt; # todo generalize
+        };
+        if initial_max_stream_data_bidi_local.is_set(trans_params(scid)) {
+            require initial_max_stream_data_bidi_local.value(trans_params(scid)).stream_pos_32 >= initial_max_stream_data_bidi_local_server_0rtt; # todo generalize
+        };
+        if initial_max_stream_id_bidi.is_set(trans_params(scid)) {
+            require initial_max_stream_id_bidi.value(trans_params(scid)).stream_id_16 >= initial_max_stream_id_bidi_server_0rtt; # todo generalize
+        };
+        if active_connection_id_limit.is_set(trans_params(scid)) {
+            require active_connection_id_limit.value(trans_params(scid)).stream_pos_32 >= active_connection_id_limit_server_0rtt; # todo generalize
+        };
+    };
+
+    # save server TPs
+    if ~is_client_hello {
+        if initial_max_stream_data_uni.is_set(trans_params(scid)) {
+            call tls_api.upper.save_initial_max_stream_data_uni(initial_max_stream_data_uni.value(trans_params(scid)).stream_pos_32);
+        };
+        if initial_max_stream_data_bidi_remote.is_set(trans_params(scid)) {
+            call tls_api.upper.save_initial_max_stream_data_bidi_remote(initial_max_stream_data_bidi_remote.value(trans_params(scid)).stream_pos_32);
+        };
+        if initial_max_data.is_set(trans_params(scid)) {
+            call tls_api.upper.save_initial_max_data(initial_max_data.value(trans_params(scid)).stream_pos_32);
+        };
+        if initial_max_stream_data_bidi_local.is_set(trans_params(scid)) {
+            call tls_api.upper.save_initial_max_stream_data_bidi_local(initial_max_stream_data_bidi_local.value(trans_params(scid)).stream_pos_32);
+        };
+        if initial_max_stream_id_bidi.is_set(trans_params(scid)) {
+            call tls_api.upper.save_initial_max_stream_id_bidi(initial_max_stream_id_bidi.value(trans_params(scid)).stream_id_16);
+        };
+        if active_connection_id_limit.is_set(trans_params(scid)) {
+            call tls_api.upper.save_active_connection_id_limit(active_connection_id_limit.value(trans_params(scid)).stream_pos_32);
+        };
     }
 }
-
-
-# action client_transport_parameters_event(src:ip.endpoint,dst:ip.endpoint,scid:cid,
-#                                          tps:quic_transport_parameters)
-
-# import client_transport_parameters_event
-
 
 import action show_enc_level(e:quic_packet_type)
 
 import action show_cond(e:bool)
-import action show_cid(e:cid)
 
-# import action show_offset_length(offset:stream_pos,length:stream_pos)
+import action show_cid(e:cid)
 
 import action show_pstats(scid:cid,e:quic_packet_type,pnum:pkt_num)
 
 import action show_ack_credit(c:cid , p: pkt_num, eli: bool, non_ack: bool, pp: pkt_num)
 
 import action show_probing(c:cid , pp: pkt_num)
-
-#action show_enc_level(e:quic_packet_type)
-
-# import action show_tls_keys_established_event(scid:cid, e:quic_packet_type)

@@ -1,28 +1,65 @@
 #lang ivy1.7
 
 include order
+include quic_connection
 include quic_infer
 include file
+include quic_shim_mim
 include quic_shim_client
 include quic_locale
-include quic_client
+include random_value
+
+parameter the_cid : cid = 0xd
+parameter server_addr : ip.addr = 0x7f000001
+parameter server_port : ip.port = 4443
+parameter server_port_2 : ip.port = 4443
+parameter max_stream_data : stream_pos = 0x2000
+parameter initial_max_streams_bidi : stream_id = 10
+parameter client_port_vn : ip.port = 4986
+
+# Network setup
+# -------------
+#
+# To test the server over the OS sockets layer, we need some setup. We must
+# establish which interface and which ports the tester will use. 
+#
+# create an UDP network instance to communicate to server with
+# Note: because of packet coalescing, a single UDP datagram contains
+# an array of QUIC packets.
+
+# Our test network has two endpoints: one for the client and one for the server
+# We use this type as a host id. There are two client host ids so we
+# can model migration.
+
+
+
+# An ip endpoint for the client to migrate to.
+
+var client_alt : ip.endpoint
+var client_vn : ip.endpoint # todo useless for now
 
 
 after init {
-    client_port_vn := 4986;
     client_alt := endpoint_id_addr(endpoint_id.client_alt);
     client_vn := endpoint_id_addr(endpoint_id.client_vn);
 }
 
 
+# TODO configure implementation with unsupported version
+
+function initial_version : version
+var server_cid  : cid  # useless for now, refactoring of shim neeeded
+var client_addr : ip.addr 
+var client_port : ip.port
+var client_port_alt : ip.port
 
 var mim_addr : ip.addr 
 var mim_port : ip.port
 
 after init {
-    the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
-    version_used := 0xff00001d;
-    server_cid := 0xb;
+    # the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
+    initial_version := 0xff00001d;
+    # server_cid := 0xb;
     client_addr := 0;
     client_port := 0;
     client_port_alt := 0;
@@ -178,7 +215,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     imsib.stream_id_16 := initial_max_streams_bidi;
     tp.transport_parameters := tp.transport_parameters.append(imsib);
     
-    #if client_present_scid {
+    #if client_non_zero_scil {
     var icid : initial_source_connection_id; #update v29
     icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
@@ -189,7 +226,6 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
 }
 
 relation initial_send
-var version_negociated : bool
 
 var server_scid  : cid
 var server_dcid  : cid
@@ -205,15 +241,15 @@ after init {
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-        require ~negocation_of_version;
+        require ~negocation_of_version(src);
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
         
         require pkt.token.end = 0; # [1]
         require connected(pkt.src_cid);
-    	require pkt.long -> pkt.pversion = version_used;  #version 29
-	    call show_version(version_used);
+    	require pkt.long -> pkt.pversion = initial_version;  #version 29
+	    call show_version(initial_version);
     } 
     else {
         if pkt.ptype = quic_packet_type.initial {
@@ -222,17 +258,17 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         };
 	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002 | pkt.pversion = 0xff000022);  #version 29
 	    if pkt.long {
-	    	version_used := pkt.pversion;
+	    	initial_version := pkt.pversion;
 	    };
-	    call show_version(version_used);
+	    call show_version(initial_version);
     }
 }
 
 
 before packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
     if _generating {
-        #require version_used ~= 0xff00001d; 
-        require negocation_of_version;
+        #require initial_version ~= 0xff00001d; 
+        require negocation_of_version(dst);
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;

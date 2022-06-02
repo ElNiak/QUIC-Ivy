@@ -6,7 +6,11 @@ include file
 include quic_shim_server
 include quic_locale
 include quic_server
-
+# Mandatory for longbv else truncated
+# after init {
+#     the_cid := 0x0; # 0x0;
+#     server_cid := 0x1; # 0x1;
+# }
 #
 # We fix the initial transport parameters here. TODO: In principle these
 # parameters should be selected randomly by some event.
@@ -17,10 +21,10 @@ include quic_server_0rtt_tp
 # Mandatory for longbv else truncated
 # quinn 0x0 & 0x1 !!!
 # TODO TEST 400 error with 1 & 2
-after init {
-    the_cid := 0x0; # 0x3; # 0x0;
-    server_cid := 0x1; # 0x4; # 0x1;
-}
+# after init {
+#     the_cid := 0x0; # 0x3; # 0x0;
+#     server_cid := 0x1; # 0x4; # 0x1;
+# }
 after init {
     sock := net.open(endpoint_id.client,client.ep);
     sock_alt := net.open(endpoint_id.client_alt,client_alt);
@@ -29,9 +33,7 @@ after init {
     server.tls_id := 1;
     var extns := tls_extensions.empty;
     extns := extns.append(make_transport_parameters);
-    #call tls_api.upper.create_0rtt(0,false,extns);  # false means this instance of tls is not a server
     call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
-    #call tls_api.upper.set_0rtt_keys(0);
 }
 
 

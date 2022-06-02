@@ -11,8 +11,8 @@ parameter the_cid : cid = 0xdd
 parameter server_addr : ip.addr = 0x7f000001
 parameter server_port : ip.port = 4443
 parameter server_port_2 : ip.port = 4443
-parameter max_stream_data : stream_pos = 0x2000
-parameter initial_max_streams_bidi : stream_id = 100
+parameter max_stream_data : stream_pos = 0x5000
+parameter initial_max_streams_bidi : stream_id = 200
 parameter client_port_vn : ip.port = 4444
 
 # Network setup
@@ -30,20 +30,27 @@ parameter client_port_vn : ip.port = 4444
 # can model migration.
 
 
-function version_used : version
 var server_cid  : cid  # useless for now, refactoring of shim neeeded
 var client_addr : ip.addr 
 var client_port : ip.port
 var client_port_alt : ip.port
 
 after init {
-    the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
-    version_used := 0xff00001d;
-    server_cid := 0xb;
+    #the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
+    initial_version := 0xff00001d;
+    # server_cid := 0xb;
     client_addr := 0;
     client_port := 0;
     client_port_alt := 0;
 }
+
+#    *  active_connection_id_limit
+#    *  initial_max_data
+#    *  initial_max_stream_data_bidi_local
+#    *  initial_max_stream_data_bidi_remote
+#    *  initial_max_stream_data_uni
+#    *  initial_max_streams_bidi
+#   (*  initial_max_streams_uni)
 
 
 # An ip endpoint for the client to migrate to.
@@ -53,7 +60,7 @@ var client_vn : ip.endpoint # todo useless now
 
 after init {
     client_alt := endpoint_id_addr(endpoint_id.client_alt);
-    client_vn := endpoint_id_addr(endpoint_id.client_vn);
+    client_vn  := endpoint_id_addr(endpoint_id.client_vn);
 }
 
 
@@ -173,7 +180,6 @@ after init {
 #     nonce_cid(the_cid) := the_cid;
 # }
 
-
 # This is a simple tester for quic clients.
 #
 # The tester plays the role of a single server.
@@ -210,14 +216,7 @@ after init {
 #   connection.  This Destination Connection ID is used to determine
 #   packet protection keys for Initial packets.
 
-
-function dcid_initial_same : cid
-relation initial_send
-var version_negociated : bool
-
 after init {
-    dcid_initial_same := 0;
-    initial_send :=  false;
     version_negociated := false;
 }
 
@@ -226,17 +225,16 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
-        
         require pkt.token.end = 0; # [1]
         require connected(pkt.src_cid);
-    	require pkt.long -> pkt.pversion = version_used;  #version 29
-	    #call show_version(version_used);
+    	require pkt.long -> pkt.pversion = initial_version;  #version 29
+	    #call show_version(initial_version);
     } else {
 	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
 	    if pkt.long {
-	    	version_used := pkt.pversion;
+	    	initial_version := pkt.pversion;
 	    };
-	    #call show_version(version_used);
+	    #call show_version(initial_version);
     }
 }
 
@@ -399,6 +397,16 @@ before frame.handshake_done.handle(f:frame.handshake_done,scid:cid,dcid:cid) {
 	    #require ;
 	    #handshake_done_send := true; #Tricks, we should wait ack and restransmit
     }
+}
+
+before frame.new_token.handle(f:frame.new_token,scid:cid,dcid:cid) {
+    if _generating {
+        require scid = the_cid;
+        #call handle_sending_ack(f.largest_acked);
+    } 
+    # else {
+    #     call tls_api.upper.save_token(f.data);
+    # }
 }
 
 # Generate max_data frames only for the client.

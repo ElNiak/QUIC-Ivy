@@ -112,53 +112,6 @@ action packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 #
 # - The packet payload may not be empty [7].
 #
-# - A sender may not re-use a packet number on a given connection [4].
-#
-# - A packet containing only ack frames and padding is *ack-only*.
-#   For a given cid, the number of ack-only packets sent from src to dst
-#   must not be greater than the number of non-ack-only packets sent
-#   from dst to src [5].
-#
-# - For a given connection, a server must only send packets to an
-#   address that at one time in the past sent the as packet with
-#   the highest packet numer thus far received. See notes below on
-#   migration and path challenge. [10]
-
-#   - Token Length:  A variable-length integer specifying the length of the
-#      Token field, in bytes.  This value is zero if no token is present.
-#      Initial packets sent by the server MUST set the Token Length field
-#      to zero; clients that receive an Initial packet with a non-zero
-#      Token Length field MUST either discard the packet or generate a
-#      connection error of type PROTOCOL_VIOLATION. [11]
-
-# Upon receiving the client's Initial packet, the server can request address validation 
-# by sending a Retry packet (Section 17.2.5) containing a token. This token MUST be 
-# repeated by the client in all Initial packets it sends for that connection after it 
-# receives the Retry packet.
-
-# ### Effects
-#
-# - The `conn_seen` and `sent_pkt` relations are updated to reflect
-#   the observed packet [1].
-# - The `last_pkt_num` function is updated to indicate the observed
-#   packets as most recent for the packet's source and cid.
-#   
-#
-# ### Notes
-#
-# - In the low-level packet encoding, the packet number may be encoded using
-#   a small number of bytes, in a way that loses information.
-#   At this layer of the protocol, however, the packets contain the original full
-#   packet number.
-#
-# - On seeing a packet form a new address with the highest packect
-#   number see thus far, the server detects migration of the
-#   client. It begins sending packets to this address and initiates
-#   path validation for this address. Until path validation succeeds,
-#   the server limits data sent to the new address. Currently we
-#   cannot specify this limit because we don't know the byte size of
-#   packets or the timings of packets. 
-
 #   An endpoint MUST treat the following as a connection error of type
 #   TRANSPORT_PARAMETER_ERROR or PROTOCOL_VIOLATION:
 #   *  absence of the retry_source_connection_id transport parameter from
@@ -174,8 +127,25 @@ action packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 # A server MUST NOT send more than one Retry
 #    packet in response to a single UDP datagram.
 
+# Upon first receiving an Initial or Retry packet from the server, the
+#    client uses the Source Connection ID supplied by the server as the
+#    Destination Connection ID for subsequent packets, including any 0-RTT
+#    packets.  This means that a client might have to change the
+#    connection ID it sets in the Destination Connection ID field twice
+#    during connection establishment: once in response to a Retry, and
+#    once in response to an Initial packet from the server.  Once a client
+#    has received a valid Initial packet from the server, it MUST discard
+#    any subsequent packet it receives with a different Source Connection
+#    ID.
+
+#    A server MAY send Retry packets in response to Initial and 0-RTT
+#    packets.  A server can either discard or buffer 0-RTT packets that it
+#    receives.  A server can send multiple Retry packets as it receives
+#    Initial or 0-RTT packets.  A server MUST NOT send more than one Retry
+#    packet in response to a single UDP datagram.
+
 # A client MUST discard a Retry packet with a zero-length
-#    Retry Token field. TODO test
+#    Retry Token field. 
 
 #    A Retry packet does not include a packet number and cannot be
 #    explicitly acknowledged by a client. TODO
@@ -183,86 +153,62 @@ action packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 import action show_iretryb(v:stream_data)
 import action show_iretry(v:itoken)
 
+#### Retry config
 
-relation init_token
+relation retry_sent(C:cid)
+relation retry_recv(C:cid)
 relation token_saved
 relation zero_length_token
-function rscid : cid
-function send_token : stream_data
+relation retry_response(C:cid)
+relation retry_client_test
+function retry_token(C:cid) : stream_data
+var header_retry : stream_pos
 
 after init {
-    init_token :=  false;
     zero_length_token := false;
     token_saved := true;
+    retry_sent(C) := false;
+    retry_recv(C) := false;
+    retry_response(C) := false;
+    header_retry := 0xF6;
+    retry_client_test := false;
 }
 
 
 around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) {    
     # Extract the source and destination cid's and packet number from the packet.
-
     var dcid := pkt.dst_cid;
     var scid := pkt.src_cid;
-    rscid := scid;
     if cid_mapped(dcid) {
 	    dcid := cid_to_aid(dcid);
     };
-
-    send_token := pkt.token;
 
     if src = client_alt | dst = client_alt {
 	    migration_done := true;
 	    #call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
 
-    if ~ _generating  { 
+    if ~ _generating  { # TODO refactor with client test 
         var expected_itoken := prot.retry_integrity_tag(8,server_cid,
                                            pkt.pversion,
                                            scid_size_pos(true),dcid,
                                            dcid_size_pos(true),scid,
-                                           pkt.token, last_pkt_num(scid,quic_packet_type.initial),h_retry,token_saved);
+                                           pkt.token, 
+                                           last_pkt_num(scid,quic_packet_type.initial),
+                                           header_retry,
+                                           token_saved);
 
-        #call show_iretry(bytes_to_itoken_2(expected_itoken));
-        # call show_iretry(bytes_to_itoken(expected_itoken));
-        # call show_iretry(pkt.integrity_token);
-        require  bytes_to_itoken(expected_itoken) = pkt.integrity_token;
+        require bytes_to_itoken(expected_itoken) = pkt.integrity_token;
     };
     # Similarly, an endpoint MUST NOT reuse a connection ID when sending to
     # more than one destination address.  
-    
-
-    # require retry_source_connection_id.is_set(trans_params(dcid));
-    
+        
     # The destination cid must represent an existing connection,
     # except in the case of a client initial packet, when the
     # destination cid may be the nonce cid chosen by the client for
     # the given source cid.
 
     require pkt.ptype = quic_packet_type.retry; # & is_client(scid) & dcid = nonce_cid(scid);
-
-    #call show_pstats(scid,pkt.ptype,pkt.seq_num);
-    #call show_pstats(scid,queued_level(scid),pkt.seq_num);
-
-    # The packet type must match the encryption level of the queued
-    # frames at the source. 
-
-    # require pkt.ptype = queued_level(scid);
-
-    # require conn_seen(scid) & pkt.long & is_client(scid) -> conn_requested(src,dst,scid);
-
-    # Packet must be sent to the endpoint from which the highest numbered
-    # packet has been received. ~queued_challenge(dcid) & 
-    # call show_probing(dcid ,hi_non_probing(dcid));
-    # require  conn_seen(dcid) -> hi_non_probing_endpoint(dcid,dst);  # [10]
-
-
-    # QUESTION: THis sentence is from draft-18 section 13.1: "An
-    #   endpoint MUST NOT send a packet containing only an ACK frame
-    #   in response to a packet containing only ACK or PADDING frames,
-    #   even if there are packet gaps which precede the received
-    #   packet." Do we interpret this to mean that an ack-only packet
-    #   cannot ack *only* ack-only packets?  Or that an ack-only
-    #   packet cannot ack *any* ack-only packets?
-
     ...
 
     # Here, we have the updates to the packet protocol state.
@@ -279,77 +225,39 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 
     # TODO: the following should not be here
 
-    retry_send(dcid) := true;
-    retry_token(dcid) := pkt.token;
+    retry_token(scid) := pkt.token;
 
     if ~_generating {
         conn_requested(src,dst,scid) := false;
         conn_requested(src,dst,dcid) := false;
-        connected(dcid) :=  false;
-        connected(scid) :=  false;
-        
+        connected(dcid) := false;
+        connected(scid) := false;
         conn_seen(dcid) := false;
         conn_seen(scid) := false;
-        conn_seen(server_cid) := false;
-        conn_seen(the_cid) := false;
 
-        #the_cid := server_cid; # 0x0;
         server_cid := scid; # 0x1;
 
-        connected(the_cid) :=  false;
-        connected(server_cid) :=  false;
+        connected(the_cid)    := false;
+        connected(server_cid) := false;
+        conn_seen(server_cid) := false;
+        conn_seen(the_cid)    := false;
+        client_initial_rcid   := scid;
 
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
-        call tls_api.upper.destroy(0);
         call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
-        #call show_initial_request_retry;
-        call tls_client_initial_request(src,dst,scid,pkt.pversion,0); #TODO 
-        #call tls_api.upper.start_handshake(0);
-        conn_requested(src,dst,the_cid) := true;
-    };
-
-    conn_seen(scid) := true;  # [1]
-
-    if retry_sent {
-        conn_requested(src,dst,pkt.dst_cid) := false;
+        conn_requested(dst,src,the_cid) := true;
+    } else {
+        retry_sent(scid) := true;
+        retry_response(scid) := true;
+        initial_keys_set(scid) := false;
+        tp_client_set := false;
+        conn_requested(src,dst,dcid) := false;
         conn_requested(src,dst,the_cid) := false;
-
-        conn_seen(pkt.dst_cid) := false;
+        conn_seen(dcid) := false;
         conn_seen(the_cid) := false;
-        #conn_seen(scid) := false;
+        call tls_api.upper.destroy(src_tls_id(src)); # not totally freeing all parameter
     };
-}
-
-import action show_initial_request_retry
-
-action make_transport_parameters_retry returns (tp:quic_transport_parameters) = {
-    var imsdbl : initial_max_stream_data_bidi_local;
-    imsdbl.stream_pos_32 := max_stream_data;
-    var imd : initial_max_data;
-    imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
-    var it : max_idle_timeout;
-    it.seconds_16 := random_microsecs(0,0xFFFFFFF);
-    var imsdbr : initial_max_stream_data_bidi_remote;
-    imsdbr.stream_pos_32 := max_stream_data;
-    var imsdu : initial_max_stream_data_uni;
-    imsdu.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
-    tp.transport_parameters := tp.transport_parameters.append(imsdbl);
-    tp.transport_parameters := tp.transport_parameters.append(imd);
-    tp.transport_parameters := tp.transport_parameters.append(it);
-    tp.transport_parameters := tp.transport_parameters.append(imsdbr);
-    tp.transport_parameters := tp.transport_parameters.append(imsdu);
-
-    var icid : initial_source_connection_id; #TODO update v29
-    icid.scid := the_cid;
-    tp.transport_parameters := tp.transport_parameters.append(icid);
-
-    var no_migration : disable_active_migration; #TODO update v29
-    tp.transport_parameters := tp.transport_parameters.append(no_migration);
-
-    var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
-    max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
-    tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
 }
 
 

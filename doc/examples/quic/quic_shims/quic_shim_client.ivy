@@ -52,7 +52,7 @@ after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
 after packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
    # if src = server.ep  {
-    if dst_is_generated(src) | is_mim { # _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid) TODO
+    if dst_is_generated(src)  { # (| is_mim TODO) _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid) TODO
         var spkt := pkt_serdes_vn.to_bytes(pkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(spkt);
@@ -108,7 +108,6 @@ after packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
 # to stream_length) is transferred to TLS, otherwise, the data will be
 # dribbled one byte at a time, which gets boring.
 #
-
 
 # around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, e:quic_packet_type, lo : stream_pos, hi : stream_pos ) {
 #     require src = client.ep & dst = server.ep;

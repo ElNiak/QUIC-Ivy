@@ -72,7 +72,6 @@ module quic_protection(tls_id,tls) = {
         var pnum := pkt.segment(pnum_pos,hdr_len);
         var pyld := pkt.segment(hdr_len,pkt.end);
         var auth := pkt.segment(0,hdr_len);
-#        var seq := get_pnum(pnum,0,pnum_len);
         var new_seq := get_pnum(pnum,0,pnum_len);
         new_seq := correct_pnum(seq,new_seq,pnum_len);
         pyld := tls.encrypt_aead(c,level,pyld,new_seq,auth);
@@ -102,14 +101,9 @@ module quic_protection(tls_id,tls) = {
             pn_offset := 1 + 4;
         };
 	
-	    #call show_payload(pyld);
-        #var sample_pos : stream_pos :=  4 + pnum_pos; #- pnum_len; #pnum_pos; # skipped payload size
         var sample_pos : stream_pos :=  4 - pnum_len;  #- pnum_len;
-        #call show_data(sample_pos,sample_size,sample_pos + sample_size,pyld.end);
-        #var new_pkt := pkt;
         var new_pyld := pyld;
         if sample_pos + sample_size > pkt.end { #MC
-            #call show_if;
             var diff := (sample_pos + sample_size) - pyld.end;
             var i : stream_pos := 0;
             while i < diff {
@@ -120,33 +114,21 @@ module quic_protection(tls_id,tls) = {
             #check with mcmillan vs maxime piraux
             pyld := new_pyld;  #[*2*]
         };
-	
-        #call show_payload(new_pyld);
-        #var s := get_packet_sample(h,pkt,pnum_pos,hdr_len,sample_size);
-        #call show_payload(s);
-        #var sample_offset : stream_pos := pn_offset + 4; #pn_offset +
-        #var sample := s.segment(sample_offset,sample_offset+16); 
-        #var sample := pkt.segment(sample_pos,sample_pos+sample_size); 
+	 
         var sample := pyld.segment(sample_pos,sample_pos+sample_size); 
         var mask := stream_data.empty;
-	    #call show_enc_level(level);
         mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,false);
         var byte0_mask := bvand(mask.value(0), 0x0f if h.hdr_long else 0x1f);
         hdr := hdr.set(0,byte_xor(pkt.value(0),byte0_mask));
         pnum := stream_data_xor(pkt.segment(pnum_pos,pnum_pos+pnum_len),mask.segment(1,1+pnum_len));        
         pkt := hdr.extend(pnum).extend(pyld);
-
-        #call show_encrypt_finish;
     }
 
     implement encrypt_rtt {
-        #call show_pkt_length(pkt.end);
         var h := get_header_info(pkt,false);
         var pkt_rtt := pkt.segment(h.payload_length,pkt.end);
         var pkt_init := pkt.segment(0,h.payload_length);
         var h_rtt := get_header_info(pkt_rtt,false);
-        #call show_header(h);
-        #call show_header(h_rtt);
 
         # ----------------------------------------------------------------------
        
@@ -154,7 +136,6 @@ module quic_protection(tls_id,tls) = {
         var sample_size : stream_pos := tls.iv_size(c,level);        
         var pnum_pos := h.pkt_num_pos;
         var pnum_len := get_pnum_len(pkt_init);
-        var x := show_pnum2(pnum_len);
         var hdr_len := pnum_pos + pnum_len;
 
         # Tricky: before encrypting the payload, we need to adjust the length field
@@ -170,17 +151,13 @@ module quic_protection(tls_id,tls) = {
 
         var hdr  := pkt_init.segment(0,pnum_pos);
         var pnum := pkt_init.segment(pnum_pos,hdr_len);
-        #var pyld := pkt.segment(hdr_len,pkt.end);
         var pyld_i := pkt_init.segment(hdr_len,pkt.end); 
 
         var auth := pkt_init.segment(0,hdr_len);
-#        var seq := get_pnum(pnum,0,pnum_len);
         var new_seq := get_pnum(pnum,0,pnum_len);
         new_seq := correct_pnum(seq,new_seq,pnum_len);
         pyld_i := tls.encrypt_aead(c,level,pyld_i,new_seq,auth);
 
-
-        # call show_aead(level,pyld,new_seq,auth);
 
         # start l 3Computing the sample position is a bit tricky. First we
         # assume the length of the pnum is 4, which means the offset
@@ -204,14 +181,9 @@ module quic_protection(tls_id,tls) = {
             pn_offset := 1 + 4;
         };
 	
-	    #call show_payload(pyld);
-        #var sample_pos : stream_pos :=  4 + pnum_pos; #- pnum_len; #pnum_pos; # skipped payload size
         var sample_pos : stream_pos :=  4 - pnum_len;  #- pnum_len;
-        #call show_data(sample_pos,sample_size,sample_pos + sample_size,pyld_i.end);
-        #var new_pkt := pkt;
         var new_pyld := pyld_i;
         if sample_pos + sample_size > pkt_init.end { #MC
-            #call show_if;
             var diff := (sample_pos + sample_size) - pyld_i.end;
             var i : stream_pos := 0;
             while i < diff {
@@ -223,15 +195,8 @@ module quic_protection(tls_id,tls) = {
             pyld_i := new_pyld;  #[*2*]
         };
 	
-        #call show_payload(new_pyld);
-        #var s := get_packet_sample(h,pkt,pnum_pos,hdr_len,sample_size);
-        #call show_payload(s);
-        #var sample_offset : stream_pos := pn_offset + 4; #pn_offset +
-        #var sample := s.segment(sample_offset,sample_offset+16); 
-        #var sample := pkt.segment(sample_pos,sample_pos+sample_size); 
         var sample := pyld_i.segment(sample_pos,sample_pos+sample_size); 
         var mask := stream_data.empty;
-	    #call show_enc_level(level);
         mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,false);
         var byte0_mask := bvand(mask.value(0), 0x0f if h.hdr_long else 0x1f);
         hdr := hdr.set(0,byte_xor(pkt_init.value(0),byte0_mask));
@@ -242,8 +207,7 @@ module quic_protection(tls_id,tls) = {
 
         var sample_size_rtt : stream_pos := tls.iv_size(c,1);
         var pnum_pos_rtt := h_rtt.pkt_num_pos;
-        var pnum_len_rtt := get_pnum_len5(pkt_rtt); #pnum_len; #
-        x := show_pnum2(pnum_len_rtt);
+        var pnum_len_rtt := get_pnum_len_b(pkt_rtt); 
         var hdr_len_rtt := pnum_pos_rtt + pnum_len_rtt;
         
         # Tricky: before encrypting the payload, we need to adjust the length field
@@ -259,17 +223,13 @@ module quic_protection(tls_id,tls) = {
 
         var hdr_rtt  := pkt_rtt.segment(0,pnum_pos_rtt);
         var pnum_rtt := pkt_rtt.segment(pnum_pos_rtt,hdr_len_rtt);
-
         var pyld_rtt := pkt_rtt.segment(hdr_len_rtt,pkt_rtt.end);
-
         var auth_rtt := pkt_rtt.segment(0,hdr_len_rtt);
-#        var seq := get_pnum(pnum,0,pnum_len);
         var new_seq_rtt := get_pnum(pnum_rtt,0,pnum_len_rtt);
         new_seq_rtt := correct_pnum(seq,new_seq_rtt,pnum_len_rtt);
         pyld_rtt := tls.encrypt_aead(c,1,pyld_rtt,new_seq_rtt,auth_rtt);
 
 
-        # call show_aead(level,pyld,new_seq,auth);
 
         # start l 3Computing the sample position is a bit tricky. First we
         # assume the length of the pnum is 4, which means the offset
@@ -293,67 +253,41 @@ module quic_protection(tls_id,tls) = {
             pn_offset_rtt := 1 + 4;
         };
 	
-	    #call show_payload(pyld);
-        #var sample_pos : stream_pos :=  4 + pnum_pos; #- pnum_len; #pnum_pos; # skipped payload size
         var sample_pos_rtt : stream_pos :=  4 - pnum_len_rtt;  #- pnum_len;
-        #call show_data(sample_pos_rtt,sample_size_rtt,sample_pos_rtt + sample_size_rtt,pyld_rtt.end);
-        #var new_pkt := pkt;
         var new_pyld_rtt := pyld_rtt;
         if sample_pos_rtt + sample_size_rtt > pkt_rtt.end  { #MC CHECK
-            #call show_if;
             var diff := (sample_pos_rtt + sample_size_rtt) - pyld_rtt.end;
             var i : stream_pos := 0;
             while i < diff {
                 new_pyld_rtt := new_pyld_rtt.append(0x00);
                 i := i + 1
             };
-            #sample_pos := pyld.end - sample_size #MC shift vs padding ? #[*1*]
             #check with mcmillan vs maxime piraux
             pyld_rtt := new_pyld_rtt;  #[*2*]
         };
 	
-        #call show_payload(new_pyld);
-        #var s := get_packet_sample(h,pkt,pnum_pos,hdr_len,sample_size);
-        #call show_payload(s);
-        #var sample_offset : stream_pos := pn_offset + 4; #pn_offset +
-        #var sample := s.segment(sample_offset,sample_offset+16); 
-        #var sample := pkt.segment(sample_pos,sample_pos+sample_size); 
         var sample_rtt := pyld_rtt.segment(sample_pos_rtt,sample_pos_rtt+sample_size_rtt); 
         var mask_rtt := stream_data.empty;
-	    #call show_enc_level(3);
         mask_rtt := tls.encrypt_cipher(c,1,mask_rtt.resize(5,0),sample_rtt,false); # TODO
         var byte0_mask_rtt := bvand(mask_rtt.value(0), 0x0f if h_rtt.hdr_long else 0x1f);
         hdr_rtt := hdr_rtt.set(0,byte_xor(pkt_rtt.value(0),byte0_mask_rtt));
         pnum_rtt := stream_data_xor(pkt_rtt.segment(pnum_pos_rtt,pnum_pos_rtt+pnum_len_rtt),mask_rtt.segment(1,1+pnum_len_rtt));        
         pkt_rtt := hdr_rtt.extend(pnum_rtt).extend(pyld_rtt);
-        #pkt := pkt.extend(pkt_rtt); #.extend([0x0])
-        #pkt := pkt_init;
-        #pkt := hdr.extend(pnum).extend(pyld_i); #.extend(hdr_rtt).extend(pnum_rtt).extend(pyld_rtt);
-
         # ----------------------------------------------------------
 
         pkt := pkt_init.extend(pkt_rtt);
-        #pkt := pkt_rtt.extend(pkt_init);
-        #pkt := pkt_init;
-        #pkt := pkt_rtt;
-        #call show_encrypt_finish;
     }
 
     implement decrypt {
         var h := get_header_info(pkt,true);
-	    #call show_header(h);
-
         var level := get_level(pkt);
-        if level = 1 & ~last_zrtt_pkt_set {
-            #level := 3;
-            #call show_header(h);
-            last_zrtt_pkt_set := true;
+        if level = 1 & ~zrtt_pkt_set {
+            zrtt_pkt_set := true;
             last_zrtt_pkt := pkt;
         };
 
         var sample_size := tls.iv_size(c,level);
-	    #call show_iv_size(sample_size);
-        if ~last_zrtt_pkt_process & level = 1 {
+        if ~zrtt_pkt_process & level = 1 {
             res.ok := false;
         } else if sample_size = 0 {
             res.ok := false;
@@ -361,29 +295,17 @@ module quic_protection(tls_id,tls) = {
         else {
             var pnum_pos := h.pkt_num_pos; #+ h.token_length;
             var sample_pos := pnum_pos + 4; # + h.token_length;
-
-            # call show_sample_pos(sample_pos);
-            # var tt := show_sample_p(sample_pos);
-
             if sample_pos + sample_size > pkt.end {
-	    	    #call show_iff;
                 sample_pos := pkt.end - sample_size
             };
             
             var sample := pkt.segment(sample_pos,sample_pos+sample_size);
             var pnum := pkt.segment(pnum_pos,pnum_pos+4);
-
-            #var yy := show_pnum(pnum);
-
             var mask := stream_data.empty;
             
             # tricky: this encrypts with the receiving cipher
             # mask = header_protection(hp_key, sample)
-            # if retry_sent {
-            #     mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,true);
-            # } else {
             mask := tls.encrypt_cipher(c,level,mask.resize(5,0),sample,true);
-            #};
             
 
             # if (packet[0] & 0x80) == 0x80:
@@ -397,32 +319,12 @@ module quic_protection(tls_id,tls) = {
             var hdr := pkt.segment(0,pnum_pos);
             hdr := hdr.set(0,byte_xor(hdr.value(0),byte0_mask));
             
-            var pnum_len := get_pnum_len5(hdr);
-
-            #var pnum_len := get_pnum_len(hdr);
-            #var pnum_len := get_pnum_len2(pkt);
-            #if h.hdr_long & bvand(h.hdr_type,0x30) = 0x00 & retry_sent  {
-            #    pnum_len := get_pnum_len2(pkt);
-                #pnum_len := get_pnum_len2(pkt);
-            #};
-
-            call show_seqnum_pos(pnum_len);
-            # var x := show_pnum2(pnum_len);
-
-            # pn_offset is the start of the Packet Number field.
-            # packet[pn_offset:pn_offset+pn_length] ^= mask[1:1+pn_length]
-            #pnum := stream_data_xor(pnum.segment(0,pnum_len),mask.segment(1,1+pnum_len));
+            var pnum_len := get_pnum_len_b(hdr);
             pnum := stream_data_xor(pkt.segment(pnum_pos,pnum_pos+pnum_len),mask.segment(1,1+pnum_len));
 
-    	    call show_seqnum_data(pnum);
-            # var y := show_pnum(pnum);
-            
             hdr := hdr.extend(pnum);
             var new_seq := get_pnum(pnum,0,pnum_len);
-            # y := show_corrected_pnum(new_seq); 
-    	    call show_seqnum(seq);
             new_seq := correct_pnum(seq,new_seq,pnum_len);
-    	    call show_seqnum(new_seq);
             var pyld := pkt.segment(pnum_pos+pnum_len,pkt.end);
             res := tls.decrypt_aead(c,level,pyld,new_seq,hdr); #
             if res.ok {
@@ -520,8 +422,6 @@ module quic_protection(tls_id,tls) = {
                 client_initial_scil := scil;
             };
             var pos := 1 + 4 + 1 + dcil + 1 + scil; #7 + dcil + scil;
-            # call show_pos(pos);
-            # var x := show_offset1(pos);
             var tlen : stream_pos := 0;
             var retry_token_len : stream_pos := 0;
             if bvand(h.hdr_type,0x30) = 0x00 {
@@ -529,22 +429,14 @@ module quic_protection(tls_id,tls) = {
                 tlen := get_var_int_len(pkt,pos);
                 retry_token_len := get_var_int(pkt,pos,tlen);
                 h.token_length := retry_token_len;
-                #call show_token_len(len);
-                #call show_token_len(retry_token_len);
                 pos := pos + tlen + retry_token_len;
             } else {
                 h.token_length := 0;
             };
-            # x := show_offset2(pos);
-            # x := show_p(h.token_length);
             var len := get_var_int_len(pkt,pos);
-            # x := show_p(len);
-            #call show_token_len(len);
             h.payload_length := get_var_int(pkt,pos,len);
             h.payload_length_pos := pos;
             h.pkt_num_pos := pos + len;
-            # call show_pos(h.pkt_num_pos);
-            # x := show_offset3(h.pkt_num_pos);
         }
         else {
             #todo check if good for client test too
@@ -576,48 +468,16 @@ module quic_protection(tls_id,tls) = {
 
     # Get the length of a packet number at position `pos`
 
-    action get_pnum_len2(pkt:stream_data) 
-    returns (pnum_len:stream_pos) = {
-        var t : stream_pos := bfe[0][8](pkt.value(0));
-        call show_byte(pkt.value(0));
-        var and := bvand(0x3,pos_to_byte(t));#pkt.value(0));
-        call show_byte(and);
-        var len_minus_one : stream_pos := bytes_to_pos(and);
-        call show_seqnum_posi(len_minus_one);
-        pnum_len := len_minus_one + 1;
-    }
-
-    action get_pnum_len3(pkt:stream_data) 
-    returns (pnum_len:stream_pos) = {
-        call show_byte(pkt.value(0));
-        var and := bvand(0x3,pkt.value(0));#pkt.value(0));
-        call show_byte(and);
-        var len_minus_one : stream_pos := bytes_to_pos(and);
-        call show_seqnum_posi(len_minus_one);
-        pnum_len := len_minus_one + 1;
-    }
-
-    action get_pnum_len5(pkt:stream_data) 
+    action get_pnum_len_b(pkt:stream_data) 
     returns (pnum_len:stream_pos) = {
         <<<
         pnum_len = (pkt[0] & 0x3) + 1;
         >>>
     }
-
-    action get_pnum_len4(pkt:stream_data) 
-    returns (pnum_len:stream_pos) = {
-        call show_byte(pkt.value(0));
-        var and := bvand(pkt.value(0),0x3);#pkt.value(0));
-        call show_byte(and);
-        var len_minus_one : stream_pos := bytes_to_pos(and);
-        call show_seqnum_posi(len_minus_one);
-        pnum_len := len_minus_one + 1;
-    }
     
     action get_pnum_len(pkt:stream_data) 
     returns (pnum_len:stream_pos) = {
         var len_minus_one : stream_pos := bfe[0][1](pkt.value(0));
-        #call show_seqnum_posi(len_minus_one);
         pnum_len := len_minus_one + 1;
     }
 
@@ -675,16 +535,12 @@ module quic_protection(tls_id,tls) = {
     action bytes_to_pos(b:byte) returns (val:stream_pos) = {
     <<<
     val = b;
-    //for (unsigned i = 0; i < bytes.size(); i++)
-    //    val = (val << 8) + bytes[i];
     >>>
     }
 
     action pos_to_byte(b:stream_pos) returns (val:byte) = {
     <<<
     val = b;
-    //for (unsigned i = 0; i < bytes.size(); i++)
-    //    val = (val << 8) + bytes[i];
     >>>
     }
 
@@ -702,70 +558,6 @@ module quic_protection(tls_id,tls) = {
         >>>
     }
 
-    action show_pnum1(x:stream_pos) returns (z:byte) = {
-        <<<
-        std::cerr <<  "show_pnuml 1: " <<  x << std::endl;
-        z = 0;
-        >>>
-    }
-
-    action show_p(x:stream_pos) returns (z:byte) = {
-        <<<
-        std::cerr <<  "show_p 1: " <<  x << std::endl;
-        z = 0;
-        >>>
-    }
-
-    action show_pnum2(x:stream_pos) returns (z:byte) = {
-        <<<
-        std::cerr <<  "show_pnuml 2: " <<  x << std::endl;
-        z = 0;
-        >>>
-    }
-
-
-    action show_pnum(x:stream_data) returns (z:byte) = {
-        <<<
-        std::cerr <<  "show pnum: " <<  x << std::endl;
-        z = 0;
-        >>>
-    }
-
-    action show_corrected_pnum(x:pkt_num) returns (z:byte) = {
-        <<<
-        std::cerr <<  "show corrected pnum: " <<  x << std::endl;
-        z = 0;
-        >>>
-    }
-
-    action show_offset1(x:stream_pos) returns (z:byte) = {
-        <<<
-        std::cerr <<  "show_offset1: " <<  x << std::endl;
-        z = 0;
-        >>>
-    }
-
-    action show_sample_p(x:stream_pos) returns (z:byte) = {
-        <<<
-        std::cerr <<  "show_sample_pos: " <<  x << std::endl;
-        z = 0;
-        >>>
-    }
-
-    action show_offset2(x:stream_pos) returns (z:byte) = {
-        <<<
-        std::cerr <<  "show_offset2: " <<  x << std::endl;
-        z = 0;
-        >>>
-    }
-
-    action show_offset3(x:stream_pos) returns (z:byte) = {
-        <<<
-        std::cerr <<  "show_offset3: " <<  x << std::endl;
-        z = 0;
-        >>>
-    }
-
     action stream_data_xor(x:stream_data,y:stream_data) returns (x:stream_data) = {
         var idx := x.begin;
         while idx < x.end {
@@ -774,23 +566,8 @@ module quic_protection(tls_id,tls) = {
         }
     }
     import action show_payload(ver:stream_data)
-    import action show_seqnum(ver:pkt_num)
-    import action show_seqnum_data(ver:stream_data)
-    import action show_seqnum_pos(ver:stream_pos)
-    import action show_pos(ver:stream_pos)
-    import action show_seqnum_posi(ver:stream_pos)
-    import action show_iv_size(ver:stream_pos)
     import action show_token_len(ver:stream_pos)
     import action show_header(h:header_info)
-    import action show_htype(h:byte)
-    import action show_sample_pos(h:stream_pos)
-    import action show_if
-    import action show_cool
-    import action show_encrypt_finish
-    import action show_enc_level(level:tls.level)
-    import action show_byte(level:byte)
-    import action show_iff
-    import action show_data(ver:stream_pos, ver2:stream_pos, ver3:stream_pos, ver4:stream_pos)
 }
 
 
@@ -813,14 +590,12 @@ object quic_prot_ser = {}
 <<< impl
 
     class `quic_prot_ser` : public ivy_binary_ser_128 {
-    //class `quic_prot_ser` : public ivy_binary_ser {
     public:
 
         void open_list(int) {
         }
 
         virtual void  set(int128_t res) {
-        //virtual void  set(long long res) {
             setn(res,1);
         }    
     };
@@ -844,15 +619,12 @@ object quic_prot_deser = {}
 <<< impl
 
     class `quic_prot_deser` : public ivy_binary_deser_128 {
-    //class `quic_prot_deser` : public ivy_binary_deser {
         int data_remaining;
         int level;
     public:
         quic_prot_deser(const std::vector<char> &inp) : ivy_binary_deser_128(inp),level(0) {}
-        //quic_prot_deser(const std::vector<char> &inp) : ivy_binary_deser(inp),level(0) {}
 
         void  get(int128_t &res) {
-        //void  get(long long &res) {
             getn(res,1);
         }    
 

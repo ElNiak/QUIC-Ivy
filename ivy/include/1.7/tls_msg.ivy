@@ -76,27 +76,38 @@ module tls_intf(cid,index,bytes,lower,extens,hextens,exten_ser,seq_num) = {
 
     action create_0rtt(c:cid, is_server:bool, e:extens, he:hextens)
 
-    action add_extensions(c:cid, is_server:bool, e:extens, he:hextens)
-
-    action start_handshake(c:cid)
-
-    action compute_binder(c:cid,a:stream_pos) returns (b:bytes)
-
-    action get_session_ticket(c:cid) returns (b:bytes)
-
-    action get_session_lifetime(c:cid) returns (b:stream_pos)
-
-    action get_obfuscated_ticket_age(c:cid) returns (b:stream_pos)
-
-    action get_session_lifetime_add(c:cid) returns (b:stream_pos)
-
-    action get_old_retry_token(c:cid) returns (b:stream_data)
+    action get_old_retry_token returns (b:stream_data)
 
     action save_token(token:stream_data)
+    
+    action save_initial_max_stream_data_uni(i:stream_pos)
+
+    action save_initial_max_stream_data_bidi_remote(i:stream_pos)
+
+    action save_initial_max_data(i:stream_pos)
+
+    action save_initial_max_stream_data_bidi_local(i:stream_pos)
+
+    action save_initial_max_stream_id_bidi(i:stream_id)
+
+    action save_active_connection_id_limit(i:stream_pos)
+    
+    action get_initial_max_stream_data_uni returns(i:stream_pos)
+
+    action get_initial_max_stream_data_bidi_remote returns(i:stream_pos)
+
+    action get_initial_max_data returns(i:stream_pos)
+
+    action get_initial_max_stream_data_bidi_local returns(i:stream_pos)
+
+    action get_initial_max_stream_id_bidi returns(i:stream_id)
+
+    action get_active_connection_id_limit returns(i:stream_pos)
+
 
     #action create_no_hs(c:cid, is_server:bool, e:extens)
 
-    action get_old_new_token(c:cid) returns (b:stream_data)
+    action get_old_new_token returns (b:stream_data)
 
     # Destroy an existing connection
 
@@ -108,8 +119,6 @@ module tls_intf(cid,index,bytes,lower,extens,hextens,exten_ser,seq_num) = {
     # initial destination connection id.
 
     action set_initial_keys(c:cid,salt:bytes,ikm:bytes)
-
-    action set_0rtt_keys(c:cid)
 
     # Get the size of the cipher initial value for a given level.
 

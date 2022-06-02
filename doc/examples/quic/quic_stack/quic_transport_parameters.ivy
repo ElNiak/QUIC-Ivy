@@ -221,3 +221,11 @@ object quic_transport_parameters = {
         transport_parameters : vector[transport_parameter]
     }
 }
+
+
+function initial_max_stream_data_uni_server_0rtt : stream_pos
+function initial_max_stream_data_bidi_remote_server_0rtt : stream_pos
+function initial_max_data_server_0rtt : stream_pos
+function initial_max_stream_data_bidi_local_server_0rtt : stream_pos
+function initial_max_stream_id_bidi_server_0rtt : stream_id
+function active_connection_id_limit_server_0rtt : stream_pos

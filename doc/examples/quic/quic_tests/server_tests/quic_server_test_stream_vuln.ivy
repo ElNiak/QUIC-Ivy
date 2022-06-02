@@ -49,10 +49,6 @@ include quic_server
 #   connection migration before the handshake is confirmed, as defined in
 #   section 4.1.2 of [QUIC-TLS].
 
-var allowed_multiple_migration : bool
-var version_negociated : bool
-var initial_version : version
-
 after init {
 	allowed_multiple_migration := false;
     version_negociated := false;

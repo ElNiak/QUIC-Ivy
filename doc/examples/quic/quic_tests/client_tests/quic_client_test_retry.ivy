@@ -8,6 +8,10 @@ include quic_locale
 include quic_client
 # HACK: we fix the initial client transport parameters here
 
+after init {
+    client_initial_rcid := 0x5;
+    retry_client_test := true;
+}
 
 action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var imsdbl : initial_max_stream_data_bidi_local;
@@ -42,7 +46,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     tp.transport_parameters := tp.transport_parameters.append(odci);
 
     var retry : retry_source_connection_id; #TODO update v29
-    retry.rcid := 0x5; # TODO
+    retry.rcid := client_initial_rcid; # TODO
     tp.transport_parameters := tp.transport_parameters.append(retry);
 }
 
@@ -50,70 +54,60 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
 # Restrict generation to packets from the designated client endpoints
 # to the server endpoint.
 
-relation initial_recv
-
-after init {
-    initial_recv :=  false;
-    retry_client_test := true;
-}
-
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-        require  pkt.ptype = quic_packet_type.initial -> retry_response; #  pkt.ptype = quic_packet_type.initial -> retry_response retry_sent &  
+        require pkt.ptype = quic_packet_type.initial -> retry_response(client_initial_rcid); #  pkt.ptype = quic_packet_type.initial -> retry_response retry_sent &  
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
         require pkt.token.end = 0; # [1]
         require connected(pkt.src_cid);
-    	require pkt.long -> pkt.pversion = version_used;  #version 29
-	    #call show_version(version_used);
+    	require pkt.long -> pkt.pversion = initial_version;  #version 29
+	    #call show_version(initial_version);
     } 
     else {
 	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
 	    if pkt.long {
-	    	version_used := pkt.pversion;
+	    	initial_version := pkt.pversion;
 	    };
 
-        if ~retry_sent { # TODO
+        if ~retry_sent(client_initial_rcid) { # TODO
             conn_requested(src,dst,pkt.src_cid) := false;
             conn_requested(src,dst,pkt.dst_cid) := false;
-
             conn_seen(pkt.src_cid) := false;
             conn_seen(pkt.dst_cid) := false;
-
-            connected(pkt.src_cid) :=  false;
-            connected(pkt.dst_cid) :=  false;
+            connected(pkt.src_cid) := false;
+            connected(pkt.dst_cid) := false;
         } else {
-            require pkt.ptype = quic_packet_type.initial -> pkt.token = send_token;
+            require pkt.ptype = quic_packet_type.initial -> pkt.token = retry_token(client_initial_rcid);
         };
 
-        initial_recv := true;
-	    #call show_version(version_used);
+	    #call show_version(initial_version);
     }
 }
 
 before packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) {
     if _generating {
-        require ~retry_sent;
+        require ~retry_sent(client_initial_rcid);
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
         require dst = client.ep;
         #require pkt.dst_cid = client_initial_scid;
         require pkt.dst_cid = client_initial_scid;
         #require pkt.src_cid = 0x5;
-        pkt.src_cid := 0x5;
-        rscid := 0x5;
-        require pkt.pversion = version_used;
-        #require pkt.token.end = 0; # [1] todo
+        pkt.src_cid := client_initial_rcid;
+        #require ~connected(pkt.dst_cid);
+        require pkt.pversion = initial_version;
         require pkt.token.end < 50 & pkt.token.end > 1; 
-        var rt := prot.retry_integrity_tag(client_initial_dcid_size,client_initial_dcid,
-                                           version_used,
-                                           client_initial_scid_size,client_initial_scid,
+        var rt := prot.retry_integrity_tag(client_initial_dcil,client_initial_dcid,
+                                           initial_version,
+                                           client_initial_scil,client_initial_scid,
                                            0x8,pkt.src_cid,
-                                           pkt.token, last_pkt_num(pkt.dst_cid,quic_packet_type.initial),0xF6,false);
+                                           pkt.token, 
+                                           last_pkt_num(pkt.dst_cid,quic_packet_type.initial),
+                                           0xF6,false);
 
         pkt.integrity_token := bytes_to_itoken(rt); # [1]
-        retry_sent := true;
     } 
 }
 

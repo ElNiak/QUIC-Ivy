@@ -5128,9 +5128,14 @@ int ask_ret(long long bound) {
             sscanf(lineNumber.c_str(),"%*[^0-9]%d", &num);
             lineNumber = std::to_string(num);
 
+            std::string mode = "";
+            if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
+                mode = std::string(env_p2);
+            }
+            
             std::string command = "";
             if(path.find("test") != std::string::npos) 
-		        path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + path;
+		    path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + mode + std::string("_tests/") + path;
         
             command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
             //std::cerr << command.c_str() << std::endl;
@@ -5176,10 +5181,15 @@ int ask_ret(long long bound) {
             int num;
             sscanf(lineNumber.c_str(),"%*[^0-9]%d", &num);
             lineNumber = std::to_string(num);
-
+            
+            std::string mode = "";
+            if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
+                mode = std::string(env_p2);
+            }
+            
             std::string command = "";
             if(path.find("test") != std::string::npos) 
-		    path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + path;
+		    path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + mode + std::string("_tests/") + path;
         
             command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
             //std::cerr << command.c_str() << std::endl;

@@ -27,8 +27,8 @@ parameter max_stream_data : stream_pos = 0x2000
 
 # Mandatory for longbv else truncated
 after init {
-    the_cid := 0x1; # 0x0;
-    server_cid := 0x2; # 0x1;
+    # the_cid := 0x1; # 0x0;
+    # server_cid := 0x2; # 0x1;
 }
 
 # We use this type as a host id. There are two client host ids so we
@@ -247,11 +247,6 @@ import action show_stream(pkt:stream_data)
 
 import action show_aead(level:tls_api.upper.level,pyld:stream_data,seq:pkt_num,auth:stream_data)
 
-
-
-var allowed_multiple_migration : bool
-var version_negociated : bool
-var initial_version : version
 
 after init {
 	allowed_multiple_migration := true;

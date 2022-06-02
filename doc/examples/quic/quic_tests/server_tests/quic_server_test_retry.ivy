@@ -20,6 +20,7 @@ after init {
     sock_vn := sock; # net.open(endpoint_id.client_vn,client_vn);
     client.tls_id := 0;
     server.tls_id := 1;
+    second_client.tls_id := 0;
     var extns := tls_extensions.empty;
     extns := extns.append(make_transport_parameters);
     call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
@@ -30,7 +31,7 @@ after init {
 	allowed_multiple_migration := false;
     allowed_migration := false;
     version_negociated := false;
-    initial_version := 0xff00001c;
+    initial_version := 0xff00001d; #0xff00001c for quant vuln
 }
 
 after init {
@@ -39,11 +40,11 @@ after init {
     v1 := v1.append(0xff);
     v1 := v1.append(0x0);
     v1 := v1.append(0x0);
-    v1 := v1.append(0x1c); # TODO
+    v1 := v1.append(0x1d); # TODO for quant bug
     supported_versions := supported_versions.append(v1);
 
     supported_versions_bv := versions_bv.empty;
-    supported_versions_bv := supported_versions_bv.append(0xff00001c);
+    supported_versions_bv := supported_versions_bv.append(0xff00001d);
 }
 
 # This token MUST be repeated by the client in all
@@ -66,39 +67,16 @@ after init {
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     if _generating {
-        var tp := trans_params(the_cid);
-        if version_negociated {
-            require src = client_vn;
-        } else {
-            if ~disable_active_migration.is_set(tp) & allowed_migration {
-                if ~migration_done | allowed_multiple_migration { 
-                    # only one migration
-                    require src = client.ep | src = client_alt;
-                } else {
-                    require src = client_alt;
-                }
-            } else {
-                require src = client.ep;
-            }
-        };
         if pkt.ptype = quic_packet_type.initial {
             pkt.dst_cid := server_cid; # TODO
         };
         require dst = server.ep;
-        if pkt.ptype = quic_packet_type.initial & retry_recv & ~zero_length_token {
-            require pkt.token = retry_recv_token;
+        if pkt.ptype = quic_packet_type.initial & retry_recv(pkt.src_cid) & ~zero_length_token {
+            require pkt.token = retry_token(pkt.src_cid);
         } else {
             require pkt.token.end = 0; 
         };
         
-    };
-    if final_version = 0x00000000 {
-        #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
-        #require pkt.long -> pkt.pversion = 0xff000020  #version 32
-        #require pkt.long -> pkt.pversion = 0xff00001e  #version 30
-        require pkt.long -> pkt.pversion = initial_version  #version 30
-    } else {
-        require pkt.long -> pkt.pversion = final_version
     };
 }
 
@@ -141,12 +119,7 @@ before frame.crypto.handle(f:frame.crypto,scid:cid,dcid:cid,e:quic_packet_type) 
     if _generating {
         require scid = the_cid;
         require f.length > 0;
-        call show_crypto_length(crypto_length(scid,e));
-        if e = quic_packet_type.initial & false {
-            require f.offset = 0;
-        } else {
-            require f.offset = crypto_length(scid,e);
-        };
+        require f.offset = crypto_length(scid,e);
         require f.length = (crypto_data_end(scid,e)) - f.offset;
     }
 }
@@ -287,14 +260,6 @@ before frame.max_data.handle(f:frame.max_data,scid:cid,dcid:cid) {
 # building up a long queue. We only send the http request data read
 # from the input file, up to the first newline. We restrict the client
 # to use stream id's from 4 to 60 in increments of 4.
-
-action client_send_event(src:ip.endpoint, dst:ip.endpoint, dcid:cid, s : stream_id, end : stream_pos)
-
-var current_stream : stream_id
-
-after init {
-    current_stream := 4
-}
 
 around client_send_event {
     require s = current_stream;

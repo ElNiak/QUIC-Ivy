@@ -16,12 +16,12 @@
 # is commented and should be removed [1].
 #
 
+# TODO 
+
 action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
     #call infer_tls;
     # Stream frames on id 0 indicate that a `tls_send_event` has occurred.
     # TODO: ignore duplicate frames.
-
-    call recv_packet(src,dst,pkt);
 
     var scid := pkt.src_cid;
     var dcid := pkt.dst_cid;
@@ -35,11 +35,11 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
 
     # If this is an initial client request, we infer the nonce choice
 
-    if pkt.ptype = quic_packet_type.initial & ~conn_seen(dcid) & ~negocation_of_version &  ~version_negociated {
+    if pkt.ptype = quic_packet_type.initial & ~conn_seen(dcid) & ~negocation_of_version(src) &  ~version_negociated {
         nonce_cid(scid) := dcid;
     };
 
-    if pkt.ptype = quic_packet_type.initial & (retry_sent | version_negociated | negocation_of_version) {
+    if pkt.ptype = quic_packet_type.initial & (retry_sent(scid) | version_negociated | negocation_of_version(src)) {
         nonce_cid(scid) := dcid;
         conn_seen(dcid) := false;
         # nonce_cid(pkt.dst_cid) := pkt.src_cid;
@@ -64,12 +64,12 @@ action infer_tls_events(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) = {
     while idx < pkt.payload.end {
         var f := pkt.payload.value(idx);
         if some(cf:frame.crypto) f *> cf {
-            call infer_frame(scid,dcid,f);
             call tls_send_event(src,dst,scid,dcid,cf.data,cf.offset,e);
         };
         if some(sf:frame.stream) f *> sf {
                 # require sf.offset <= stream_app_data_end(dcid,sf.id);  # TODO: deal with gaps in stream
                 # var data := sf.data.segment(stream_app_data_end(dcid,sf.id) - sf.offset,sf.data.end);
+            call app_server_open_event_1rtt(src,dst,scid,dcid);    
             call app_send_event(src,dst,dcid,sf.id,sf.data,sf.offset,sf.fin)
         };
         #if some(pf:frame.padding) f *> pf {
@@ -164,7 +164,7 @@ action infer_tls_events_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rt
 
     # Infer an app_server_open_event.
     if conn_requested(dst,src,dcid) & ~connected(dcid) & ~connected(scid) {
-         call app_server_open_event_retry(src,dst,scid,dcid);
+         call app_server_open_event_0rtt(src,dst,scid,dcid);
          call app_server_open_event(src,dst,scid,dcid);
     };
 
@@ -177,6 +177,7 @@ action infer_tls_events_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rt
         if some(sf:frame.stream) f *> sf {
             # require sf.offset <= stream_app_data_end(dcid,sf.id);  # TODO: deal with gaps in stream
             # var data := sf.data.segment(stream_app_data_end(dcid,sf.id) - sf.offset,sf.data.end);
+            call app_server_open_event_0rtt(src,dst,scid,dcid);
             call app_send_event(src,dst,dcid,sf.id,sf.data,sf.offset,sf.fin)
         };
         #if some(pf:frame.padding) f *> pf {
@@ -190,9 +191,11 @@ action infer_tls_events_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rt
 }
 
 
+
 import action infer_tls
+import action app_server_open_event_1rtt(src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid)
+import action app_server_open_event_0rtt(src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid)
 import action app_server_open_event_retry(src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid)
 import action app_server_open_event_vn(src:ip.endpoint,dst:ip.endpoint,scid:cid,dcid:cid)
-
 import action infer_frame(scid:cid,dcid:cid,f:frame)
 

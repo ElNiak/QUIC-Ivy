@@ -15,7 +15,10 @@ include quic_protection
 include random_value
 include quic_endpoint
 
-# TODO import show_stream for debug
+# TOREDO
+
+
+# TODO import _stream for debug
 
 # The QUIC test shim
 # ------------------
@@ -69,7 +72,7 @@ relation retry_client_test
 
 var h_retry : stream_pos
 
-relation zero_rtt_client
+relation zero_rtt_client_test
 relation multiple_client
 relation is_mim
 
@@ -94,7 +97,7 @@ after init {
 after init {
     multiple_client := false; # TODO
     is_mim := false; 
-    zero_rtt_client := false;
+    zero_rtt_client_test := false;
 }
 
 var the_cid_2 : cid
@@ -170,129 +173,75 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         #call show_version_sd(src,dst,version);
         
         var ptype : byte := bvand(0x30,header);
-        #call show_type(src,dst,ptype);
-
-        #var typ : type_bits  := bfe[7][8](header);
-        #var typ_retry : type_bits := bfe[4][5](header); # bfe[5][6](ppkt.value(0));
-        
-        # var h : header_info := get_header_info(ppkt,true);
-        # call show_typp(src,dst,tt);
-        # call show_type(src,dst,bfe[7][8](ppkt.value(0))); 
-
-        # call show_typp(src,dst,typ);
-        # call show_typp(src,dst,typ_retry);
-        # call show_typp(src,dst,bfe[6][7](ppkt.value(0)));
-        
-        # Check if packet is only padding
-        #var is_rand_pad := is_random_padding_packet(ppkt);
-        #var rnum := reference_pkt_num(ppkt,true);
         
         #if is_long { & ptype = 0xc0
         var bversion := bytes_to_version(version);
-        #call show_version(bversion);
-
-        if is_mim & ~src.port = 4444 { # todo condition, only for client test now
-            call recv_packet_mim(src,dst,ppkt);
-            # forward packet
-            var pkts_mim := prot.arr.empty;
-            pkts_mim := pkts_mim.append(ppkt);
-            #call net.send(endpoint_id.server,endpoint_to_socket(src),dst,pkts_mim);
-            client.ep := src; # TODO: migration?
-            negocation_of_version := true;
-            var dcil : stream_pos := bfe[0][7](ppkt.value(5));
-            var ikm := cid_to_bytes(0,1); # dcid
-            if(~dcil = 0) {
-                client_initial_dcid_size := dcil;
-                ikm := ppkt.segment(6,6+dcil); # dcid
-            };
-            var scil : stream_pos := bfe[0][7](ppkt.value(6+dcil));
-            var skm := cid_to_bytes(0,1); # scid
-            if(~scil = 0) {
-                client_initial_scid_size := scil;
-                client_present_scid := true;	
-                skm := ppkt.segment(6+dcil+1,6+dcil+1+scil); # scid
-            };
-            client_initial_dcid := bytes_to_cid(ikm);
-            client_initial_scid := bytes_to_cid(skm); # skm
-            call export_length_cid(dcil,scil);
-            call export_length_cid_extension(dcil,scil);
-        }
-        else {
-            call show_act2;
-            if last_zrtt_pkt_set & ~last_zrtt_pkt_process {
-                last_zrtt_pkt_process := true;
-                call show_act1;
-                #call tls_api.upper.set_0rtt_keys(0);
-                var rnum := reference_pkt_num(last_zrtt_pkt,true);
-                var res := prot.decrypt(tls_id,rnum,last_zrtt_pkt);
-                if res.ok {
-                    call show_act1;
-                    if host = endpoint_id.server & ~(bversion = 0) {
-                            #for client test, 0rtt packet
-                        call tls_client_0rtt_response(src,dst,res.data);
-                    };
-                    # last_zrtt_pkt_process := true;
-                } else {
-                    call undecryptable_packet_event(src,dst,last_zrtt_pkt);
+        if zrtt_pkt_set & ~zrtt_pkt_process {
+            zrtt_pkt_process := true;
+            var rnum := reference_pkt_num(last_zrtt_pkt,true);
+            var res := prot.decrypt(tls_id,rnum,last_zrtt_pkt);
+            if res.ok {
+                if host = endpoint_id.server & ~(bversion = 0) {
+                    #for client test, 0rtt packet
+                    call tls_client_0rtt_response(src,dst,res.data);
                 };
+            } else {
+                call undecryptable_packet_event(src,dst,last_zrtt_pkt);
             };
-            if host = endpoint_id.server 
-                    & bvand(ppkt.value(0),0xf0) = 0xc0   { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
-                # for client test
-                #if (retry_client_test -> retry_sent) { # TODO bug 0rtt
-                call tls_client_initial_response(src,dst,ppkt)
-                #};
-            };
-            if ~ host = endpoint_id.server  
-                    & (bversion = 0 & is_long) | version_not_found { 
-                # for server test, for version_negociation
-                # 1000 0000 == version_negociation
-                past_data := past_data.extend(ppkt);
-                call tls_client_version_response(src,dst,past_data);
-            } 
-            else if tt = 0x30 
-                    & ~host = endpoint_id.server & ~(bversion = 0)  {
-                #for server test, Retry packet
-                call tls_client_retry_response(src,dst,ppkt);
-            } 
-            # else if is_pad { #is_pad | is_rand_pad
-            #     call padding_packet_event(src,dst,ppkt); # For quic-go and quand  client
-            # } 
-            else { 
-                var rnum := reference_pkt_num(ppkt,true);
-                var res := prot.decrypt(tls_id,rnum,ppkt);
-                if res.ok {
-                    var is_pad := is_padding_packet(res.payload); # For picoquic  client
-                    if is_pad { #is_pad | is_rand_pad
-                        call padding_packet_event(src,dst,ppkt);
-                    } else if tt = 0x10 
-                        & host = endpoint_id.server & ~(bversion = 0) {
-                        #for client test, 0rtt packet
-                        call tls_client_0rtt_response(src,dst,res.data);
-                    } else {
-                        var pkt := pkt_serdes.from_bytes(res.data);
-                        pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
-                        call recv_packet(src,dst,pkt);
-                        call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
-                        call packet_event(src,dst,pkt);       # also an inferred event
-                        if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
-                            # for client test
-                            call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
-                        };
-                        if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid_2) & multiple_client { 
-                            # for client test
-                            call app_server_open_event(dst,src,the_cid_2,pkt.src_cid);  # [1]
-                        }
-                    };
+        };
+        if host = endpoint_id.server 
+                & bvand(ppkt.value(0),0xf0) = 0xc0   { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
+            # for client test
+            call tls_client_initial_response(src,dst,ppkt)
+        };
+        if ~ host = endpoint_id.server  
+                & (bversion = 0 & is_long) | version_not_found { 
+            # for server test, for version_negociation
+            # 1000 0000 == version_negociation
+            past_data := past_data.extend(ppkt);
+            call tls_client_version_response(src,dst,past_data);
+        } 
+        else if tt = 0x30 
+            & ~host = endpoint_id.server & ~(bversion = 0)  {
+            #for server test, Retry packet
+            call tls_client_retry_response(src,dst,ppkt);
+        } 
+        # else if is_pad { #is_pad | is_rand_pad
+        #     call padding_packet_event(src,dst,ppkt); # For quic-go and quand  client
+        # } 
+        else { 
+            var rnum := reference_pkt_num(ppkt,true);
+            var res := prot.decrypt(tls_id,rnum,ppkt);
+            if res.ok {
+                var is_pad := is_padding_packet(res.payload); # For picoquic  client
+                if is_pad { #is_pad | is_rand_pad
+                    call padding_packet_event(src,dst,ppkt);
+                } else if tt = 0x10 
+                    & host = endpoint_id.server & ~(bversion = 0) {
+                    #for client test, 0rtt packet
+                    call tls_client_0rtt_response(src,dst,res.data);
                 } else {
-                    call undecryptable_packet_event(src,dst,ppkt);
+                    var pkt := pkt_serdes.from_bytes(res.data);
+                    pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
+                    call recv_packet(src,dst,pkt);
+                    call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
+                    call packet_event(src,dst,pkt);       # also an inferred event
+                    if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
+                        # for client test
+                        call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
+                    };
+                    if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid_2) & multiple_client { 
+                        # for client test
+                        call app_server_open_event(dst,src,the_cid_2,pkt.src_cid);  # [1]
+                    }
                 };
+            } else {
+                call undecryptable_packet_event(src,dst,ppkt);
             };
         };
         idx := idx.next;
     };
     version_not_found := false;
-    t := test2;
 }
 
 # For logging purposes. This logs the decoded packets received from the network, before
@@ -301,15 +250,6 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
 import action app_server_open_event_show(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet,cid1 : cid, cid2: cid)
 import action recv_packet(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
 import action recv_packet_mim(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
-
-import action show_islong(src:ip.endpoint,dst:ip.endpoint,v:bool)
-import action show_type(src:ip.endpoint,dst:ip.endpoint,v:byte)
-import action show_typed(src:ip.endpoint,dst:ip.endpoint,v:stream_data)
-import action show_version_sd(src:ip.endpoint,dst:ip.endpoint,v:stream_data)
-import action show_typp(src:ip.endpoint,dst:ip.endpoint,v:type_bits)
-
-import action show_ttt
-
 import action padding_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
 
 # This received packets that are undecryptable
@@ -350,7 +290,6 @@ implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.l
         e := quic_packet_type.one_rtt;
     };
     var scid := tls_id_to_cid(tls_id);
-    call show_tls_lower_send(bytes);
     call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
                         0, bytes,crypto_data_end(scid,e),e);
 }
@@ -394,8 +333,6 @@ import action show_tls_id_to_cid(ver:cid)
 # were any crypto frames.
 
 after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream_data) {
-    call show_dst_is_generated_handshake_data_event(dst_is_generated(dst));
-    call show_sdata(data);
     if dst_is_generated(dst) {
         # TODO add show
         call tls_api.lower.recv(src_tls_id(dst),data,0); # TODO: fill in the encryption level
@@ -423,8 +360,8 @@ function client_initial_scil : stream_pos
 after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pversion:version, id:tls_api.id) {
     var ikm := cid_to_bytes(nonce,dcid_size_cl(retry_rsp)); 
     client_initial_scil := scid_size_pos(false);
-    call show_set_initial_keys(ikm);
-    call show_version(pversion);
+    # call show_set_initial_keys(ikm);
+    # call show_version(pversion);
     var salt : stream_data := stream_data.empty;
 
     #0xc3 0xee 0xf7 0x12 0xc7 0x2e 0xbb 0x5a 0x11 0xa7 0xd2 0x43 0x2b 0xb4 0x63 0x65 0xbe 0xf9 0xf5 0x02 QUIC-27
@@ -518,14 +455,14 @@ var initial_keys_set : bool
 var tp_client_set : bool
 
 function client_initial_scid : cid
-function client_initial_scid_size : stream_pos
+function client_initial_scil : stream_pos
 function client_initial_dcid : cid
-function client_initial_dcid_size : stream_pos
+function client_initial_dcil : stream_pos
 function client_initial_version : version
 
-relation client_present_scid
+relation client_non_zero_scil
 relation negocation_of_version
-relation negocation_of_version_send_recv
+relation negocation_of_version_initiated
 relation zero_rtt_allowed
 relation zero_rtt_sent
 
@@ -533,11 +470,11 @@ relation zero_rtt_sent
 after init {
     initial_keys_set := false;
     tp_client_set := false;
-    client_present_scid := false;
+    client_non_zero_scil := false;
     negocation_of_version:=  false;
     zero_rtt_allowed := false;
     zero_rtt_sent := false;
-    negocation_of_version_send_recv := false;
+    negocation_of_version_initiated := false;
 }
 
 after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
@@ -548,15 +485,15 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     var dcil : stream_pos := bfe[0][7](spkt.value(5));
     var ikm := cid_to_bytes(0,1); # dcid
 	if(~dcil = 0) {
-        client_initial_dcid_size := dcil;
+        client_initial_dcil := dcil;
 	    ikm := spkt.segment(6,6+dcil); # dcid
     };
     var lenss := spkt.value(6+dcil);
     var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
     var skm := cid_to_bytes(0,1); # scid
     if(~scil = 0) {
-        client_initial_scid_size := scil;
-		client_present_scid := true;	
+        client_initial_scil := scil;
+		client_non_zero_scil := true;	
 	    skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
     };
 
@@ -568,7 +505,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
     require dcil >= 8;
 
-    call show_caca;
+    # call show_caca;
 
     client_initial_dcid := bytes_to_cid(ikm);
     client_initial_scid := bytes_to_cid(skm); # skm
@@ -577,11 +514,11 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     call export_length_cid_extension(dcil,scil);
 
     if ~tp_client_set 
-        | negocation_of_version | (retry_response & ~init_token) {
+        | negocation_of_version {
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
 	    call export_length_cid_extension(dcil,scil);
-        if zero_rtt_client {
+        if zero_rtt_client_test {
             call tls_api.upper.create_0rtt_client(0,true,extns);  
         } else {
             call tls_api.upper.create(0,true,extns);  
@@ -596,11 +533,11 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
     client_initial_version := ver;
 
-    if client_initial_version ~= 0xff00001d & client_initial_version ~= 0xfaceb002 { #version_used todo
+    if client_initial_version ~= 0xff00001d & client_initial_version ~= 0xfaceb002 { #initial_version todo
         negocation_of_version := true;
     } 
     else if (~initial_keys_set & retry_client_test -> retry_sent) 
-        | negocation_of_version | (retry_response & ~init_token)  { 
+        | negocation_of_version  { 
         negocation_of_version := false;
 
         var salt : stream_data := stream_data.empty;
@@ -802,7 +739,7 @@ after tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_dat
     pkt.ptype := quic_packet_type.retry;
     call recv_retry_pkt(src,dst,pkt);
     call infer_tls_events_retry(src,dst,pkt);
-    retry_recv_token := pkt.token;
+    retry_token_recv := pkt.token;
     if pkt.token.end = 0 {
         zero_length_token := true;
     };
@@ -818,15 +755,15 @@ after tls_client_0rtt_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data
     var dcil : stream_pos := bfe[0][7](spkt.value(5));
     var ikm := cid_to_bytes(0,1); # dcid
 	if(~dcil = 0) {
-        client_initial_dcid_size := dcil;
+        client_initial_dcil := dcil;
 	    ikm := spkt.segment(6,6+dcil); # dcid
     };
     var lenss := spkt.value(6+dcil);
     var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
     var skm := cid_to_bytes(0,1); # scid
     if(~scil = 0) {
-        client_initial_scid_size := scil;
-		client_present_scid := true;	
+        client_initial_scil := scil;
+		client_non_zero_scil := true;	
 	    skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
     };
 

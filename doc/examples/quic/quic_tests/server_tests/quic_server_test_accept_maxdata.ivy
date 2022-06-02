@@ -11,6 +11,10 @@ include quic_server
 # We fix the initial transport parameters here. TODO: In principle these
 # parameters should be selected randomly by some event.
 #
+after init {
+    # the_cid := 0x0; # 0x0;
+    # server_cid := 0x1; # 0x1;
+}
 
 include quic_server_standard_tp
 

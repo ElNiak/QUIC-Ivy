@@ -2,8 +2,8 @@
 
 include byte_stream
 include quic_stream
-include quic_fsm_sending
-include quic_fsm_receiving
+# include quic_fsm_sending
+# include quic_fsm_receiving
 
 #
 # The application protocol
@@ -145,7 +145,7 @@ after init {
 #
 
 after app_send_event {
-    call show_app_send_event(data);
+    # call show_app_send_event(data);
     var send_end := pos + data.end;
     require ~(send_end > stream_app_data_end(dcid,s) & stream_app_data_finished(dcid,s));  # [4]
     var end := stream_app_data(dcid,s).end;

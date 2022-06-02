@@ -215,8 +215,7 @@ function conn_enc_level(E:ip.endpoint,C:cid) : quic_packet_type
 relation established_1rtt_keys(C:cid)
 relation established_0rtt_keys(C:cid)
 relation established_handshake_keys(C:cid)
-
-relation crypto_reset
+relation crypto_reset(C:cid)
 
 
 after init {
@@ -225,7 +224,7 @@ after init {
     established_1rtt_keys(C:cid) := false;
     established_0rtt_keys(C:cid) := false;
     established_handshake_keys(C:cid) := false;
-    crypto_reset := false;
+    crypto_reset(C) := false;
 }
 
 # Event specifications
@@ -254,35 +253,29 @@ after init {
 # API. Also, here we are parsing the TLS message stream into individual messages,
 # That should also probably happen somewhere else. 
 
+import action show_test
+
 before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data : stream_data,
                       pos : stream_pos, e:quic_packet_type) {
     
     var jdx := data.begin;
-    call start_handshake_event;
-    #call show_connected(connected(scid), scid);
-    #call show_connected(connected(scid), dcid);
-    if retry_sent & ~crypto_reset {
+    if retry_sent(scid) & ~crypto_reset(dcid) { # TODO retest
+        call show_test;
         crypto_handler_pos(C,L) := 0;
-        #conn_enc_level(E,C) := quic_packet_type.zero_rtt;
-        #established_1rtt_keys(C:cid) := false;
-        #established_0rtt_keys(C:cid) := false;
-        #established_handshake_keys(C:cid) := false;
         crypto_data(scid,e) := stream_data.empty;
         while jdx < data.end {
             var cpos := pos+jdx;
             crypto_data_present(scid,e,cpos) := false;
             jdx := jdx.next
         };
-        crypto_reset := true;
+        crypto_reset(dcid) := true;
     };
     var end := pos + data.end;
     if end > crypto_data(scid,e).end {
         crypto_data(scid,e) := crypto_data(scid,e).resize(end,0);
     };
-    call mid_handshake_event;
     jdx := data.begin;
     while jdx < data.end {
-       # call mid_handshake_event;
         var cpos := pos+jdx;
         var byte := data.value(jdx);
         require crypto_data_present(scid,e,cpos) -> crypto_data(scid,e).value(cpos) = byte;
@@ -291,9 +284,7 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
         crypto_data_present(scid,e,cpos) := true;
 	    jdx := jdx.next
     };
-   # call mid_handshake_event;
     crypto_data_end(scid,e) := crypto_data(scid,e).end; # - 1;
-    call mid_handshake_event;
     var max_present : stream_pos := 0;
     while max_present < crypto_data_end(scid,e) & crypto_data_present(scid,e,max_present) {
         max_present := max_present.next
@@ -303,7 +294,6 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
     var res := tls.handshake_parser.deserialize(avail,0); #quicgo
     var hs := res.value;
     call tls.handshake_data_event(src,dst,avail.segment(0,res.pos));
-    call mid_handshake_event;
     crypto_handler_pos(scid,e) := crypto_handler_pos(scid,e) + res.pos;
     var idx := hs.begin;
     while idx < hs.end {
@@ -312,12 +302,11 @@ before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data
         call handle_tls_handshake(src,dst,scid,dcid,h);  #[2]
         idx := idx.next
     };
-    call stop_handshake_event;
 }
 
-import action start_handshake_event
-import action mid_handshake_event
-import action stop_handshake_event
+# import action start_handshake_event
+# import action mid_handshake_event
+# import action stop_handshake_event
 
 
 # Receive event

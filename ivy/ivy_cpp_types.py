@@ -399,7 +399,7 @@ class LongBV(XBVI):
 """)
 	#"std::ostream& operator<<(std::ostream&s, const LongClass &v) {return s << v.val;}\n"
 	printed = """
-	    std::ostream& operator<<(std::ostream&s, const LongClass &v) {
+	std::ostream& operator<<(std::ostream&s, const LongClass &v) {
 		std::ostream::sentry ss( s ); 
 		if ( ss ) { 
 		   __int128_t value = v.val; 
@@ -420,10 +420,21 @@ class LongBV(XBVI):
 		   int len = std::end( buffer ) - d; 
 		   if ( s.rdbuf()->sputn( d, len ) != len ) { 
 		      s.setstate( std::ios_base::badbit ); 
-		} 
-	       } 
-	       return s; 
-	  }
+		    } 
+	    } 
+	    return s; 
+	}
+    std::istream& operator>>(std::istream& is, LongClass& x) {
+        x.val = 0;
+        std::string s;
+        is >> s;
+        int n = int(s.size());
+        int it = 0;
+        if (s[0] == '-') it++;
+        for (; it < n; it++) x.val = (x.val * 10 + s[it] - '0');
+        if (s[0] == '-') x.val = -x.val;
+        return is;
+    }
 	"""
         add_once_global(printed)
         add_once_global("bool operator==(const LongClass &x, const LongClass &y) {return x.val == y.val;}\n")
@@ -498,24 +509,31 @@ std::ostream &operator <<(std::ostream &s, const CLASSNAME &t){
     return s;
 }
 
+std::istream& operator>>(std::istream& is, CLASSNAME& x) {
+    x.val = 0;
+    std::string s;
+    is >> s;
+    int n = int(s.size());
+    int it = 0;
+    if (s[0] == '-') it++;
+    for (; it < n; it++) x.val = (x.val * 10 + s[it] - '0');
+    if (s[0] == '-') x.val = -x.val;
+    return is;
+}
 template <>
 CLASSNAME _arg<CLASSNAME>(std::vector<ivy_value> &args, unsigned idx, long long bound) {
     if (args[idx].fields.size())
         throw out_of_bounds(idx);
     CLASSNAME res;
    // res.val = int128_t(args[idx].atom.c_str());
-    return res;
-    /*if (args[idx].fields.size())
-        throw out_of_bounds(idx);
-    CLASSNAME res;
-//    res.val = atoll(args[idx].atom.c_str());
     std::istringstream s(args[idx].atom.c_str());
     s.unsetf(std::ios::dec);
     s.unsetf(std::ios::hex);
     s.unsetf(std::ios::oct);
-    s  >> res.val;
-//    unsigned long long res = atoll(args[idx].atom.c_str());
-    return res;*/
+    std::cerr << \"\\nARG__ \\n\" << args[idx].atom.c_str() << \"\\n\";
+    s  >> res; //TODO
+    std::cerr << res << \"\\n\";
+    return res;
 }
 template <>
 void __ser<CLASSNAME>(ivy_ser &res, const CLASSNAME &inp) {
