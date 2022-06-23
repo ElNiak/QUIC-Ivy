@@ -5137,7 +5137,7 @@ int ask_ret(long long bound) {
             if(path.find("test") != std::string::npos) 
 		    path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + mode + std::string("_tests/") + path;
         
-            command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
+            command = std::string("/bin/sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
             //std::cerr << command.c_str() << std::endl;
 
             if (system(NULL)) i=system(command.c_str());
@@ -5191,7 +5191,7 @@ int ask_ret(long long bound) {
             if(path.find("test") != std::string::npos) 
 		    path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + mode + std::string("_tests/") + path;
         
-            command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
+            command = std::string("/bin/sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
             //std::cerr << command.c_str() << std::endl;
 
             if (system(NULL)) i=system(command.c_str());
