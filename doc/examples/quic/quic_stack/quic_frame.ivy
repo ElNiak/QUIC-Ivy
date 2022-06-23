@@ -303,7 +303,7 @@ object frame = {
 	
 
 
-    # (0x1d) NOT PRESENT ANYMORE TOCHECK IF CAN BE REMOVED TODO
+    # (0x1d) 
     object application_close = {
         # Application close frames are a variant of frame.
         variant this of frame = struct {

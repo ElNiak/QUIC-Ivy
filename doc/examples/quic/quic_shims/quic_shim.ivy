@@ -59,7 +59,7 @@ include quic_locale
 
 #### Test type config
 
-relation initial_keys_set(C:cid)
+relation initial_keys_set(S:ip.endpoint)
 relation tp_client_set # (C:cid) TODO strange segfault for level 2 not set with quant 
 
 function client_initial_rcid : cid
@@ -76,7 +76,7 @@ relation zero_rtt_sent
 relation send_connection_close # TODO, send co_close at end of test or not
 
 after init {
-    initial_keys_set(C) := false;
+    initial_keys_set(S) := false;
     tp_client_set := false;
     client_non_zero_scil := false;
     zero_rtt_allowed := false;
@@ -493,7 +493,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
     if client_initial_version ~= initial_version & client_initial_version ~= 0xfaceb002 { #initial_version todo
         negocation_of_version(src) := true;
     } 
-    else if (~initial_keys_set(dcid) & retry_client_test -> retry_sent(dcid)) | negocation_of_version(src) { 
+    else if (~initial_keys_set(src) & retry_client_test -> retry_sent(dcid)) | negocation_of_version(src) { 
         call export_length_cid_extension(dcil,scil);
         negocation_of_version(src) := false;
 
@@ -573,7 +573,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         call show_set_initial_keys(ikm);
         call tls_api.upper.set_initial_keys(0,salt,ikm);
         
-        initial_keys_set(dcid) := true;
+        initial_keys_set(src) := true;
     }
 }
 
