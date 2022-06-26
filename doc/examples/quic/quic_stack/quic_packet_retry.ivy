@@ -250,7 +250,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
     } else {
         retry_sent(scid) := true;
         retry_response(scid) := true;
-        initial_keys_set(scid) := false;
+        initial_keys_set(dst) := false;
         tp_client_set := false;
         conn_requested(src,dst,dcid) := false;
         conn_requested(src,dst,the_cid) := false;
