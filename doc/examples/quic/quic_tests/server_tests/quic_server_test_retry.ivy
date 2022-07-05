@@ -31,7 +31,7 @@ after init {
 	allowed_multiple_migration := false;
     allowed_migration := false;
     version_negociated := false;
-    initial_version := 0xff00001d; #0xff00001c for quant vuln
+    initial_version := 0x00000001; #0xff00001c for quant vuln
 }
 
 after init {
@@ -44,7 +44,7 @@ after init {
     supported_versions := supported_versions.append(v1);
 
     supported_versions_bv := versions_bv.empty;
-    supported_versions_bv := supported_versions_bv.append(0xff00001d);
+    supported_versions_bv := supported_versions_bv.append(0x00000001);
 }
 
 # This token MUST be repeated by the client in all

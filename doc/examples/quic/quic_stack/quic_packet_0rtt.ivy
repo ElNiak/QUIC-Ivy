@@ -167,6 +167,18 @@ action packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) =
 #    with its 0-RTT data.  ***In particular, a server that accepts 0-RTT data
 #    MUST NOT set values for the following parameters (Section 18.2) that
 #    are smaller than the remembered value of the parameters.*** [6]
+
+# QUESTION: Is it:
+#           must not set value for following "transport parameters"  
+    #           Thus, the new TP will always be >=  old TP
+    #           This would be because new connection data is also counter with 
+    #           initial 0rtt data
+#
+#           or "parameters" in internal state of programs
+    #           Thus, new TP can be <,> or =. In this case this simply mean it 
+    #           remembers the values and apply them on 0rtt data
+    #           This would mean that 0rtt data size is not counted in max data
+
 #    *  active_connection_id_limit
 #    *  initial_max_data
 #    *  initial_max_stream_data_bidi_local
@@ -185,7 +197,7 @@ action packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) =
 #    For instance, flow control limits from remembered transport
 #    parameters apply to all 0-RTT packets even if those values are
 #    increased by the handshake or by frames sent in 1-RTT packets.  A
-#    server MAY treat use of updated transport parameters in 0-RTT as a
+#    server **MAY** treat use of updated transport parameters in 0-RTT as a
 #    connection error of type PROTOCOL_VIOLATION.
 
 # Address validation is especially important with 0-RTT because a server

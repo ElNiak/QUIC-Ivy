@@ -698,6 +698,7 @@ object frame = {
             };
             if _generating {
                 require some_new_ack;
+                require f.largest_acked = max_acked(dcid,e);
             }
 	    ...
             force_new_ack := false;
@@ -1203,7 +1204,7 @@ object frame = { ...
             if _generating {
                 require e = quic_packet_type.one_rtt;
                 require ~conn_closed(scid);
-            };
+            }; 
             conn_closed(scid) := true;
             call handle_transport_error(f.err_code);
 	    ...
@@ -1251,7 +1252,7 @@ object frame = { ...
             require connected(dcid) & connected_to(dcid) = scid;
             require e ~= quic_packet_type.initial;
             require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
-            require e = quic_packet_type.handshake -> established_handshake_keys(scid);
+            #require e = quic_packet_type.handshake -> established_handshake_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require connected(scid) & connected_to(scid) = dcid;
             require f.reason_phrase_length = f.reason_phrase.end;
@@ -1304,7 +1305,7 @@ object frame = { ...
 
 #
 # #### stream_data_blocked event
-#
+#     | 0x15        | STREAM_DATA_BLOCKED  | Section 19.13 | __01    |
 # stream_data_blocked frames indicate that sender wishes to send data on stream beyond current limit.
 #
 # Requirements
@@ -1334,7 +1335,7 @@ object frame = { ...
 
 #
 # #### data_blocked event
-#
+#     | 0x14        | DATA_BLOCKED         | Section 19.12 | __01    |
 # data_blocked frames indicate that sender wishes to send data beyond current total limit
 # for all streams.
 #
@@ -1362,7 +1363,7 @@ object frame = { ...
 
 #
 # #### streams_blocked event
-#
+#     | 0x16 - 0x17 | STREAMS_BLOCKED      | Section 19.14 | __01    |
 # streams_blocked frames indicate that sender wishes to open a stream beyond current limit
 # on streams of a given kind.
 #
@@ -1414,7 +1415,7 @@ object frame = { ...
 
 #
 # #### MAX_DATA EVENT
-#
+#     | 0x10        | MAX_DATA             | Section 19.9  | __01    |
 # MAX_DATA frames set the limit on the total data bytes that the source endpoint is willing
 # to receive for all streams combined.
 #
@@ -1447,7 +1448,7 @@ object frame = { ...
 
 #
 # #### PING event
-#
+#     | 0x01        | PING                 | Section 19.2  | IH01    |
 # PING frames contain no data and have no semantics. They can
 # be used to keep a connection alive.
 #
@@ -1456,8 +1457,6 @@ object frame = { ...
     object ping = { ...
         action handle(f:frame.ping,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle {
-            require connected(dcid) & connected_to(dcid) = scid;
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             ...
             call enqueue_frame(scid,f,e,false);
@@ -1555,6 +1554,8 @@ object frame = { ...
 #   received NEW_CONNECTION_ID frame MUST send a corresponding
 #   RETIRE_CONNECTION_ID frame that retires the newly received connection
 #   ID, unless it has already done so for that sequence number. [6] 
+# -  An endpoint that selects a zero-length connection ID during the	
+#    handshake cannot issue a new connection ID.  [7]
 #
 #chris
 
@@ -1567,6 +1568,8 @@ object frame = { ...
             require num_queued_frames(scid) > 0 -> e = queued_level(scid); #Will change with implementing TODO
             #chris
             #require f.length >= 0x1 & f.length <= 0x14; #[1]
+
+            require ~issued_zero_length_cid; # [7]
 
             if ~_generating { # For error test, carefull, should be specified in generating so
                 require f.retire_prior_to <= f.seq_num; #[4]

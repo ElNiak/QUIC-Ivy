@@ -234,7 +234,8 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
         connected(scid) := false;
         conn_seen(dcid) := false;
         conn_seen(scid) := false;
-
+        require ~retry_recv(dcid);
+        retry_recv(dcid) := true;   
         server_cid := scid; # 0x1;
 
         connected(the_cid)    := false;

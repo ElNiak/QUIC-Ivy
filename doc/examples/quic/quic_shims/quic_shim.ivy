@@ -93,6 +93,9 @@ relation multiple_client # only to indicate if multiple client are present
 relation allowed_migration 
 relation allowed_multiple_migration
 
+relation first_datagram_received
+function last_datagram_received_size : stream_pos
+
 # for client & server tests 
 relation version_negociated
 function initial_version : version # init in each entities/test
@@ -100,29 +103,32 @@ relation negocation_of_version(E:ip.endpoint)
 relation negocation_of_version_initiated(E:ip.endpoint)
 
 after init {
-    multiple_client   := false;
+    multiple_client      := false;
     zero_rtt_client_test := false;
     zero_rtt_server_test := false;
-    allowed_migration := false;
+    allowed_migration          := true;
     allowed_multiple_migration := false;
     
     version_negociated := false;
     negocation_of_version_initiated(E) := false;
     negocation_of_version(E):=  false;
+
+    first_datagram_received := false;
+    last_datagram_received_size := 0;
 }
 
 #### RTT config 
 
-var early_data_end : stream_data
-after init {
-    # Need to be local for mvfst STRANGE
-    # TODO global -> quic-go crash if not global
-    early_data_end := stream_data.empty;
-    early_data_end := early_data_end.append(0xff);
-    early_data_end := early_data_end.append(0xff);
-    early_data_end := early_data_end.append(0xff);
-    early_data_end := early_data_end.append(0xff);
-}
+# var early_data_end : stream_data
+# after init {
+#     # Need to be local for mvfst STRANGE
+#     # TODO global -> quic-go crash if not global
+#     early_data_end := stream_data.empty;
+#     early_data_end := early_data_end.append(0xff);
+#     early_data_end := early_data_end.append(0xff);
+#     early_data_end := early_data_end.append(0xff);
+#     early_data_end := early_data_end.append(0xff);
+# }
 
 #### Padding-only packet management
 
@@ -144,14 +150,14 @@ var supported_versions_bv : versions_bv
 after init {
     supported_versions := versions.empty;
     var v1 := stream_data.empty;
-    v1 := v1.append(0xff);
     v1 := v1.append(0x0);
     v1 := v1.append(0x0);
-    v1 := v1.append(0x1d); # TODO stop bv and non-bv conversion
+    v1 := v1.append(0x0);
+    v1 := v1.append(0x01); # TODO stop bv and non-bv conversion
     supported_versions := supported_versions.append(v1);
 
     supported_versions_bv := versions_bv.empty;
-    supported_versions_bv := supported_versions_bv.append(0xff00001d);
+    supported_versions_bv := supported_versions_bv.append(0x00000001);
 
     final_version := 0x00000000; # This is init value, meaning that VN is proceed or not
 
@@ -238,6 +244,12 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
         idx := idx.next;
     };
     version_not_found(src) := false;
+    call show_last_datagram_size(last_datagram_received_size);
+    if ~first_datagram_received & host = endpoint_id.server { # for client tests
+        require last_datagram_received_size + 8 > 1200; # 8 is for UDP datagram header
+        first_datagram_received := true;
+    };
+    last_datagram_received_size := 0;
 }
 
 # For logging purposes. This logs the decoded packets received from the network, before
@@ -246,7 +258,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
 import action app_server_open_event_show(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet,cid1 : cid, cid2: cid)
 import action recv_packet(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
 import action padding_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
-
+import action show_last_datagram_size(size:stream_pos)
 # This received packets that are undecryptable
 import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
 
@@ -273,15 +285,15 @@ import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:str
 #TODO merge shim for client
 
 implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.lower.level) {
-    # var early_data_end := stream_data.empty; # TODO global -> quic-go crash if not global
-    # early_data_end := early_data_end.append(0xff);
-    # early_data_end := early_data_end.append(0xff);
-    # early_data_end := early_data_end.append(0xff);
-    # early_data_end := early_data_end.append(0xff);
+    var early_data_end := stream_data.empty; # TODO global -> quic-go crash if not global
+    early_data_end := early_data_end.append(0xff);
+    early_data_end := early_data_end.append(0xff);
+    early_data_end := early_data_end.append(0xff);
+    early_data_end := early_data_end.append(0xff);
     var e := quic_packet_type.initial if lev = 0
              else (quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt);
     if(bytes.value(0) = 0x4 & bytes.segment(bytes.end-4,bytes.end) = early_data_end) {
-        e := quic_packet_type.one_rtt;
+        e := quic_packet_type.one_rtt; # TODO 
     };
     var scid := tls_id_to_cid(tls_id);
     call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
@@ -400,7 +412,7 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pver
 		salt := salt.append(0x99);
 	}
     # 0x38 0x76 0x2c 0xf7 0xf5 0x59 0x34 0xb3 0x4d 0x17 0x9a 0xe6 0xa4 0xc8 0x0c 0xad 0xcc 0xbb 0x7f 0x0a
-    else if pversion = 0xff000022 {
+    else if pversion = 0x00000001 | pversion = 0xff000022 {
 		salt := salt.append(0x38);
 		salt := salt.append(0x76);
 		salt := salt.append(0x2c);
@@ -460,6 +472,10 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 	    skm := spkt.segment(6+dcil+1,6+dcil+1+scil); # scid
     };
     var scid : cid := bytes_to_cid(skm);
+
+    if scil = 0 | dcil = 0 {
+        issued_zero_length_cid := true;
+    }
 
     #  When an Initial packet is sent by a client that has not previously
     #    received an Initial or Retry packet from the server, the client
@@ -547,7 +563,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
             salt := salt.append(0xa8);
             salt := salt.append(0x99);
         };
-        if client_initial_version = 0xff000022 {
+        if client_initial_version = 0x00000001 | client_initial_version = 0xff000022 {
             salt := salt.append(0x38);
             salt := salt.append(0x76);
             salt := salt.append(0x2c);
@@ -677,7 +693,6 @@ after tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_dat
     var dcid := prot.bytes_to_cid(spkt.segment(6,6+dcil));
     var scil : stream_pos := bfe[0][7](spkt.value(6+dcil));
     var scid := prot.bytes_to_cid(spkt.segment(7+dcil,7+dcil+scil));
-    retry_recv(dcid) := true;
 
     call export_length_cid_extension(scil,dcil);
 
@@ -847,7 +862,7 @@ action dcid_size_cl(cond:bool) returns(res:cid_length) = {
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "client") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_DCIL")) {
-            std::cerr << "TEST_DCIL " << env_p3 << std::endl;
+            std::cerr << "TEST_DCIL " << env_p3 << "\n";
 	        res = atoi(env_p3);
          } 
          else 
@@ -856,7 +871,7 @@ action dcid_size_cl(cond:bool) returns(res:cid_length) = {
 	  res = 8;
     } else 
       res = 8;
-    std::cerr <<  "dcid_size_cl size: " <<  res << std::endl;
+    std::cerr <<  "dcid_size_cl size: " <<  res << "\n";
     >>>
 }
 
@@ -866,7 +881,7 @@ action scid_size_pos(cond:bool) returns(res:stream_pos) = {
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "server") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-            std::cerr << "TEST_SCIL " << env_p3 << std::endl;
+            std::cerr << "TEST_SCIL " << env_p3 << "\n";
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
@@ -874,7 +889,7 @@ action scid_size_pos(cond:bool) returns(res:stream_pos) = {
 	  res = 8;
     } else 
       res = 8;
-    std::cerr <<  "scid_size_pos size: " <<  res << std::endl;
+    std::cerr <<  "scid_size_pos size: " <<  res << "\n";
     >>>
 }
 
@@ -884,7 +899,7 @@ action dcid_size_pos(cond:bool) returns(res:stream_pos) = {
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "server") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_DCIL")) {
-            std::cerr << "TEST_DCIL " << env_p3 << std::endl;
+            std::cerr << "TEST_DCIL " << env_p3 << "\n";
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
@@ -892,7 +907,7 @@ action dcid_size_pos(cond:bool) returns(res:stream_pos) = {
 	  res = 8;
     } else 
       res = 8;
-    std::cerr <<  "dcid_size_pos size: " <<  res << std::endl;
+    std::cerr <<  "dcid_size_pos size: " <<  res << "\n";
     >>>
 }
 
@@ -937,7 +952,7 @@ action bytes_to_itoken(bytes:stream_data) returns (val:itoken) = {
 action export_length_cid_extension(dcil:stream_pos,scil:stream_pos) = {
     <<<
 
-    std::cerr <<  "export_length_cid_extension"  << std::endl;
+    std::cerr <<  "export_length_cid_extension"  << "\n";
 	char str_d[20];
 	sprintf(str_d,"%llu",dcil);
 	if(setenv("TEST_DCIL",str_d,true) != 0) 

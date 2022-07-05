@@ -76,7 +76,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             server_scid := pkt.src_cid;
             server_dcid := pkt.dst_cid;
         };
-	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002 | pkt.pversion = 0xff000022);  #version 29
+	    require pkt.long -> (pkt.pversion = 0x00000001 | pkt.pversion = 0xfaceb002 | pkt.pversion = 0x00000001);  #version 29
 	    if pkt.long {
 	    	initial_version := pkt.pversion;
 	    };
@@ -87,7 +87,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 
 before packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
     if _generating {
-        #require initial_version ~= 0xff00001d; 
+        #require initial_version ~= 0x00000001; 
         require negocation_of_version(dst);
         require client.ep.addr ~= 0;  # must have a client address to send to
         require src = server.ep;
@@ -97,7 +97,7 @@ before packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
         require pkt.pversion = 0x00000000;  #version 0
         pkt.supported_version := supported_versions_bv;
         #pkt.supported_version := versions_bv.empty;
-        #pkt.supported_version := pkt.supported_version.append(0xff00001d);
+        #pkt.supported_version := pkt.supported_version.append(0x00000001);
     } 
 }
 

@@ -142,9 +142,9 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
     {
         int ret = 0;
         std::cerr << "tls_client_save_ticket_cb\n" << input.len << "\n" << input.base  << "\n";
-        for(int i = 0; i < input.len; i++)
-            std::cerr << input.base[i];
-        std::cerr << "\n";
+        // for(int i = 0; i < input.len; i++)
+        //     std::cerr << input.base[i];
+        // std::cerr << "\n";
         const char* env_p = std::getenv("TEST_IMPL");
         int m = 0;
         bool is_quiche = false;
@@ -233,16 +233,13 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             }  
             ptls_aead_context_t *aead_enc = (ptls_aead_context_t *)(s->ticket_aead_encrypt);
             std::cerr << "tls_server_encrypt_ticket_cb 3a ticket_aead_encrypt " << s->ticket_aead_encrypt << "\n";
-            std::cerr << "tls_server_encrypt_ticket_cb 3a " << aead_enc << "\n";
-            std::cerr << "tls_server_encrypt_ticket_cb 3a " << aead_enc->algo << "\n";
-            std::cerr << "tls_server_encrypt_ticket_cb 3a " << aead_enc->algo->tag_size << "\n";
             //ptls_aead_context_t* aead_enc = (ptls_aead_context_t*)quic->aead_encrypt_ticket_ctx;
             /* Encoding*/
             if (aead_enc == NULL) {
                 ret = -1;
             } else if ((ret = ptls_buffer_reserve(dst, 8 + src.len + aead_enc->algo->tag_size)) == 0) {
                 /* Create and store the ticket sequence number */
-                //uint32_t version_number = 0xff00001d; //TODO
+                //uint32_t version_number = 0x00000001; //TODO
                 uint64_t seq_num = quic_public_random_64();
                 std::cerr << "tls_server_encrypt_ticket_cb 4a " << seq_num << "\n";
                 size_t start_off;
@@ -259,8 +256,6 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                 /* Add the version number */
                // picoformat_32(dst->base + dst->off + data_length, version_number);
                // data_length += 4;
-
-                std::cerr << "tls_server_encrypt_ticket_cb 4a " << data_length << "\n";
                
                 /* Run AEAD encryption */
                 dst->off += ptls_aead_encrypt(aead_enc, dst->base + dst->off,
@@ -272,10 +267,6 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         } else {
             std::cerr << "tls_server_encrypt_ticket_cb 2b\n";
             ptls_aead_context_t *aead_dec = (ptls_aead_context_t *)(s->ticket_aead_decrypt);
-            std::cerr << "tls_server_encrypt_ticket_cb 3b ticket_aead_decrypt " << s->ticket_aead_decrypt << "\n";
-            std::cerr << "tls_server_encrypt_ticket_cb 3b " << aead_dec << "\n";
-            std::cerr << "tls_server_encrypt_ticket_cb 3b " << aead_dec->algo << "\n";
-            std::cerr << "tls_server_encrypt_ticket_cb 3b " << aead_dec->algo->tag_size << "\n";
             //ptls_aead_context_t* aead_dec = (ptls_aead_context_t*)quic->aead_decrypt_ticket_ctx;
             /* Encoding*/
             if (aead_dec == NULL) {
@@ -286,7 +277,6 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                 /* Decode the ticket sequence number */
                 uint64_t seq_num = PICOPARSE_64(src.base);
                 std::cerr << "tls_server_encrypt_ticket_cb 4b " << seq_num << "\n";
-                std::cerr << "tls_server_encrypt_ticket_cb 4b " << src.len << "\n";
                 /* Decrypt */
                 size_t decrypted = ptls_aead_decrypt(aead_dec, dst->base + dst->off,
                                                      src.base + 8, src.len - 8, seq_num, NULL, 0);
@@ -645,7 +635,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
     //     {  &ptls_openssl_secp256r1, &ptls_openssl_x25519, NULL };
 
     ptls_cipher_suite_t *picotls_cipher_suites[] = { 
-        &ptls_openssl_aes256gcmsha384, &ptls_openssl_aes128gcmsha256,
+        &ptls_openssl_aes128gcmsha256, &ptls_openssl_aes256gcmsha384,
         &ptls_minicrypto_chacha20poly1305sha256, NULL };
 
     // Here we process handshake data on a TLS connection. The in_epoch is a picotls
@@ -893,7 +883,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         
         // h3-x == HTTP/3 over QUIC 
         // hq-x == HTTP/0.9 over QUIC
-        alpn_vec->base = (uint8_t*) "hq-29";
+        alpn_vec->base = (uint8_t*) "hq-interop";
         if(const char* env_p = std::getenv("TEST_ALPN")) { 
             std::cerr << "TEST_ALPN " << env_p << std::endl;
             alpn_vec->base = (uint8_t*) env_p;
@@ -960,17 +950,17 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         if(const char* env_p = std::getenv("TEST_IMPL")) { 
             std::cerr << "TEST_IMPL " << env_p << std::endl;
             std::cerr << "is_server " << is_server << std::endl;
-            if(strncmp(env_p,"quic-go",10) == 0 
-                || strncmp(env_p,"quiche",10) == 0 
-                   || strncmp(env_p,"lsquic",10) == 0 
-                      || strncmp(env_p,"quinn",10) == 0 
-                         || strncmp(env_p,"aioquic",10) == 0) //TODO ask why sometime ALPN needed
-                if (is_server) { // && false
+            // if(strncmp(env_p,"quic-go",10) == 0 
+            //     || strncmp(env_p,"quiche",10) == 0 
+            //        || strncmp(env_p,"lsquic",10) == 0 
+            //           || strncmp(env_p,"quinn",10) == 0 
+            //              || strncmp(env_p,"aioquic",10) == 0) //TODO ask why sometime ALPN needed
+            //     if (is_server) { // && false
                         std::cerr << "ptls_set_negotiated_protocol"  << std::endl;
                         ptls_set_negotiated_protocol(session, 
                             (const char*) handshake_properties->client.negotiated_protocols.list[0].base, 
                             handshake_properties->client.negotiated_protocols.list[0].len);
-                } 
+                // } 
         }
 
         picotls_connection *s = new picotls_connection(c, session, ctx, *`cb`, handshake_properties, is_server);
@@ -1099,7 +1089,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         
         // h3-x == HTTP/3 over QUIC 
         // hq-x == HTTP/0.9 over QUIC
-        alpn_vec->base = (uint8_t*) "hq-29";
+        alpn_vec->base = (uint8_t*) "hq-interop";
         if(const char* env_p = std::getenv("TEST_ALPN")) { 
             std::cerr << "TEST_ALPN " << env_p << std::endl;
             alpn_vec->base = (uint8_t*) env_p;
@@ -1314,7 +1304,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         
         // h3-x == HTTP/3 over QUIC 
         // hq-x == HTTP/0.9 over QUIC
-        alpn_vec->base = (uint8_t*) "hq-29";
+        alpn_vec->base = (uint8_t*) "hq-interop";
         if(const char* env_p = std::getenv("TEST_ALPN")) { 
             std::cerr << "TEST_ALPN " << env_p << std::endl;
             alpn_vec->base = (uint8_t*) env_p;
@@ -1887,11 +1877,20 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             for(int i = 0; i < 16;i++)
                 key[i] = key2[i];
         }   
-        else if(pversion == 0xff00001d) {
+        else if(pversion == 0x00000001) {
             uint8_t key2[16] = { 0xcc, 0xce, 0x18, 0x7e, 0xd0, 
                                  0x9a, 0x09, 0xd0, 0x57, 0x28, 
                                  0x15, 0x5a, 0x6c, 0xb9, 0x6b, 
                                  0xe1 };
+            for(int i = 0; i < 16;i++)
+                key[i] = key2[i];
+        }
+        else if(pversion == 0x00000001) {
+            //0xbe 0x0c 0x69 0x0b 0x9f 0x66 0x57 0x5a 0x1d 0x76 0x6b 0x54 0xe3 0x68 0xc8 0x4e
+            uint8_t key2[16] = { 0xbe, 0x0c, 0x69, 0x0b, 0x9f, 
+                                 0x66, 0x57, 0x5a, 0x1d, 0x76, 
+                                 0x6b, 0x54, 0xe3, 0x68, 0xc8, 
+                                 0x4e };
             for(int i = 0; i < 16;i++)
                 key[i] = key2[i];
         }
@@ -1910,10 +1909,18 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             for(int i = 0; i < 12; i++)
                 nonce[i] = nonce2[i];
         }    
-        else if(pversion == 0xff00001d) {
+        else if(pversion == 0x00000001) {
             uint8_t nonce2[12] = { 0xe5, 0x49, 0x30, 0xf9, 0x7f,
                                    0x21, 0x36, 0xf0, 0x53, 0x0a, 
                                    0x8c, 0x1c }; //nonce[12]
+            for(int i = 0; i < 12; i++)
+                nonce[i] = nonce2[i];
+        }
+        else if(pversion == 0x00000001) {
+            //0x46 0x15 0x99 0xd3 0x5d 0x63 0x2b 0xf2 0x23 0x98 0x25 0xbb
+            uint8_t nonce2[12] = { 0x46, 0x15, 0x99, 0xd3, 0x5d,
+                                   0x63, 0x2b, 0xf2, 0x23, 0x98, 
+                                   0x25, 0xbb }; //nonce[12]
             for(int i = 0; i < 12; i++)
                 nonce[i] = nonce2[i];
         }

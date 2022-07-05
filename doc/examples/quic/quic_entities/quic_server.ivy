@@ -203,7 +203,8 @@ after init {
 after init {
 	allowed_multiple_migration := true;
     version_negociated := false;
-    initial_version := 0xff00001d;
+    #initial_version := 0x00000001;
+    initial_version := 0x00000001;
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
@@ -232,7 +233,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         };
     };
     if final_version = 0x00000000 {
-        #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
+        #require pkt.long -> pkt.pversion = 0x00000001  #version 29
         #require pkt.long -> pkt.pversion = 0xff000020  #version 32
         #require pkt.long -> pkt.pversion = 0xff00001e  #version 30
         require pkt.long -> pkt.pversion = initial_version  #version 30

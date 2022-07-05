@@ -205,7 +205,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     #tp.transport_parameters := tp.transport_parameters.append(no_migration);
 
     var vn : version_information; #TODO update v29
-    vn.chosen_version := 0xff00001d;
+    vn.chosen_version := 0x00000001;
     vn.other_version := versions_bv.empty;
     vn.other_version := vn.other_version.append(0xff00001f);
     #vn.other_version := vn.other_version.append(0xff00001c);
@@ -326,7 +326,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require pkt.token.end = 0; 
     };
     if final_version = 0x00000000 {
-        #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
+        #require pkt.long -> pkt.pversion = 0x00000001  #version 29
         #require pkt.long -> pkt.pversion = 0xff000020  #version 32
         #require pkt.long -> pkt.pversion = 0xff00001e  #version 30
         require pkt.long -> pkt.pversion = initial_version  #version 30

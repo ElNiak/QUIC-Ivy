@@ -37,7 +37,8 @@ var client_port_alt : ip.port
 
 after init {
     #the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
-    initial_version := 0xff00001d;
+    #initial_version := 0x00000001;
+    initial_version := 0x00000001;
     # server_cid := 0xb;
     client_addr := 0;
     client_port := 0;
@@ -230,7 +231,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     	require pkt.long -> pkt.pversion = initial_version;  #version 29
 	    #call show_version(initial_version);
     } else {
-	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
+	    require pkt.long -> (pkt.pversion = 0x00000001 | pkt.pversion = 0xfaceb002);  #version 29
 	    if pkt.long {
 	    	initial_version := pkt.pversion;
 	    };

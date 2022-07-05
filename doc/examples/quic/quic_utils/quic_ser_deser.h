@@ -223,7 +223,7 @@ struct tls_name_struct tls_tags[39] = {
     {"tls.new_session_ticket", 4},
     {"tls.unknown_message", -1},
     {"tls.unknown_extension", -1},
-    {"quic_transport_parameters", 0xffa5},
+    {"quic_transport_parameters", 0x39}, //DRAFTversion: 0xffa5 -> TODO test
     {"initial_max_stream_data_bidi_local", 0x05},
     {"initial_max_data", 0x04},
     {"initial_max_stream_id_bidi", 0x08},

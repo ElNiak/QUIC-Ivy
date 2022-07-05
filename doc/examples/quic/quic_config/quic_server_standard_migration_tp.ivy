@@ -20,10 +20,7 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     var icid : initial_source_connection_id; #TODO update v29
     icid.scid := the_cid;
     tp.transport_parameters := tp.transport_parameters.append(icid);
-
-    var no_migration : disable_active_migration; #TODO update v29
-    tp.transport_parameters := tp.transport_parameters.append(no_migration);
-
+    
     var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
     max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
     tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
@@ -32,11 +29,14 @@ action make_transport_parameters returns (tp:quic_transport_parameters) = {
     max_streams_uni.stream_id_16 := random_stream_id(4,0xFFFFFFF);
     tp.transport_parameters := tp.transport_parameters.append(max_streams_uni);
 
-    # var max_ack_dela : max_ack_delay; #TODO update ERROR
+    # var max_ack_dela : max_ack_delay; #TODO update rfc9000 -> ERROR
     # max_ack_dela.exponent_8 := random_microsecs(4,0xFFFFFFF);
     # tp.transport_parameters := tp.transport_parameters.append(max_ack_dela);
 
     var max_packet_z : max_packet_size; #TODO update rfc9000
     max_packet_z.stream_pos_16 := 1500;
     tp.transport_parameters := tp.transport_parameters.append(max_packet_z);
+
+    # var no_migration : disable_active_migration; #TODO update v29
+    # tp.transport_parameters := tp.transport_parameters.append(no_migration);
 }

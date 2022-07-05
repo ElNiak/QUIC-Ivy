@@ -280,6 +280,7 @@ module quic_protection(tls_id,tls) = {
 
     implement decrypt {
         var h := get_header_info(pkt,true);
+        call show_header(h);
         var level := get_level(pkt);
         if level = 1 & ~zrtt_pkt_set {
             zrtt_pkt_set := true;
@@ -320,6 +321,10 @@ module quic_protection(tls_id,tls) = {
             hdr := hdr.set(0,byte_xor(hdr.value(0),byte0_mask));
             
             var pnum_len := get_pnum_len_b(hdr);
+
+            last_datagram_received_size := last_datagram_received_size +  h.payload_length + h.pkt_num_pos + pnum_len;
+
+            call show_token_len(pnum_len);
             pnum := stream_data_xor(pkt.segment(pnum_pos,pnum_pos+pnum_len),mask.segment(1,1+pnum_len));
 
             hdr := hdr.extend(pnum);
@@ -652,7 +657,7 @@ object quic_prot_deser = {}
                 unsigned scil = peek(pos+6+dcil);
                 unsigned pnum_pos = pos + 7 + dcil + scil;
                 unsigned ptype = peek(pos) & 0x30;
-                //std::cerr << "quic_prot_deser a long packet of type " << ptype <<  std::endl;
+                //std::cerr << "quic_prot_deser a long packet of type " << ptype <<  "\n";
                 if (ptype == 0x00) { // initial packets have tokens
                     unsigned len = get_var_int_len(pnum_pos);
                     unsigned retry_token_len = get_var_int(pnum_pos,len);
@@ -661,14 +666,14 @@ object quic_prot_deser = {}
                     unsigned packet_size = inp.size();
                     unsigned len = packet_size - 16 - 1 - dcil - 1 - scil - 1 - 4;
                     //unsigned retry_token_len = get_var_int(pnum_pos,len);
-                    std::cerr << "token len (prot) " << len << std::endl;
+                    std::cerr << "token len (prot) " << len << "\n";
                     pnum_pos = pnum_pos + len + 16;
                     data_remaining = pnum_pos-pos;
-                    std::cerr << "data_remaining (prot) " << data_remaining << std::endl;
+                    std::cerr << "data_remaining (prot) " << data_remaining << "\n";
                 }
                 if (inp[1]+inp[2]+inp[3]+inp[4] == 0) {
                     // Version negociation
-                    std::cerr << "Version n (prot) " << std::endl;
+                    std::cerr << "Version n (prot) \n";
                     unsigned remain = inp.size() - pnum_pos;
                     data_remaining = (pnum_pos-pos) + remain;
                 }
@@ -678,7 +683,7 @@ object quic_prot_deser = {}
                     unsigned pyld_len = get_var_int(pnum_pos,len);
                     data_remaining = (pnum_pos-pos) + len + pyld_len;
                 }  
-                //std::cerr << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << std::endl;
+                //std::cerr << "pkt len: " << data_remaining << " type: " << (peek(pos)-pos) << " len len: " << len << " pyld_len: " << pyld_len << " pnum_pos: " << pnum_pos << "\n";
             }
             else {
                 data_remaining = 0x7fffffff;

@@ -66,7 +66,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
 	    #call show_version(initial_version);
     } 
     else {
-	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002);  #version 29
+	    require pkt.long -> (pkt.pversion = 0x00000001 | pkt.pversion = 0xfaceb002);  #version 29
 	    if pkt.long {
 	    	initial_version := pkt.pversion;
 	    };

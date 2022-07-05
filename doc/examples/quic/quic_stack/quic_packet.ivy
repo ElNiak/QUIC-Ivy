@@ -198,6 +198,7 @@ function connected_to(C:cid) : cid
 function nonce_cid(C:cid) : cid
 relation is_client(C:cid)
 relation conn_requested(S:ip.endpoint,D:ip.endpoint,C:cid)
+relation issued_zero_length_cid #(S:ip.endpoint,D:ip.endpoint) TODO pass that to handle function of frames
 function hi_non_probing(C:cid) : pkt_num
 relation hi_non_probing_endpoint(C:cid,E:ip.endpoint)
 relation pkt_has_close(C:cid,L:quic_packet_type,N:pkt_num)
@@ -248,6 +249,7 @@ after init {
     migration_done := false;
     tls_handshake_finished := false;
     first_initial_send := false;
+    issued_zero_length_cid := false;
     #chris
 }
 
@@ -681,7 +683,7 @@ action handle_client_transport_parameters(src:ip.endpoint,dst:ip.endpoint,scid:c
     #require initial_max_stream_data_uni.is_set(trans_params(scid));  # [1]
     if ~ _generating  { 
         # for tests where we check that the implementation behave well if not present 
-        if client_non_zero_scil & ~(scid = 1) & client_initial_version = 0xff00001d { # TODO 
+        if client_non_zero_scil & ~(scid = 1) & (client_initial_version = 0x00000001 | client_initial_version = 0x00000001){ # TODO 
             require initial_source_connection_id.is_set(trans_params(scid));  # [5]
         };
     };

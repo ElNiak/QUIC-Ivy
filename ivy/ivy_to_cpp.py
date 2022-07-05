@@ -1442,7 +1442,7 @@ public:
                             assign_array_from_model(impl,sym,'obj.',fun)
     indent_level -= 1
     impl.append("""
-    // std::cout << slvr << std::endl;
+    // std::cout << slvr << "\\n";
     bool __res = solve();
     if (__res) {
 """)
@@ -1738,7 +1738,7 @@ def emit_action_gen(header,impl,name,action,classname):
         impl.append('add(winfmla);\n')
     else:
         impl.append('add("(assert {})");\n'.format(slv.formula_to_z3(pre).sexpr().replace('|!1','!1|').replace('\\|','').replace('\n',' "\n"')))
-#    impl.append('__ivy_modelfile << slvr << std::endl;\n')
+#    impl.append('__ivy_modelfile << slvr << "\\n";\n')
     indent_level -= 1
     impl.append("}\n");
     impl.append("bool " + caname + "_gen::generate(" + classname + "& obj) {\n    push();\n")
@@ -1755,9 +1755,9 @@ def emit_action_gen(header,impl,name,action,classname):
     for sym in syms:
         if not sym.name.startswith('__ts') and sym not in old_pre_clauses.defidx  and sym.name != '*>':
             emit_randomize(impl,sym,classname=classname)
-#    impl.append('    std::cout << "generating {}" << std::endl;\n'.format(caname))
+#    impl.append('    std::cout << "generating {}\\n";\n'.format(caname))
     impl.append("""
-    // std::cout << slvr << std::endl;
+    // std::cout << slvr << "\\n";
     bool __res = solve();
     if (__res) {
 """)
@@ -2045,7 +2045,7 @@ def trace_action(impl,name,action):
             first = False
             impl.append(' << {}'.format(varname(arg.rep.name)))
         impl.append(' << ")"')
-    impl.append(' << std::endl;\n')
+    impl.append(' << "\\n";\n')
 
 def emit_some_action(header,impl,name,action,classname,inline=False):
     global indent_level
@@ -2572,7 +2572,7 @@ void CLASSNAME::install_reader(reader *r) {
             0,                      // use default creation flags 
             &dummy);                // returns the thread identifier 
         if (h == NULL) {
-            std::cerr << "failed to create thread" << std::endl;
+            std::cerr << "failed to create thread\\n";
             exit(1);
         }
         thread_ids.push_back(h);
@@ -2580,7 +2580,7 @@ void CLASSNAME::install_reader(reader *r) {
         pthread_t thread;
         int res = pthread_create(&thread, NULL, _thread_reader, r);
         if (res) {
-            std::cerr << "failed to create thread" << std::endl;
+            std::cerr << "failed to create thread\\n";
             exit(1);
         }
         thread_ids.push_back(thread);
@@ -2603,7 +2603,7 @@ void CLASSNAME::install_timer(timer *r) {
             0,                      // use default creation flags 
             &dummy);                // returns the thread identifier 
         if (h == NULL) {
-            std::cerr << "failed to create thread" << std::endl;
+            std::cerr << "failed to create thread\\n";
             exit(1);
         }
         thread_ids.push_back(h);
@@ -2611,7 +2611,7 @@ void CLASSNAME::install_timer(timer *r) {
         pthread_t thread;
         int res = pthread_create(&thread, NULL, _thread_timer, r);
         if (res) {
-            std::cerr << "failed to create thread" << std::endl;
+            std::cerr << "failed to create thread\\n";
             exit(1);
         }
         thread_ids.push_back(thread);
@@ -2645,7 +2645,7 @@ void CLASSNAME::install_thread(reader *r) {
             0,                      // use default creation flags 
             &dummy);                // returns the thread identifier 
         if (h == NULL) {
-            std::cerr << "failed to create thread" << std::endl;
+            std::cerr << "failed to create thread\\n";
             exit(1);
         }
         thread_ids.push_back(h);
@@ -2653,7 +2653,7 @@ void CLASSNAME::install_thread(reader *r) {
         pthread_t thread;
         int res = pthread_create(&thread, NULL, _thread_reader, r);
         if (res) {
-            std::cerr << "failed to create thread" << std::endl;
+            std::cerr << "failed to create thread\\n";
             exit(1);
         }
         thread_ids.push_back(thread);
@@ -2723,7 +2723,7 @@ struct ivy_ser {
     virtual void  open_field(const std::string &) = 0;
     virtual void  close_field() = 0;
     virtual void  open_tag(int, const std::string &) {
-	std::cout << "ivy_ser open_tag deser_err" << std::endl; 
+	std::cout << "ivy_ser open_tag deser_err\\n"; 
 	throw deser_err();
     }
     virtual void  close_tag() {}
@@ -2775,7 +2775,7 @@ struct ivy_deser {
     virtual void  open_field(const std::string &) = 0;
     virtual void  close_field() = 0;
     virtual int   open_tag(const std::vector<std::string> &) {
-	std::cout << "ivy_deser open_tag deser_err" << std::endl; 
+	std::cout << "ivy_deser open_tag deser_err\\n"; 
 	throw deser_err();
     }
     virtual void  close_tag() {}
@@ -2795,7 +2795,7 @@ struct ivy_binary_deser : public ivy_deser {
     }
     void getn(long long &res, int bytes) {
         if (!more(bytes)) {
-	    std::cout << "ivy_binary_deser getn deser_err" << std::endl; 
+	    std::cout << "ivy_binary_deser getn deser_err\\n"; 
             throw deser_err();
         } res = 0;
         for (int i = 0; i < bytes; i++)
@@ -2808,7 +2808,7 @@ struct ivy_binary_deser : public ivy_deser {
             res.push_back(inp[pos++]);
         }
         if(!(more(1) && inp[pos] == 0)) {
-	    std::cout << "ivy_binary_deser get deser_err" << std::endl; 
+	    std::cout << "ivy_binary_deser get deser_err\\n"; 
             throw deser_err();
         } pos++;
     }
@@ -2834,13 +2834,13 @@ struct ivy_binary_deser : public ivy_deser {
         long long res;
         get(res);
         if (res >= tags.size()) {
-	    std::cout << "ivy_binary_deser open_tag deser_err" << std::endl; 
+	    std::cout << "ivy_binary_deser open_tag deser_err\\n"; 
             throw deser_err();
         } return res;
     }
     void end() {
         if (!can_end()) {
-	    std::cout << "ivy_binary_deser end deser_err" << std::endl; 
+	    std::cout << "ivy_binary_deser end deser_err\\n"; 
             throw deser_err();
 	}
     }
@@ -2883,7 +2883,7 @@ struct ivy_ser_128 {
     virtual void  open_field(const std::string &) = 0;
     virtual void  close_field() = 0;
     virtual void  open_tag(int, const std::string &) {
-	std::cout << "ivy_ser_128 open_tag deser_err" << std::endl; 
+	std::cout << "ivy_ser_128 open_tag deser_err\\n"; 
 	throw deser_err();
     }
     virtual void  close_tag() {}
@@ -2936,7 +2936,7 @@ struct ivy_deser_128 {
     virtual void  open_field(const std::string &) = 0;
     virtual void  close_field() = 0;
     virtual int   open_tag(const std::vector<std::string> &) {
-	    std::cout << "ivy_deser_128 open_tag deser_err" << std::endl; 
+	    std::cout << "ivy_deser_128 open_tag deser_err\\n"; 
 	    throw deser_err();
     }
     virtual void  close_tag() {}
@@ -2956,7 +2956,7 @@ struct ivy_binary_deser_128 : public ivy_deser_128 {
     }
     void getn(int128_t &res, int bytes) {
         if (!more(bytes)) {
-	    std::cout << "ivy_binary_deser_128 getn deser_err" << std::endl; 
+	    std::cout << "ivy_binary_deser_128 getn deser_err\\n"; 
             throw deser_err();
         } res = 0;
         for (int i = 0; i < bytes; i++)
@@ -2969,7 +2969,7 @@ struct ivy_binary_deser_128 : public ivy_deser_128 {
             res.push_back(inp[pos++]);
         }
         if(!(more(1) && inp[pos] == 0)) {
-	    std::cout << "ivy_binary_deser_128 get deser_err" << std::endl; 
+	    std::cout << "ivy_binary_deser_128 get deser_err\\n"; 
             throw deser_err();
         } pos++;
     }
@@ -2995,13 +2995,13 @@ struct ivy_binary_deser_128 : public ivy_deser_128 {
         int128_t res;
         get(res);
         if (res >= tags.size()) {
-	    std::cout << "ivy_binary_deser_128 open_tag deser_err" << std::endl; 
+	    std::cout << "ivy_binary_deser_128 open_tag deser_err\\n"; 
             throw deser_err();
         } return res;
     }
     void end() {
         if (!can_end()) {
-	    std::cout << "ivy_binary_deser_128 end deser_err" << std::endl; 
+	    std::cout << "ivy_binary_deser_128 end deser_err\\n"; 
             throw deser_err();
 	}
     }
@@ -3375,7 +3375,7 @@ z3::expr __to_solver<bool>( gen &g, const  z3::expr &v, bool &val) {
 
 template <>
 z3::expr __to_solver<__strlit>( gen &g, const  z3::expr &v, __strlit &val) {
-//    std::cout << v << ":" << v.get_sort() << std::endl;
+//    std::cout << v << ":" << v.get_sort() << "\\n";
     return v == g.int_to_z3(v.get_sort(),val);
 }
 
@@ -4008,7 +4008,7 @@ class z3_thunk : public thunk<D,R> {
             if (param == "out") {
                 __ivy_out.open(value.c_str());
                 if (!__ivy_out) {
-                    std::cerr << "cannot open to write: " << value << std::endl;
+                    std::cerr << "cannot open to write: " << value << "\\n";
                     return 1;
                 }
             }
@@ -4030,12 +4030,12 @@ class z3_thunk : public thunk<D,R> {
             else if (param == "modelfile") {
                 __ivy_modelfile.open(value.c_str());
                 if (!__ivy_modelfile) {
-                    std::cerr << "cannot open to write: " << value << std::endl;
+                    std::cerr << "cannot open to write: " << value << "\\n";
                     return 1;
                 }
             }
             else {
-                std::cerr << "unknown option: " << param << std::endl;
+                std::cerr << "unknown option: " << param << "\\n";
                 return 1;
             }
         }
@@ -4759,7 +4759,7 @@ def emit_assign_simple(self,header):
         rhs = []
         self.args[1].emit(header,rhs)
         code.extend(rhs)
-        trace.extend(' << "," << (' + ''.join(rhs) + ') << ")" << std::endl;\n')
+        trace.extend(' << "," << (' + ''.join(rhs) + ') << ")\\n";\n')
         header.extend(trace)
     else:
         self.args[0].emit(header,code)
@@ -5098,7 +5098,7 @@ int ask_ret(long long bound) {
         std::cin >> res;
         if (res >= 0 && res < bound) 
             return res;
-        std::cerr << "value out of range" << std::endl;
+        std::cerr << "value out of range\\n";
     }
 }
 
@@ -5113,7 +5113,7 @@ int ask_ret(long long bound) {
     virtual void ivy_assert(bool truth,const char *msg){
         if (!truth) {
             int i;
-            __ivy_out << "assertion_failed(\\"" << msg << "\\")" << std::endl;
+            __ivy_out << "assertion_failed(\\"" << msg << "\\")\\n";
 
             std::string::size_type pos = std::string(msg).find(".ivy");
             std::string path = "";
@@ -5137,8 +5137,8 @@ int ask_ret(long long bound) {
             if(path.find("test") != std::string::npos) 
 		    path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + mode + std::string("_tests/") + path;
         
-            command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
-            //std::cerr << command.c_str() << std::endl;
+            command = std::string("/bin/sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
+            //std::cerr << command.c_str() << "\\n";
 
             if (system(NULL)) i=system(command.c_str());
             else exit (EXIT_FAILURE);
@@ -5152,11 +5152,11 @@ int ask_ret(long long bound) {
             const std::size_t pos_str = str.find_first_not_of(' ');
             if (pos_str != std::string::npos)
                 str.erase(0, pos_str);
-            std::cerr << str << std::endl;
+            std::cerr << str << "\\n";
 	        if(std::remove("temps.txt") != 0) 
 		        std::cerr << "error: remove(temps.txt) failed\\n";
 	        std::cerr << msg << ": error: assertion failed\\n";
-            __ivy_out << "assertion_failed(" << str << ")" << std::endl;
+            __ivy_out << "assertion_failed(" << str << ")\\n";
             CLOSE_TRACE
             __ivy_exit(1);
         }
@@ -5167,7 +5167,7 @@ int ask_ret(long long bound) {
     virtual void ivy_assume(bool truth,const char *msg){
         if (!truth) {
             int i;
-            __ivy_out << "assumption_failed(\\"" << msg << "\\")" << std::endl;
+            __ivy_out << "assumption_failed(\\"" << msg << "\\")\\n";
             
             std::string::size_type pos = std::string(msg).find(".ivy");
             std::string path = "";
@@ -5177,7 +5177,7 @@ int ask_ret(long long bound) {
             std::string lineNumber = "1";
             std::string::size_type pos_n = std::string(msg).find("line");
             if (pos_n != std::string::npos)
-                    lineNumber = std::string(msg+pos_n,msg+std::string(msg).length());
+                lineNumber = std::string(msg+pos_n,msg+std::string(msg).length());
             int num;
             sscanf(lineNumber.c_str(),"%*[^0-9]%d", &num);
             lineNumber = std::to_string(num);
@@ -5191,8 +5191,8 @@ int ask_ret(long long bound) {
             if(path.find("test") != std::string::npos) 
 		    path = std::string("$PROOTPATH/QUIC-Ivy/doc/examples/quic/quic_tests/") + mode + std::string("_tests/") + path;
         
-            command = std::string("sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
-            //std::cerr << command.c_str() << std::endl;
+            command = std::string("/bin/sed \'") + lineNumber + std::string("!d\' ")  + path + std::string(".ivy > temps.txt");
+            //std::cerr << command.c_str() << "\\n";
 
             if (system(NULL)) i=system(command.c_str());
             else exit (EXIT_FAILURE);
@@ -5206,16 +5206,16 @@ int ask_ret(long long bound) {
             const std::size_t pos_str = str.find_first_not_of(' ');
             if (pos_str != std::string::npos)
                 str.erase(0, pos_str);
-            std::cerr << str << std::endl;
+            std::cerr << str << "\\n";
 	        if(std::remove("temps.txt") != 0) 
 		        std::cerr << "error: remove(temps.txt) failed\\n";
 	        std::cerr << msg << ": error: assumption failed\\n";
-            __ivy_out << "assumption_failed(" << str << ")" << std::endl;
+            __ivy_out << "assumption_failed(" << str << ")\\n";
             CLOSE_TRACE
             __ivy_exit(1);
         }
     }
-    """.replace('classname',classname).replace('CLOSE_TRACE','__ivy_out << "}" << std::endl;' if opt_trace.get() else ''))
+    """.replace('classname',classname).replace('CLOSE_TRACE','__ivy_out << "}\\n";' if opt_trace.get() else ''))
 
     emit_param_decls(impl,classname+'_repl',im.module.params)
     impl.append(' : '+classname+'('+','.join(map(varname,im.module.params))+'){}\n')
@@ -5238,7 +5238,7 @@ int ask_ret(long long bound) {
                     first = False
                     impl.append(' << {}'.format(varname(arg.rep.name)))
                 impl.append(' << ")"')
-            impl.append(' << std::endl;\n')
+            impl.append(' << "\\n";\n')
             if action.formal_returns:
                 impl.append('    return ask_ret(__CARD__{});\n'.format(action.formal_returns[0].sort))
             impl.append('}\n')
@@ -5447,21 +5447,21 @@ public:
 def emit_repl_boilerplate2(header,impl,classname):
     impl.append("""
             {
-                std::cerr << "undefined action: " << action << std::endl;
+                std::cerr << "undefined action: " << action << "\\n";
             }
             ivy.__unlock();
         }
         catch (syntax_error& err) {
             ivy.__unlock();
-            std::cerr << "line " << lineno << ":" << err.pos << ": syntax error" << std::endl;
+            std::cerr << "line " << lineno << ":" << err.pos << ": syntax error\\n";
         }
         catch (out_of_bounds &err) {
             ivy.__unlock();
-            std::cerr << "line " << lineno << ":" << err.pos << ": " << err.txt << " bad value" << std::endl;
+            std::cerr << "line " << lineno << ":" << err.pos << ": " << err.txt << " bad value\\n";
         }
         catch (bad_arity &err) {
             ivy.__unlock();
-            std::cerr << "action " << err.action << " takes " << err.num  << " input parameters" << std::endl;
+            std::cerr << "action " << err.action << " takes " << err.num  << " input parameters\\n";
         }
         if (isatty(fdes()))
             __ivy_out << "> "; __ivy_out.flush();
@@ -5620,7 +5620,7 @@ def emit_repl_boilerplate3test(header,impl,classname):
 #ifdef _WIN32
             LARGE_INTEGER after;
             QueryPerformanceCounter(&after);
-//            __ivy_out << "idx: " << idx << " sat: " << sat << " time: " << (((double)(after.QuadPart-before.QuadPart))/freq.QuadPart) << std::endl;
+//            __ivy_out << "idx: " << idx << " sat: " << sat << " time: " << (((double)(after.QuadPart-before.QuadPart))/freq.QuadPart) << "\\n";
 #endif
             if (sat){
                 g.execute(ivy);
@@ -5677,7 +5677,7 @@ def emit_repl_boilerplate3test(header,impl,classname):
 
         if (foo < 0)
 #ifdef _WIN32
-            {std::cerr << "select failed: " << WSAGetLastError() << std::endl; __ivy_exit(1);}
+            {std::cerr << "select failed: " << WSAGetLastError() << "\\n"; __ivy_exit(1);}
 #else
             {perror("select failed"); __ivy_exit(1);}
 #endif
@@ -5706,7 +5706,7 @@ def emit_repl_boilerplate3test(header,impl,classname):
 #ifdef _WIN32
                 Sleep(final_ms);  // HACK: wait for late responses
 #endif
-    __ivy_out << "test_completed" << std::endl;
+    __ivy_out << "test_completed\\n";
     for (unsigned i = 0; i < readers.size(); i++)
         delete readers[i];
     readers.clear();
@@ -5769,12 +5769,12 @@ public:
     int eval(const z3::expr &apply_expr) {
         try {
             z3::expr foo = model.eval(apply_expr,true);
-            // std::cout << apply_expr << " = " << foo << std::endl;
+            // std::cout << apply_expr << " = " << foo << "\\n";
             if (foo.is_int()) {
                 assert(foo.is_numeral());
                 int v;
                 if (Z3_get_numeral_int(ctx,foo,&v) != Z3_TRUE) {
-                    std::cerr << "integer value from Z3 too large for machine int: " << foo << std::endl;
+                    std::cerr << "integer value from Z3 too large for machine int: " << foo << "\\n";
                     assert(false);
                 }
                 return v;
@@ -5783,7 +5783,7 @@ public:
                 assert(foo.is_numeral());
                 unsigned v;
                 if (Z3_get_numeral_uint(ctx,foo,&v) != Z3_TRUE) {
-                    std::cerr << "bit vector value from Z3 too large for machine int: " << foo << std::endl;
+                    std::cerr << "bit vector value from Z3 too large for machine int: " << foo << "\\n";
                     assert(false);
                 }
                 return v;
@@ -5794,7 +5794,7 @@ public:
             return enum_to_int[foo.decl().name()];
         }
         catch (const z3::exception &e) {
-            std::cerr << e << std::endl;
+            std::cerr << e << "\\n";
             throw e;
         }
     }
@@ -5806,14 +5806,14 @@ public:
             return Z3_get_string(ctx,foo);
         }
         catch (const z3::exception &e) {
-            std::cerr << e << std::endl;
+            std::cerr << e << "\\n";
             throw e;
         }
     }
 
     int eval_apply(const char *decl_name, unsigned num_args, const int *args) {
         z3::expr apply_expr = mk_apply_expr(decl_name,num_args,args);
-        //        std::cout << "apply_expr: " << apply_expr << std::endl;
+        //        std::cout << "apply_expr: " << apply_expr << "\\n";
         try {
             z3::expr foo = model.eval(apply_expr,true);
             if (foo.is_bv() || foo.is_int()) {
@@ -5829,7 +5829,7 @@ public:
             return enum_to_int[foo.decl().name()];
         }
         catch (const z3::exception &e) {
-            std::cerr << e << std::endl;
+            std::cerr << e << "\\n";
             throw e;
         }
     }
@@ -5931,7 +5931,7 @@ public:
         z3::sort range = decl.range();
         z3::expr val_expr = int_to_z3(range,value);
         z3::expr pred = apply_expr == val_expr;
-        //        std::cout << "pred: " << pred << std::endl;
+        //        std::cout << "pred: " << pred << "\\n";
         slvr.add(pred);
     }
 
@@ -5954,18 +5954,18 @@ public:
     }
 
     void add_alit(const z3::expr &pred){
-        // std::cout << "pred: " << pred << std::endl;
+        // std::cout << "pred: " << pred << "\\n";
         std::ostringstream ss;
         ss << "alit:" << alits.size();
         z3::expr alit = ctx.bool_const(ss.str().c_str());
-        // std::cout << "alit: " << alit << std::endl;
+        // std::cout << "alit: " << alit << "\\n";
         alits.push_back(alit);
         slvr.add(!alit || pred);
     }
 
     void randomize(const z3::expr &apply_expr) {
         z3::sort range = apply_expr.get_sort();
-//        std::cout << apply_expr << " : " << range << std::endl;
+//        std::cout << apply_expr << " : " << range << "\\n";
         unsigned card = sort_card(range);
         int value = rand() % card;
         z3::expr val_expr = int_to_z3(range,value);
@@ -6093,14 +6093,14 @@ public:
             z3::expr_vector core = slvr.unsat_core();
             if (core.size() == 0){
 //                if (__ivy_modelfile.is_open()) 
-//                    __ivy_modelfile << "begin unsat:\\n" << slvr << "end unsat:\\n" << std::endl;
+//                    __ivy_modelfile << "begin unsat:\\n" << slvr << "end unsat:\\n\\n";
                 return false;
             }
             //for (unsigned i = 0; i < core.size(); i++)
-            //    std::cout << "core: " << core[i] << std::endl;
+            //    std::cout << "core: " << core[i] << "\\n";
             unsigned idx = rand() % core.size();
             z3::expr to_delete = core[idx];
-            // std::cout << "to delete: " << to_delete << std::endl;
+            // std::cout << "to delete: " << to_delete << "\\n";
             for (unsigned i = 0; i < alits.size(); i++)
                 if (z3::eq(alits[i],to_delete)) {
                     alits[i] = alits.back();
@@ -6114,7 +6114,7 @@ public:
     if target.get() != "gen":
         header.append("""
         if(__ivy_modelfile.is_open()){
-            __ivy_modelfile << "begin sat:\\n" << slvr << "end sat:\\n" << std::endl;
+            __ivy_modelfile << "begin sat:\\n" << slvr << "end sat:\\n\\n";
             __ivy_modelfile << model;
             __ivy_modelfile.flush();
         }

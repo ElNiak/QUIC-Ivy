@@ -67,7 +67,7 @@ object quic_deser_retry = {}
                     //This is then shifted by 4 so that only the original 0xxx 0000 (3) bits are significant.
                     res = long_format ? ((hdr_type & 0x30) >> 4) : 3;
                     state = quic_s_version;
-                    std::cerr << "quic_s_init " << res << std::endl;
+                    std::cerr << "quic_s_init " << res << "\n";
                 }
                 break;
                 case quic_s_version:
@@ -78,7 +78,7 @@ object quic_deser_retry = {}
                     }
                     else
                         res = 0;
-                    std::cerr << "quic_s_version " << res << std::endl;
+                    std::cerr << "quic_s_version " << res << "\n";
                     state = quic_s_dcid;
                 }
                 break;
@@ -88,14 +88,14 @@ object quic_deser_retry = {}
                         int128_t cil;
                         //long long cil;
                         getn(cil,1);
-                        std::cerr << "dstID size " << cil << std::endl;
+                        std::cerr << "dstID size " << cil << "\n";
                         dcil = cil;
                         dcid_h = cil;
                     } else {
                         dcil = dcid_h; //dcil_long
                     }
                     getn(res,dcil);
-                    std::cerr << "dstID res " << res << std::endl;
+                    std::cerr << "dstID res " << res << "\n";
                     state = quic_s_scid;
                 }
                 break;
@@ -105,7 +105,7 @@ object quic_deser_retry = {}
                         int128_t cil;
                         //long long cil;
                         getn(cil,1);
-                        std::cerr << "sourceID size " << cil << std::endl;  
+                        std::cerr << "sourceID size " << cil << "\n";  
                         if(cil > 0)
                             have_scid = true;
                         else 
@@ -116,7 +116,7 @@ object quic_deser_retry = {}
                         scil = 0;
                     }
                     getn(res,scil);
-                    std::cerr << "sourceID res " << res << std::endl;
+                    std::cerr << "sourceID res " << res << "\n";
                     data_remaining = 8;
                     /*int128_t len;
                     //long long len;
@@ -125,17 +125,17 @@ object quic_deser_retry = {}
                     }
                     else len = 0;
                     data_remaining = len;*/
-                    std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
-                    std::cerr << "scid " << res << std::endl;
+                    std::cerr << "sourceID data_remaining " << data_remaining << "\n";
+                    std::cerr << "scid " << res << "\n";
                     state = quic_s_retry_token;
                 }
                 break;
                 case quic_s_retry_token:
                 {
                     int packet_size = inp.size();
-                    std::cerr << "packet_size " << packet_size << std::endl;
+                    std::cerr << "packet_size " << packet_size << "\n";
                     int token_length = packet_size - 16 - 1 - dcil - 1 - scil - 1 - 4;
-                    std::cerr << "token_length " << token_length << std::endl;
+                    std::cerr << "token_length " << token_length << "\n";
 
                     char str_l[100];
                     sprintf(str_l,"%d",token_length);
@@ -145,7 +145,7 @@ object quic_deser_retry = {}
                     if(token_count == 0)
                         token_len = token_length;
 
-                    std::cerr << "token_count " << token_count << std::endl;
+                    std::cerr << "token_count " << token_count << "\n";
                     
                     getn(res,1);    
                     token_count += 1;
@@ -157,7 +157,7 @@ object quic_deser_retry = {}
                 break;
                 case quic_s_retry_integrity_tag:
                 {
-                    std::cerr << "retry_integrity_tag inp " << inp.size() << std::endl;
+                    std::cerr << "retry_integrity_tag inp " << inp.size() << "\n";
                     getn(res,16); //ivy_binary_deser_128::
                     /*if(tokeni_count < 16){
                         getn(res,1);    
@@ -166,12 +166,12 @@ object quic_deser_retry = {}
                     }*/
                     //else */
                     token_count+=1;
-                    std::cerr << "retry_integrity_tag " << res << std::endl;
+                    std::cerr << "retry_integrity_tag " << res << "\n";
                 }
                 break;
                 default: 
                 {
-                    std::cerr << "quic_deser_retry 3" << std::endl;  
+                    std::cerr << "quic_deser_retry 3\n";  
                     throw deser_err();
                 }
             }
@@ -211,7 +211,7 @@ object quic_deser_retry = {}
         }
 
         virtual int open_tag(const std::vector<std::string> &tags) {
-            std::cerr << "quic_deser_retry 6" << std::endl;    
+            std::cerr << "quic_deser_retry 6\n";    
             throw deser_err();
         }
 
@@ -236,7 +236,7 @@ object quic_deser_retry = {}
             }
             if (state == quic_s_init)
                 return more(1);
-            std::cerr << "quic_deser_retry 1" << std::endl;  
+            std::cerr << "quic_deser_retry 1\n";  
             throw deser_err();
         }
 

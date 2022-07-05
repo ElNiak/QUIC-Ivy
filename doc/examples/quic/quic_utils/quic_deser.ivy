@@ -170,14 +170,14 @@ object quic_deser = {}
                     int128_t cil;
                     //long long cil;
                     getn(cil,1);
-                    std::cerr << "dstID size " << cil << std::endl;
+                    std::cerr << "dstID size " << cil << "\n";
                     dcil = cil;
                     dcid_h = cil;
                 } else {
                     dcil = dcid_h; //dcil_long
                 }
 		        getn(res,(dcil));
-                std::cerr << "dstID res " << res << std::endl;
+                std::cerr << "dstID res " << res << "\n";
                 state = quic_s_scid;
             }
             break;
@@ -187,7 +187,7 @@ object quic_deser = {}
                     int128_t cil;
                     //long long cil;
                     getn(cil,1);
-                    std::cerr << "sourceID size " << cil << std::endl;  
+                    std::cerr << "sourceID size " << cil << "\n";  
                     if(cil > 0)
                         have_scid = true;
                     else 
@@ -201,7 +201,7 @@ object quic_deser = {}
                 /*if(scil != 8) { //tricks
                 tls_field_bytes_map["scid"] = scil;
                 }*/
-                std::cerr << "sourceID res " << res << std::endl;
+                std::cerr << "sourceID res " << res << "\n";
                 int128_t len;
                 //long long len;
                 if (long_format & ((hdr_type & 0x30) == 0x00)){
@@ -209,7 +209,7 @@ object quic_deser = {}
 		        }
                 else len = 0;
                 data_remaining = len;
-		        std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
+		        std::cerr << "sourceID data_remaining " << data_remaining << "\n";
                 state = quic_s_retry_token;
             }
             break;
@@ -279,7 +279,7 @@ object quic_deser = {}
                 get_var_int(res);
                 data_remaining = res;
                 state = quic_crypto_data;
-                std::cerr << "quic_crypto_length " << std::endl;
+                std::cerr << "quic_crypto_length \n";
             }
             break;
             case quic_stream_data:
@@ -293,43 +293,43 @@ object quic_deser = {}
             case quic_ack_frequency: //TODO
             /*{
                 get_var_int(res);
-		        std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency" << std::endl; 
+		        std::cerr << "deser: quic_ack_frequency   = quic_ack_frequency\n"; 
                 state = quic_ack_frequency_packet_tolerence;
             }
             break;
             case quic_ack_frequency_packet_tolerence: 
             {
                 get_var_int(res);
-		        std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency_packet_tolerence" << std::endl; 
+		        std::cerr << "deser: quic_ack_frequency   = quic_ack_frequency_packet_tolerence\n"; 
                 state = quic_ack_frequency_update_max_ack_delay;
             }
             break;
             case quic_ack_frequency_update_max_ack_delay: 
             {
                 get_var_int(res);
-		        std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency_update_max_ack_delay" << std::endl; 
+		        std::cerr << "deser: quic_ack_frequency   = quic_ack_frequency_update_max_ack_delay\n"; 
                 state = quic_ack_frequency_ignore_order;
             }
             break;
             case quic_ack_frequency_ignore_order:
             {
-		        std::cerr << "deser: quic_ack_frequency   = " << "quic_ack_frequency_ignore_order" << std::endl; 
+		        std::cerr << "deser: quic_ack_frequency   = quic_ack_frequency_ignore_order\n"; 
                 getn(res,1);
             }
             break;*/
             case quic_s_retry_token:
             {
-		        //std::cerr << "sourceID quic_s_retry_token 1 " <<  std::hex <<  res << std::endl;
+		        //std::cerr << "sourceID quic_s_retry_token 1 " <<  std::hex <<  res << "\n";
                 ivy_binary_deser_128::getn(res,1);
                 //ivy_binary_deser::getn(res,1);
                 /*if(const char* env_p3 = std::getenv("RETRY_TOKEN_LENGTH")) {
-                        std::cerr << "RETRY_TOKEN_LENGTH " << env_p3 << std::endl;
+                        std::cerr << "RETRY_TOKEN_LENGTH " << env_p3 << "\n";
                         token_len = atoi(env_p3);
                     }
                     if(token_count == 0)
                         token_len = token_length;
 
-                    std::cerr << "token_count " << token_count << std::endl;
+                    std::cerr << "token_count " << token_count << "\n";
                     
                     if(token_count < token_len){
                         getn(res,1);    
@@ -341,7 +341,7 @@ object quic_deser = {}
                     }
                     else 
                         state = quic_s_pkt_num;*/
-		       // std::cerr << "sourceID quic_s_retry_token 2" << std::hex << res << std::endl;
+		       // std::cerr << "sourceID quic_s_retry_token 2" << std::hex << res << "\n";
             }
             break;
             case quic_ack_largest:
@@ -467,7 +467,7 @@ object quic_deser = {}
             }
             break;
             default:
-                std::cerr << "quic_deser 3" << std::endl;  
+                std::cerr << "quic_deser 3\n";  
                 throw deser_err();
             }
         }
@@ -631,12 +631,12 @@ object quic_deser = {}
                     state = quic_padding;
                     return 25;
                 }*/
-                std::cerr << "saw tag " << ft << std::endl;  
+                std::cerr << "saw tag " << ft << "\n";  
             }
-            std::cerr << "state          = " << state << std::endl;  
-            std::cerr << "quic_s_payload = " << quic_s_payload << std::endl;
-            std::cerr << "quic_s_payload == " << (quic_s_payload == state) << std::endl;
-            std::cerr << "quic_deser 2" << std::endl;  
+            std::cerr << "state          = " << state << "\n";  
+            std::cerr << "quic_s_payload = " << quic_s_payload << "\n";
+            std::cerr << "quic_s_payload == " << (quic_s_payload == state) << "\n";
+            std::cerr << "quic_deser 2\n";  
             throw deser_err();
         }
 
@@ -685,7 +685,7 @@ object quic_deser = {}
                     return data_remaining-- > 0;
 
 
-            std::cerr << "quic_deser 1" << std::endl;  
+            std::cerr << "quic_deser 1\n";  
             throw deser_err();
         }
 

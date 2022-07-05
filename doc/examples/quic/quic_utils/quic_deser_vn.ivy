@@ -59,12 +59,12 @@ object quic_deser_vn = {}
             switch (state) {
                 case quic_s_init:
                 {
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
+                    std::cerr << "state " << state << "\n";
+                    std::cerr << "res " << res << "\n";
+                    std::cerr << "pos " << pos << "\n";
+                    std::cerr << "fence " << fence << "\n";
+                    std::cerr << "data_remaining " << data_remaining << "\n";
+                    std::cerr << "inp.size " << inp.size() << "\n";
                     getn(res,1);
                     long_format = (res & 0x80) ? true : false;
                     //0x7f is 0111 1111 in binary. This means the lower 7 bits of res are significant.
@@ -77,12 +77,12 @@ object quic_deser_vn = {}
                 break;
                 case quic_s_version:
                 {
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
+                    std::cerr << "state " << state << "\n";
+                    std::cerr << "res " << res << "\n";
+                    std::cerr << "pos " << pos << "\n";
+                    std::cerr << "fence " << fence << "\n";
+                    std::cerr << "data_remaining " << data_remaining << "\n";
+                    std::cerr << "inp.size " << inp.size() << "\n";
                     if (long_format) {
                         ivy_binary_deser_128::getn(res,4);
                         //ivy_binary_deser::getn(res,4);
@@ -94,40 +94,40 @@ object quic_deser_vn = {}
                 break;
                 case quic_s_dcid:
                 {   
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
+                    std::cerr << "state " << state << "\n";
+                    std::cerr << "res " << res << "\n";
+                    std::cerr << "pos " << pos << "\n";
+                    std::cerr << "fence " << fence << "\n";
+                    std::cerr << "data_remaining " << data_remaining << "\n";
+                    std::cerr << "inp.size " << inp.size() << "\n";
                     if (long_format) {
                         int128_t cil;
                         //long long cil;
                         getn(cil,1);
-                        std::cerr << "dstID size " << cil << std::endl;
+                        std::cerr << "dstID size " << cil << "\n";
                         dcil = cil;
                         dcid_h = cil;
                     } else {
                         dcil = dcid_h; //dcil_long
                     }
                     getn(res,(dcil));
-                    std::cerr << "dstID res " << res << std::endl;
+                    std::cerr << "dstID res " << res << "\n";
                     state = quic_s_scid;
                 }
                 break;
                 case quic_s_scid:
                 {
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "res " << res << std::endl;
-                    std::cerr << "pos " << pos << std::endl;
-                    std::cerr << "fence " << fence << std::endl;
-                    std::cerr << "data_remaining " << data_remaining << std::endl;
-                    std::cerr << "inp.size " << inp.size() << std::endl;
+                    std::cerr << "state " << state << "\n";
+                    std::cerr << "res " << res << "\n";
+                    std::cerr << "pos " << pos << "\n";
+                    std::cerr << "fence " << fence << "\n";
+                    std::cerr << "data_remaining " << data_remaining << "\n";
+                    std::cerr << "inp.size " << inp.size() << "\n";
                     if (long_format) {
                         int128_t cil;
                         //long long cil;
                         getn(cil,1);
-                        std::cerr << "sourceID size " << cil << std::endl;  
+                        std::cerr << "sourceID size " << cil << "\n";  
                         if(cil > 0)
                             have_scid = true;
                         else 
@@ -141,10 +141,10 @@ object quic_deser_vn = {}
                     /*if(scil != 8) { //tricks
                     tls_field_bytes_map["scid"] = scil;
                     }*/
-                    std::cerr << "sourceID res " << res << std::endl;
+                    std::cerr << "sourceID res " << res << "\n";
                     //data_remaining = 4;
-                    std::cerr << "sourceID data_remaining " << data_remaining << std::endl;
-                    std::cerr << "scid " << res << std::endl;
+                    std::cerr << "sourceID data_remaining " << data_remaining << "\n";
+                    std::cerr << "scid " << res << "\n";
                     state = quic_s_supported_version;
                 }
                 break;
@@ -152,14 +152,14 @@ object quic_deser_vn = {}
                 {   
 
                     int packet_size = inp.size();
-                    std::cerr << "packet_size " << packet_size << std::endl;
+                    std::cerr << "packet_size " << packet_size << "\n";
                     int versions = (packet_size - 1 - dcil - 1 - scil - 1 - 4)/4;
-                    std::cerr << "nb version " << versions << std::endl;
+                    std::cerr << "nb version " << versions << "\n";
 
                     /*if(version_count == 0)
                         n_version = versions;
 
-                    std::cerr << "version_count " << version_count << std::endl;
+                    std::cerr << "version_count " << version_count << "\n";
                     
                     if(version_count < n_version){
                         getn(res,4);    
@@ -170,14 +170,14 @@ object quic_deser_vn = {}
                     
                     //while (pos < inp.size()) 
                     getn(res,4);
-                    std::cerr << "vn version " << res << std::endl;
+                    std::cerr << "vn version " << res << "\n";
                     //getn(res,4);
-                    std::cerr <<  "vn state " << state << std::endl;
-                    std::cerr << "vn res " << res << std::endl;
-                    std::cerr << "vn pos " << pos << std::endl;
-                    std::cerr << "vn fence " << fence << std::endl;
-                    std::cerr << "vn data_remaining " << data_remaining << std::endl;
-                    std::cerr << "vn inp.size " << inp.size() << std::endl;
+                    std::cerr <<  "vn state " << state << "\n";
+                    std::cerr << "vn res " << res << "\n";
+                    std::cerr << "vn pos " << pos << "\n";
+                    std::cerr << "vn fence " << fence << "\n";
+                    std::cerr << "vn data_remaining " << data_remaining << "\n";
+                    std::cerr << "vn inp.size " << inp.size() << "\n";
                     //data_remaining = 8;
                     //pos += 4;
                     //state = quic_s_supported_version;
@@ -185,8 +185,8 @@ object quic_deser_vn = {}
                 break;
                 default: 
                 {
-                    std::cerr << "state " << state << std::endl;
-                    std::cerr << "quic_deser_vn 3" << std::endl;  
+                    std::cerr << "state " << state << "\n";
+                    std::cerr << "quic_deser_vn 3\n";  
                     throw deser_err();
                 }
             }
@@ -226,7 +226,7 @@ object quic_deser_vn = {}
         }
 
         virtual int open_tag(const std::vector<std::string> &tags) {
-            std::cerr << "quic_deser_vn 6" << std::endl;    
+            std::cerr << "quic_deser_vn 6\n";    
             throw deser_err();
         }
 
@@ -245,7 +245,7 @@ object quic_deser_vn = {}
 
             //if (state == quic_crypto_data)
             //    return data_remaining-- > 0;
-            std::cerr << "quic_deser_vn 1" << std::endl;  
+            std::cerr << "quic_deser_vn 1\n";  
             throw deser_err();
         }
 

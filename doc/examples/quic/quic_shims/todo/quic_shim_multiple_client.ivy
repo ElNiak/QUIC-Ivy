@@ -115,7 +115,7 @@ after init {
     supported_versions := supported_versions.append(v1);
 
     supported_versions_bv := versions_bv.empty;
-    supported_versions_bv := supported_versions_bv.append(0xff00001d);
+    supported_versions_bv := supported_versions_bv.append(0x00000001);
 
     final_version := 0x00000000;
 
@@ -131,14 +131,14 @@ after init {
 action test returns (is_padding:bool) = {
     <<<
     is_padding = true;
-    std::cerr <<  "net.recv 1"  << std::endl;
+    std::cerr <<  "net.recv 1"  << "\n";
     >>>
 }
 
 action test2 returns (is_padding:bool) = {
     <<<
     is_padding = true;
-    std::cerr <<  "net.recv 2 "  << std::endl;
+    std::cerr <<  "net.recv 2 "  << "\n";
     >>>
 }
 
@@ -190,7 +190,7 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
             };
         };
         if host = endpoint_id.server 
-                & bvand(ppkt.value(0),0xf0) = 0xc0   { # & (bversion = 0xff00001d | bversion = 0xfaceb002)
+                & bvand(ppkt.value(0),0xf0) = 0xc0   { # & (bversion = 0x00000001 | bversion = 0xfaceb002)
             # for client test
             call tls_client_initial_response(src,dst,ppkt)
         };
@@ -388,7 +388,7 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pver
 		salt := salt.append(0x02);
 	}
     #0xaf bf ec 28 99 93 d2 4c 9e 97 86 f1 9c 61 11 e0 43 90 a8 99 QUIC-29
-	else if pversion = 0xff00001d {
+	else if pversion = 0x00000001 {
 		salt := salt.append(0xaf);
 		salt := salt.append(0xbf);
 		salt := salt.append(0xec);
@@ -411,7 +411,7 @@ after tls_client_initial_request(src:ip.endpoint,dst:ip.endpoint,nonce:cid, pver
 		salt := salt.append(0x99);
 	}
     # 0x38 0x76 0x2c 0xf7 0xf5 0x59 0x34 0xb3 0x4d 0x17 0x9a 0xe6 0xa4 0xc8 0x0c 0xad 0xcc 0xbb 0x7f 0x0a
-    else if pversion = 0xff000022 {
+    else if pversion = 0x00000001 {
 		salt := salt.append(0x38);
 		salt := salt.append(0x76);
 		salt := salt.append(0x2c);
@@ -533,7 +533,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
     client_initial_version := ver;
 
-    if client_initial_version ~= 0xff00001d & client_initial_version ~= 0xfaceb002 { #initial_version todo
+    if client_initial_version ~= 0x00000001 & client_initial_version ~= 0xfaceb002 { #initial_version todo
         negocation_of_version := true;
     } 
     else if (~initial_keys_set & retry_client_test -> retry_sent) 
@@ -568,7 +568,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
             salt := salt.append(0x02);
         };
         #0xaf bf ec 28 99 93 d2 4c 9e 97 86 f1 9c 61 11 e0 43 90 a8 99 QUIC-29
-        if client_initial_version = 0xff00001d  {
+        if client_initial_version = 0x00000001  {
             salt := salt.append(0xaf);
             salt := salt.append(0xbf);
             salt := salt.append(0xec);
@@ -590,7 +590,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
             salt := salt.append(0xa8);
             salt := salt.append(0x99);
         };
-        if client_initial_version = 0xff000022 {
+        if client_initial_version = 0x00000001 {
             salt := salt.append(0x38);
             salt := salt.append(0x76);
             salt := salt.append(0x2c);
@@ -911,7 +911,7 @@ action dcid_size_cl(cond:bool) returns(res:cid_length) = {
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "client") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_DCIL")) {
-            std::cerr << "TEST_DCIL " << env_p3 << std::endl;
+            std::cerr << "TEST_DCIL " << env_p3 << "\n";
 	        res = atoi(env_p3);
          } 
          else 
@@ -920,7 +920,7 @@ action dcid_size_cl(cond:bool) returns(res:cid_length) = {
 	  res = 8;
     } else 
       res = 8;
-    std::cerr <<  "dcid_size_cl size: " <<  res << std::endl;
+    std::cerr <<  "dcid_size_cl size: " <<  res << "\n";
     >>>
 }
 
@@ -930,7 +930,7 @@ action scid_size_pos(cond:bool) returns(res:stream_pos) = {
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "server") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_SCIL")) {
-            std::cerr << "TEST_SCIL " << env_p3 << std::endl;
+            std::cerr << "TEST_SCIL " << env_p3 << "\n";
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
@@ -938,7 +938,7 @@ action scid_size_pos(cond:bool) returns(res:stream_pos) = {
 	  res = 8;
     } else 
       res = 8;
-    std::cerr <<  "scid_size_pos size: " <<  res << std::endl;
+    std::cerr <<  "scid_size_pos size: " <<  res << "\n";
     >>>
 }
 
@@ -948,7 +948,7 @@ action dcid_size_pos(cond:bool) returns(res:stream_pos) = {
     if(const char* env_p2 = std::getenv("TEST_TYPE")) { 
       if(strcmp(env_p2, "server") == 0 || cond) {
          if(const char* env_p3 = std::getenv("TEST_DCIL")) {
-            std::cerr << "TEST_DCIL " << env_p3 << std::endl;
+            std::cerr << "TEST_DCIL " << env_p3 << "\n";
 	        res = atoi(env_p3);
          } else 
 	   res = 8;
@@ -956,7 +956,7 @@ action dcid_size_pos(cond:bool) returns(res:stream_pos) = {
 	  res = 8;
     } else 
       res = 8;
-    std::cerr <<  "dcid_size_pos size: " <<  res << std::endl;
+    std::cerr <<  "dcid_size_pos size: " <<  res << "\n";
     >>>
 }
 
@@ -1001,7 +1001,7 @@ action bytes_to_itoken(bytes:stream_data) returns (val:itoken) = {
 action export_length_cid_extension(dcil:stream_pos,scil:stream_pos) = {
     <<<
 
-    std::cerr <<  "export_length_cid_extension"  << std::endl;
+    std::cerr <<  "export_length_cid_extension"  << "\n";
 	char str_d[20];
 	sprintf(str_d,"%llu",dcil);
 	if(setenv("TEST_DCIL",str_d,true) != 0) 
