@@ -160,6 +160,7 @@ struct tls_name_struct tls_field_length_bytes[46] = {
     {"ticket", 2},
     {0, 0}};
 tls_name_map tls_field_length_bytes_map;
+
 struct tls_name_struct tls_field_bytes[43] = {
     {"version", 2},
     {"client_version", 2}, //0x0303 = 2 bytes
@@ -207,6 +208,7 @@ struct tls_name_struct tls_field_bytes[43] = {
     {"selected_identity", 2},
     {0, 0}};
 tls_name_map tls_field_bytes_map;
+
 //TODO check old version
 struct tls_name_struct tls_tags[39] = {
     {"tls.handshake_record", 22},
@@ -223,7 +225,7 @@ struct tls_name_struct tls_tags[39] = {
     {"tls.new_session_ticket", 4},
     {"tls.unknown_message", -1},
     {"tls.unknown_extension", -1},
-    {"quic_transport_parameters", 0x39}, //DRAFTversion: 0xffa5 -> TODO test
+    {"quic_transport_parameters", 0x39}, //DRAFTversion: 0xffa5 -> TODO test 0x39 - TODO RETRY VULN
     {"initial_max_stream_data_bidi_local", 0x05},
     {"initial_max_data", 0x04},
     {"initial_max_stream_id_bidi", 0x08},
@@ -250,6 +252,7 @@ struct tls_name_struct tls_tags[39] = {
     {"unknown_ignore", 0x4042},
     {0, 0}};
 tls_name_map tls_tags_map;
+
 struct tls_name_struct tls_tag_bytes[31] = {
     {"tls.unknown_extension", 2},
     {"tls.early_data", 2},

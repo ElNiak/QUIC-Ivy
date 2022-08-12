@@ -78,7 +78,7 @@ relation is_mim
 
 #object multiple_endpoint = {
 instance second_client : quic_endpoint(endpoint_id.client_alt)
-instance second_server : quic_endpoint(endpoint_id.server_2)
+instance second_server : quic_endpoint(endpoint_id.server_alt)
 instance mim : quic_endpoint(endpoint_id.mim)
 
 #}
@@ -100,8 +100,8 @@ after init {
     zero_rtt_client_test := false;
 }
 
-var the_cid_2 : cid
-var server_cid_2 : cid
+var the_cid_alt : cid
+var server_cid_alt : cid
 after init {
     last_packet_type := quic_packet_type.initial;
     last_packet_length := 1200;
@@ -230,9 +230,9 @@ implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.ar
                         # for client test
                         call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
                     };
-                    if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid_2) & multiple_client { 
+                    if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid_alt) & multiple_client { 
                         # for client test
-                        call app_server_open_event(dst,src,the_cid_2,pkt.src_cid);  # [1]
+                        call app_server_open_event(dst,src,the_cid_alt,pkt.src_cid);  # [1]
                     }
                 };
             } else {
@@ -478,7 +478,7 @@ after init {
 }
 
 after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
-    client.ep := src; # TODO: migration?
+    client.set_ep(src); # TODO: migration?
     
 	var ver := bytes_to_version(spkt.segment(1,5));
     var lens := spkt.value(5);
@@ -748,7 +748,7 @@ after tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_dat
 }
 
 after tls_client_0rtt_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
-    client.ep := src; # TODO: migration?
+    client.set_ep(src); # TODO: migration?
     
 	var ver := bytes_to_version(spkt.segment(1,5));
     var lens := spkt.value(5);

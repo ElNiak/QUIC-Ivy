@@ -421,6 +421,17 @@ object tls_ser_server = {}
 
         tls_ser() {
             in_encrypted_extensions = 0;
+            if(const char* env_p3 = std::getenv("INITIAL_VERSION")) {
+                std::cerr << "INITIAL_VERSION " << env_p3 << "\n";
+                int iversion = atoi(env_p3);
+                std::cerr << "INITIAL_VERSION " << iversion << "\n";
+                if(iversion == 1) {
+                    tls_tags_map["quic_transport_parameters"] = 0x39;
+                } else {
+                    tls_tags_map["quic_transport_parameters"] = 0xffa5;
+                }
+                std::cerr << "tls_tags_map[quic_transport_parameters] " << tls_tags_map["quic_transport_parameters"] << "\n";
+            }
         }
 
         /** 

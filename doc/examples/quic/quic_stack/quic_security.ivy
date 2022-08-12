@@ -32,7 +32,7 @@ include tls_protocol
 
 action tls_send_event(src:ip.endpoint,dst:ip.endpoint,scid:cid,
                       dcid:cid,data:stream_data,
-                      pos:stream_pos,e:quic_packet_type)
+                      pos:stream_pos,e:quic_packet_type, tls_id:tls_api.id)
 
 #
 # Receive event
@@ -256,7 +256,7 @@ after init {
 import action show_test
 
 before tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data : stream_data,
-                      pos : stream_pos, e:quic_packet_type) {
+                      pos : stream_pos, e:quic_packet_type, tls_id:tls_api.id) {
     
     var jdx := data.begin;
     if retry_sent(scid) & ~crypto_reset(dcid) { # TODO retest
@@ -343,7 +343,7 @@ around tls_recv_event {
 
 
 after tls_keys_established_event {
-    ##call show_tls_keys_established_event(scid,e);
+    call show_tls_keys_established_event(scid,e);
     if e = quic_packet_type.zero_rtt {
         established_0rtt_keys(scid) := true
     } else if e = quic_packet_type.handshake {
@@ -352,6 +352,8 @@ after tls_keys_established_event {
         established_1rtt_keys(scid) := true
     } 
 }
+
+import action show_tls_keys_established_event(scid:cid,e:quic_packet_type)
 
 # Encryption level change
 

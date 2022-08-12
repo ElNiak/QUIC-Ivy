@@ -1,6 +1,6 @@
 #lang ivy1.7
 
-include quic_client
+include ivy_quic_server_behavior
 
 after init {
     #the_cid := 0x0; # zero length => 0x1 mvfst and other 0x0
@@ -22,7 +22,7 @@ after init {
     active_connection_id_limit_server_0rtt := 200;
 }
 
-include quic_client_0rtt_tp
+include ivy_quic_server_0rtt_tp
 
 
 # Generate max_streams frames only for the client.

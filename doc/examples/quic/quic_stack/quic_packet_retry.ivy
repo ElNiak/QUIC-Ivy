@@ -234,6 +234,7 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
         connected(scid) := false;
         conn_seen(dcid) := false;
         conn_seen(scid) := false;
+        
         require ~retry_recv(dcid);
         retry_recv(dcid) := true;   
         server_cid := scid; # 0x1;
@@ -246,8 +247,10 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
 
         var extns := tls_extensions.empty;
         extns := extns.append(make_transport_parameters);
+        call tls_api.upper.destroy(0);
         call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server
         conn_requested(dst,src,the_cid) := true;
+
     } else {
         retry_sent(scid) := true;
         retry_response(scid) := true;
@@ -260,5 +263,6 @@ around packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry)
         call tls_api.upper.destroy(src_tls_id(src)); # not totally freeing all parameter
     };
 }
+
 
 

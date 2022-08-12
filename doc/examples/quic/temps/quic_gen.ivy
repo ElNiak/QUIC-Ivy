@@ -59,8 +59,8 @@ instance client : quic_endpoint(0,role.client)
 instance server : quic_endpoint(1,role.server)
 
 after init {
-    client.tls_id := 0;
-    server.tls_id := 1;
+    client.set_tls_id(0);
+    server.set_tls_id(1);
     call botan.upper.create(0,false);
     call botan.upper.create(1,true);
 }

@@ -3,20 +3,10 @@
 include order
 include quic_infer
 include file
-include quic_shim_server
-include quic_locale
+# include quic_locale
+include ivy_quic_shim_client
 include random_value
 
-parameter the_cid : cid = 0xd
-parameter client_addr : ip.addr = 0x7f000001
-parameter server_addr : ip.addr = 0x7f000001
-parameter server_port : ip.port = 4443
-parameter server_port_2 : ip.port = 4443
-parameter server_cid  : cid = 0xb
-parameter client_port : ip.port = 4987
-parameter client_port_alt : ip.port = 4988
-parameter client_port_vn : ip.port = 4987 #4986 # bind failed: Address already in use
-parameter max_stream_data : stream_pos = 0x2000
 
 # Network setup
 # -------------
@@ -29,33 +19,6 @@ after init {
     zero_rtt_server_test := false;
     client_port_vn := client_port;
 }
-
-
-include quic_endpoint
-    
-# create a client and server. the client has an instance of TLS
-
-instance client : quic_endpoint(endpoint_id.client)
-instance server : quic_endpoint(endpoint_id.server)
-
-# An ip endpoint for the client to migrate to.
-
-var client_alt : ip.endpoint
-var client_vn : ip.endpoint
-
-after init {
-    client_alt := endpoint_id_addr(endpoint_id.client_alt);
-    client_vn := endpoint_id_addr(endpoint_id.client_vn);
-}
-
-instance second_client : quic_endpoint(endpoint_id.client_alt)
-
-
-# We create sockets and bind them to the addresses that the client can use.
-
-var sock : net.socket
-var sock_alt : net.socket
-var sock_vn : net.socket
 
 instance tls_extensions : vector(tls.extension)
 instance tls_hand_extensions : vector(tls.handshake)
@@ -84,6 +47,10 @@ action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
 
 action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
     src := client.ep if host = endpoint_id.client else (client_vn if version_negociated else client_alt)
+}
+
+action socket_endpoint_mim(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
+    src := server.ep if (is_mim_standalone) else client.ep;
 }
     
 # Get the socket number associated to an IP endpoint.
@@ -118,6 +85,10 @@ action tls_id_to_cid(tls_id:tls_api.id) returns (scid:cid) = {
 # TODO: shouldn't be needed.
 
 action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
+    res := dst = client.ep | dst = client_alt | dst = client_vn
+}
+
+action dst_is_generated_tls(dst:ip.endpoint) returns (res:bool) = {
     res := dst = client.ep | dst = client_alt | dst = client_vn
 }
 
@@ -204,7 +175,7 @@ after init {
 	allowed_multiple_migration := true;
     version_negociated := false;
     #initial_version := 0x00000001;
-    initial_version := 0x00000001;
+    # initial_version := 0x00000001; # 0xff00001d; #
 }
 
 before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
@@ -227,13 +198,13 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         require dst = server.ep;
         #require pkt.token.end = 0; 
         if pkt.ptype = quic_packet_type.initial & retry_recv(pkt.src_cid) & ~zero_length_token {
-            require pkt.token = retry_token(pkt.src_cid);
+            require pkt.token = retry_token(pkt.src_cid); # TODO new_token
         } else {
             require pkt.token.end = 0; 
         };
     };
     if final_version = 0x00000000 {
-        #require pkt.long -> pkt.pversion = 0x00000001  #version 29
+        #require pkt.long -> pkt.pversion = 0xff00001d  #version 29
         #require pkt.long -> pkt.pversion = 0xff000020  #version 32
         #require pkt.long -> pkt.pversion = 0xff00001e  #version 30
         require pkt.long -> pkt.pversion = initial_version  #version 30
@@ -317,9 +288,9 @@ before frame.new_token.handle(f:frame.new_token,scid:cid,dcid:cid) {
         require scid = the_cid;
         #call handle_sending_ack(f.largest_acked);
     } 
-    # else {
-    #     call tls_api.upper.save_token(f.data);
-    # }
+    else {
+        call tls_api.upper.save_token(f.data);
+    }
 }
 
 # Generate stop_sending frames only for the environment process(es).
@@ -501,11 +472,11 @@ attribute stream_pos.cardinality = 4
 # "debugging" information in the logs. They have no other effect.
 
 import action show_tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid,
-                                  data:stream_data, pos:stream_pos, e:quic_packet_type)
+                                  data:stream_data, pos:stream_pos, e:quic_packet_type, tls_id:tls_api.id)
 
 import action show_level_offset_length(e:quic_packet_type,offset:stream_pos,length:stream_pos)
 
-import action clear_packet(rnum:pkt_num,pkt:stream_data)
+import action clear_packet(src:ip.endpoint,dst:ip.endpoint,rnum:pkt_num,pkt:stream_data)
 
 import action cipher_packet(pkt:stream_data)
 

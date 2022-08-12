@@ -399,6 +399,7 @@ def report_error(error):
 
 def p_error(token):
     if token is not None:
+        print token
         report_error(ParseError(token.lineno,token.value,"syntax error"))
     else:
         report_error(ParseError(None,None,'unexpected end of input'));

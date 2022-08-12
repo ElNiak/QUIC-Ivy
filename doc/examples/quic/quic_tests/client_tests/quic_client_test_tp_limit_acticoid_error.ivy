@@ -3,9 +3,9 @@
 include order
 include quic_infer
 include file
-include quic_shim_client
+include ivy_quic_shim_server
 include quic_locale
-include quic_client
+include ivy_quic_server_behavior
 
 
 # HACK: we fix the initial client transport parameters here

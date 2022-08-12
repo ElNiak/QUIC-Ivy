@@ -3,9 +3,9 @@
 include order
 include quic_infer
 include file
-include quic_shim_server
+include ivy_quic_shim_client
 include quic_locale
-include quic_server
+include ivy_quic_client_behavior
 
 
 #
@@ -42,8 +42,8 @@ after init {
     sock := net.open(endpoint_id.client,client.ep);
     sock_alt := net.open(endpoint_id.client_alt,client_alt);
     sock_vn := sock; # net.open(endpoint_id.client_vn,client_vn);
-    client.tls_id := 0;
-    server.tls_id := 1;
+    client.set_tls_id(0);
+    server.set_tls_id(1);
     var extns := tls_extensions.empty;
     extns := extns.append(make_transport_parameters);
     call tls_api.upper.create(0,false,extns);  # false means this instance of tls is not a server

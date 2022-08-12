@@ -3,9 +3,9 @@
 include order
 include quic_infer
 include file
-include quic_shim_client
+include ivy_quic_shim_server
 include quic_locale
-include quic_client
+include ivy_quic_server_behavior
 
 
 after init {
@@ -76,7 +76,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
             server_scid := pkt.src_cid;
             server_dcid := pkt.dst_cid;
         };
-	    require pkt.long -> (pkt.pversion = 0x00000001 | pkt.pversion = 0xfaceb002 | pkt.pversion = 0x00000001);  #version 29
+	    require pkt.long -> (pkt.pversion = 0xff00001d | pkt.pversion = 0xfaceb002 | pkt.pversion = 0x00000001 | pkt.pversion = 0xff000022);  #version 29
 	    if pkt.long {
 	    	initial_version := pkt.pversion;
 	    };

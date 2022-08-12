@@ -3,17 +3,10 @@
 include order
 include quic_infer
 include file
-include quic_shim_client
-include quic_locale
+include ivy_quic_shim_server
+# include quic_locale
 include random_value
 
-parameter the_cid : cid = 0xdd
-parameter server_addr : ip.addr = 0x7f000001
-parameter server_port : ip.port = 4443
-parameter server_port_2 : ip.port = 4443
-parameter max_stream_data : stream_pos = 0x5000
-parameter initial_max_streams_bidi : stream_id = 200
-parameter client_port_vn : ip.port = 4444
 
 # Network setup
 # -------------
@@ -29,21 +22,20 @@ parameter client_port_vn : ip.port = 4444
 # We use this type as a host id. There are two client host ids so we
 # can model migration.
 
+# var server_cid  : cid  # useless for now, refactoring of shim neeeded
+# var client_addr : ip.addr 
+# var client_port : ip.port
+# var client_port_alt : ip.port
 
-var server_cid  : cid  # useless for now, refactoring of shim neeeded
-var client_addr : ip.addr 
-var client_port : ip.port
-var client_port_alt : ip.port
-
-after init {
-    #the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
-    #initial_version := 0x00000001;
-    initial_version := 0x00000001;
-    # server_cid := 0xb;
-    client_addr := 0;
-    client_port := 0;
-    client_port_alt := 0;
-}
+# after init {
+#     #the_cid := 0x1; # zero length => 0x1 mvfst and other 0x0
+#     #initial_version := 0x00000001;
+#     # initial_version := 0x00000001;
+#     # server_cid := 0xb;
+#     # client_addr := 0;
+#     # client_port := 0;
+#     # client_port_alt := 0;
+# }
 
 #    *  active_connection_id_limit
 #    *  initial_max_data
@@ -54,34 +46,8 @@ after init {
 #   (*  initial_max_streams_uni)
 
 
-# An ip endpoint for the client to migrate to.
-
-var client_alt : ip.endpoint
-var client_vn : ip.endpoint # todo useless now
-
-after init {
-    client_alt := endpoint_id_addr(endpoint_id.client_alt);
-    client_vn  := endpoint_id_addr(endpoint_id.client_vn);
-}
-
-
 # Map test endpoint ids to the ip endpoints
 
-# parameter server_addr: ip.addr
-
-# server_addr=0xc0a80101 client_addr=0xc0a80102
-   
-include quic_endpoint
-    
-# create a client and server. the server has an instance of TLS
-instance client : quic_endpoint(endpoint_id.client)
-instance server : quic_endpoint(endpoint_id.server)
-
-# An ip endpoint for the client to migrate to. TODO
-
-# a socket for the server
-
-var sock : net.socket
 
 instance tls_extensions : vector(tls.extension)
 instance tls_hand_extensions : vector(tls.handshake)
@@ -92,8 +58,8 @@ instance tls_hand_extensions : vector(tls.handshake)
 
 after init {
     sock := net.open(endpoint_id.server,server.ep);
-    server.tls_id := 0;
-    client.tls_id := 1;
+    server.set_tls_id(0);
+    client.set_tls_id(1);
 }
 
 # Here we have a bunch of conversions that map between cid's, IP
@@ -102,8 +68,17 @@ after init {
 
 # Get the host id associated to an ip endpoint. 
 
+# TODO remove if is_mim
 action endpoint_to_pid(src:ip.endpoint) returns (pid:endpoint_id) = {
-    pid := endpoint_id.server;
+    if is_mim {
+        if src = server.ep {
+            pid := endpoint_id.server;
+        } else {
+            pid := endpoint_id.mim;
+        };
+    } else {
+        pid := endpoint_id.server;
+    };
 }
 
 # Get the IP endpoint associated to a host id and socket number.
@@ -112,8 +87,13 @@ action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) 
     src := server.ep;
 }
     
+action socket_endpoint_mim(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
+    src := server.ep if (is_mim_standalone) else client.ep;
+}
+
 # Get the socket number associated to an IP endpoint.
 
+# TODO For mim-> according to dst
 action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
     socket := sock;
 }
@@ -122,14 +102,22 @@ action endpoint_to_socket(src:ip.endpoint) returns (socket:net.socket) = {
 # TODO: this shouldn't be needed.
 
 action tls_id_to_src(tls_id:tls_api.id) returns (src:ip.endpoint) = {
-    src := server.ep if tls_id = client.tls_id else client.ep;
+    if is_mim {
+        src := server.ep if tls_id = client.tls_id else mim_agent.ep_in;
+    } else {
+        src := server.ep if tls_id = client.tls_id else client.ep;
+    };
 }
 
 # Get the destination IP endpoint associated to a TLS instance
 # TODO: this shouldn't be needed.
 
 action tls_id_to_dst(tls_id:tls_api.id) returns (dst:ip.endpoint) = {
-    dst := client.ep if tls_id = client.tls_id else server.ep;
+    if is_mim {
+        dst := mim_agent.ep_in if tls_id = client.tls_id else server.ep;
+    } else {
+        dst := client.ep if tls_id = client.tls_id else server.ep;
+    };
 }
 
 # Get cid associated to a TLS instance
@@ -142,7 +130,19 @@ action tls_id_to_cid(tls_id:tls_api.id) returns (scid:cid) = {
 # TODO: shouldn't be needed.
 
 action dst_is_generated(dst:ip.endpoint) returns (res:bool) = {
-    res := dst = server.ep
+    if is_mim {
+        res := dst = server.ep; #| dst = mim_agent.ep_in | dst = mim_agent.ep_out;
+    } else {
+        res := dst = server.ep;
+    };
+}
+
+action dst_is_generated_tls(dst:ip.endpoint) returns (res:bool) = {
+    if is_mim {
+        res := dst = server.ep;
+    } else {
+        res := dst = server.ep;
+    };
 }
 
 # Returns the TLS instance associated to a destination IP endppoint.
@@ -175,7 +175,7 @@ after init {
     http_response := http_response_file.read;
 }
 
-# This selects the client's nonce CID
+# # This selects the client's nonce CID
 
 # after init {
 #     nonce_cid(the_cid) := the_cid;
@@ -231,7 +231,7 @@ before packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     	require pkt.long -> pkt.pversion = initial_version;  #version 29
 	    #call show_version(initial_version);
     } else {
-	    require pkt.long -> (pkt.pversion = 0x00000001 | pkt.pversion = 0xfaceb002);  #version 29
+	    require pkt.long -> (pkt.pversion = initial_version | pkt.pversion = 0xfaceb002);  #version 29
 	    if pkt.long {
 	    	initial_version := pkt.pversion;
 	    };
@@ -466,7 +466,7 @@ attribute stream_pos.cardinality = 16
 #attribute ip.port.override = bv[1]
 
 action show_tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data:stream_data,
-                           pos:stream_pos, e:quic_packet_type) = {}
+                           pos:stream_pos, e:quic_packet_type, tls_id:tls_api.id) = {}
 
 import show_tls_send_event
 
@@ -478,7 +478,7 @@ import show_packet
 
 import action show_level_offset_length(e:quic_packet_type,offset:stream_pos,length:stream_pos)
 
-import action clear_packet(rnum:pkt_num,pkt:stream_data)
+import action clear_packet(src:ip.endpoint,dst:ip.endpoint,rnum:pkt_num,pkt:stream_data)
 import action cipher_packet(pkt:stream_data)
 
 import action show_stream(pkt:stream_data)

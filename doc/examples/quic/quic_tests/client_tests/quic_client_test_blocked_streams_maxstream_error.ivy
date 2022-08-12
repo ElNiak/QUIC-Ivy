@@ -3,16 +3,16 @@
 include order
 include quic_infer
 include file
-include quic_shim_client
+include ivy_quic_shim_server
 include quic_locale
-include quic_client
+include ivy_quic_server_behavior
 
 #
 # We fix the initial transport parameters here. TODO: In principle these
 # parameters should be selected randomly by some event.
 #
 
-include quic_client_standard_tp
+include ivy_quic_server_standard_tp
 
 before frame.streams_blocked.handle(f:frame.streams_blocked,scid:cid,dcid:cid) {
     if _generating {

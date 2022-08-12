@@ -45,7 +45,16 @@ relation is_application_error
 # tag = 0xd
 relation is_crypto_buffer_exceeded 
 
-# tag = 0x1XX
+# tag = 0xe
+relation is_key_update_error 
+
+# tag = 0xf
+relation is_aead_limit_reached
+
+# tag = 0x10
+relation is_no_viable_path
+
+# tag = 0x1XX - 0x01ff
 relation is_crypto_error  
 
 # tag = 0x53F8 https://datatracker.ietf.org/doc/html/draft-ietf-quic-version-negotiation#page-11
@@ -115,6 +124,12 @@ action handle_transport_error(ec:error_code) =
         is_no_error := false;
     } else if ec = 0xd {
         is_crypto_buffer_exceeded := true;
+    } else if ec = 0xe {
+        is_key_update_error := true;
+    } else if ec = 0xf {
+        is_aead_limit_reached := true;
+    } else if ec = 0x10 {
+        is_no_viable_path := true;
     } else if ec = 0x53F8 {
         is_version_negociation_error := true;
         is_no_error := false;

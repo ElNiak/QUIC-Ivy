@@ -3,7 +3,7 @@
 #
 from ivy_concept_space import NamedSpace, ProductSpace, SumSpace
 from ivy_ast import *
-from ivy_actions import AssumeAction, AssertAction, EnsuresAction, SetAction, AssignAction, VarAction, HavocAction, IfAction, AssignFieldAction, NullFieldAction, CopyFieldAction, InstantiateAction, CallAction, LocalAction, LetAction, Sequence, UpdatePattern, PatternBasedUpdate, SymbolList, UpdatePatternList, Schema, ChoiceAction, NativeAction, WhileAction, Ranking, RequiresAction, EnsuresAction, CrashAction, ThunkAction
+from ivy_actions import AssumeAction, AssertAction, EnsuresAction, SetAction, AssignAction, VarAction, HavocAction, IfAction, AssignFieldAction, NullFieldAction, CopyFieldAction, InstantiateAction, CallAction, LocalAction, LetAction, Sequence, UpdatePattern, PatternBasedUpdate, SymbolList, UpdatePatternList, Schema, ChoiceAction, NativeAction, WhileAction, Ranking, RequiresAction, EnsuresAction, CrashAction, ThunkAction, DebugAction
 from ivy_lexer import *
 import ivy_utils as iu
 import copy
@@ -123,42 +123,80 @@ def stack_action_lookup(name,params=0):
             return ivy.actions[name],params
     return None,0
 
-def inst_mod(ivy,module,pref,subst,vsubst):
+def inst_mod(ivy,module,pref,subst,vsubst,modname=None,lineno=None):
+    set_always_clone_with_fresh_id(True)
+    if pref is not None and pref.rep in vsubst:
+        raise iu.IvyError(pref,'instance parameter names must differ from instance name')
     save = ivy.attributes
-    ivy.attributes = ()
+    ivy.attributes = tuple(x for x in ivy.attributes if x == "common")
+    static = module.static.copy()
+    for name,dfs in module.defined.iteritems():
+        if any((df[1] is TypeDecl) or (df[1] is DestructorDecl) for df in dfs):
+            static.add(name)
+    def spaa(decl,subst,pref):
+        if modname is not None and pref is not None and isinstance(decl,ModuleDecl):
+            subst = subst.copy()
+            p,c = iu.parent_child_name(modname)
+            subst[c] = pref.rep
+#        print 'instmod: {} {}'.format(pref,lineno)
+        if lineno is not None:
+            set_reference_lineno(lineno)
+        res = subst_prefix_atoms_ast(decl,subst,pref,module.defined,static=static)
+#        print 'instmod done'
+        if lineno is not None:
+            set_reference_lineno(None)
+        return res
     for decl in module.decls:
+        dpref = pref.clone([]) if pref is not None and "common" in decl.attributes else pref
+        dvsubst = dict() if "common" in decl.attributes else vsubst
         if isinstance(decl,AttributeDecl):
-            if vsubst:
-                map1 = distinct_variable_renaming(used_variables_ast(pref),used_variables_ast(decl))
-                vpref = substitute_ast(pref,map1)
-                vvsubst = dict((x,map1[y.rep]) for x,y in vsubst.iteritems())
+            if dvsubst:
+                map1 = distinct_variable_renaming(used_variables_ast(dpref),used_variables_ast(decl))
+                vpref = substitute_ast(dpref,map1)
+                vvsubst = dict((x,map1[y.rep]) for x,y in dvsubst.iteritems())
                 idecl = AttributeDecl(*[x.clone([compose_atoms(vpref,x.args[0]),x.args[1]]) for x in decl.args]) if vpref is not None else decl
                 idecl = substitute_constants_ast(idecl,vvsubst)
             else:
-                idecl = AttributeDecl(*[x.clone([compose_atoms(pref,x.args[0]),x.args[1]]) for x in decl.args]) if pref is not None else decl
-        elif vsubst:
-            map1 = distinct_variable_renaming(used_variables_ast(pref),used_variables_ast(decl))
-            vpref = substitute_ast(pref,map1)
-            vvsubst = dict((x,map1[y.rep]) for x,y in vsubst.iteritems())
-            idecl = subst_prefix_atoms_ast(decl,subst,vpref,module.defined,static=module.static)
+                idecl = AttributeDecl(*[x.clone([compose_atoms(dpref,x.args[0]),x.args[1]]) for x in decl.args]) if dpref is not None else decl
+        elif dvsubst:
+            map1 = distinct_variable_renaming(used_variables_ast(dpref),used_variables_ast(decl))
+            vpref = substitute_ast(dpref,map1)
+            vvsubst = dict((x,map1[y.rep]) for x,y in dvsubst.iteritems())
+            idecl = spaa(decl,subst,vpref)
             idecl = substitute_constants_ast2(idecl,vvsubst)
         else:
-            idecl = subst_prefix_atoms_ast(decl,subst,pref,module.defined,static=module.static)
+            idecl = spaa(decl,subst,dpref)
+        if decl.common is not None:
+            idecl.common = (pref.rep if decl.common == 'this' else iu.compose_names(pref.rep,decl.common)) if pref is not None else decl.common
+        else:
+            idecl.common = None
         if isinstance(idecl,ActionDecl):
             for foo in idecl.args:
                 if not hasattr(foo.args[1],'lineno'):
                     print 'no lineno: {}'.format(foo)
         idecl.attributes = decl.attributes
-        ivy.declare(idecl)
+        if isinstance(idecl,ObjectDecl):
+            ivy.declare(idecl)
+            ivy.set_object_defined(idecl.args[0].rep,module.get_object_defined(idecl.args[0].rep))
+        elif isinstance(idecl,InstantiateDecl):
+            print "cool"
+            old_attrs = ivy.attributes
+            ivy.attributes = ivy.attributes + idecl.attributes
+            do_insts(ivy,idecl.args)
+            ivy.attributes = old_attrs
+        else:
+            ivy.declare(idecl)
     ivy.attributes = save
+    set_always_clone_with_fresh_id(False)
 
 def do_insts(ivy,insts):
     others = []
     for instantiation in insts:
         pref, inst = instantiation.args
+        #print "instantiating %s" % inst
         defn = stack_lookup(inst.relname)
         if defn:
-#            print "instantiating %s" % inst
+            #print "instantiating %s" % inst
             if pref != None:
 #                ivy.define((pref.rep,inst.lineno))
                 ivy.declare(ObjectDecl(pref))
@@ -173,11 +211,16 @@ def do_insts(ivy,insts):
                 if v.rep not in pvars:
                     raise iu.IvyError(instantiation,"variable {} is unbound".format(v))
             module = defn.args[1]
-            inst_mod(ivy,module,pref,subst,vsubst)
+            inst_mod(ivy,module,pref,subst,vsubst,modname=inst.relname,
+                     lineno=instantiation.lineno if hasattr(instantiation,"lineno") else
+                     inst.lineno if hasattr(instantiation,"lineno") else None )
+
             if pref is None:
                 ivy.objects.update(module.objects)
         else:
-            others.append(inst)
+            inst.lineno = instantiation.lineno
+            assert hasattr(inst,"lineno")
+            others.append(instantiation)
     if others:
         ivy.declare(InstantiateDecl(*others))
 
@@ -193,6 +236,8 @@ def check_non_temporal(x):
 
 special_attribute = None
 parent_object = None
+global_attribute = None
+common_attribute = None
 
 class Ivy(object):
     def __init__(self):
@@ -207,12 +252,20 @@ class Ivy(object):
         self.is_module = False
         self.params = []
         global special_attribute
-        self.attributes = (special_attribute,) if special_attribute is not None else ()
+        global global_attribute
+        global common_attribute
+        self.attributes = (((special_attribute,) if special_attribute is not None else ()) +
+                           ((global_attribute,) if global_attribute is not None else ()) +
+                           ((common_attribute,) if common_attribute is not None else ()))
         special_attribute = None
+        global_attribute = None
+        common_attribute = None
+        # if we are the body of an attribute declaration, keep all of the enclosing attributes
+        if self.attributes and stack:
+            self.attributes = stack[-1].attributes + self.attributes
         # if we are a continuation object, inherent defined symbols from previous declaration
         global parent_object
         if parent_object is not None:
-#            print 'got parent_object = {}'.format(parent_object)
             parent = stack[-1]
             if parent_object == "this":
                 defined = parent.defined
@@ -221,7 +274,6 @@ class Ivy(object):
 #                    print parent.defined[parent_object]
 #                print parent.defined.keys()
                 defined = parent.get_object_defined(parent_object)
-#            print 'defined = {}'.format(defined)
             if defined is not None:
                 self.defined = defined
             parent_object = None
@@ -233,12 +285,18 @@ class Ivy(object):
         for df in decl.static():
             self.static.add(df)
         decl.attributes = self.attributes + decl.attributes
+        if "common" in decl.attributes:
+            for df in decl.defines():
+                self.static.add(df[0])
+        if "common" in self.attributes and decl.common == None:
+            decl.common = 'this'
         self.decls.append(decl)
         if isinstance(decl,MacroDecl):
             for d in decl.args:
                 self.macros[d.defines()] = d
         if isinstance(decl,ActionDecl):
             for d in decl.args:
+                d.attributes = decl.attributes
                 self.actions[d.defines()] = d
         if isinstance(decl,ModuleDecl):
             for d in decl.args:
@@ -286,10 +344,21 @@ class Ivy(object):
     def clone(self,args):
         return self
 
+    def rewrite(self,rewrite):
+        if isinstance(rewrite,AstRewriteSubstPrefix):
+            res = Ivy()
+            inst_mod(res,self,None,rewrite.subst,dict())
+            return res
+        return self
+
+
+ivy_ref = None
 
 def p_top(p):
     'top :'
+    global ivy_ref
     p[0] = Ivy()
+    ivy_ref = p[0]
     stack.append(p[0])
 
 def p_top_using_symbol(p):
@@ -455,12 +524,43 @@ def p_modulestart(p):
 def p_moduleend(p):
     'moduleend :'
     p[0] = None
-   
-def p_top_module_atom_eq_lcb_top_rcb(p):
-    'top : top MODULE modulestart atom EQ LCB top RCB moduleend'
+
+def p_modcat(p):
+    'modcat : '
+    p[0] = None
+
+def p_modcat_object(p):
+    'modcat : OBJECT'
+    p[0] = "object"
+
+def p_modcat_isolate(p):
+    'modcat : ISOLATE'
+    p[0] = "isolate"    
+    
+def p_opteq(p):
+    'opteq :'
+    p[0] = None
+
+def p_opteq_eq(p):
+    'opteq : EQ'
     p[0] = p[1]
-    d = Definition(app_to_atom(p[4]),p[7])
+
+def p_top_module_atom_eq_lcb_top_rcb(p):
+    'top : top MODULE modulestart modcat atom optwith EQ LCB top RCB moduleend'
+    p[0] = p[1]
+    d = Definition(app_to_atom(p[5]),p[9])
     p[0].declare(ModuleDecl(d))
+    if p[4] == "isolate":
+        this = Atom(This())
+        this.lineno = get_lineno(p,2)
+        iso = Atom("iso",[])
+        iso.lineno = get_lineno(p,2)
+        d = IsolateDecl(IsolateDef(*([iso,this]+p[6])))
+        d.args[0].with_args = len(p[6])
+        d.args[0].lineno = get_lineno(p,2)
+        d.attributes = ("common",)
+        d.lineno = get_lineno(p,2)
+        p[9].declare(d)
     stack.pop()
     stack[-1].is_module=False
 
@@ -509,6 +609,30 @@ def p_top_object_symbol_eq_lcb_top_rcb(p):
     'top : top OBJECT objsym objectargs EQ LCB optdotdotdot top RCB objectend'
     p[0] = p[1]
     create_object(p[0],p[3],p[4],p[8],get_lineno(p,3),p[7])
+
+def p_top_class_symbol_eq_lcb_top_rcb(p):
+    'top : top CLASS objsym objectargs EQ LCB optdotdotdot top RCB objectend'
+    p[0] = p[1]
+    scnst = Atom(This())
+    scnst.lineno = get_lineno(p,2)
+    tdfn = TypeDef(scnst,UninterpretedSort())
+    tdfn.lineno = get_lineno(p,2)
+    p[8].declare(TypeDecl(tdfn))
+    p[8].decls = [p[8].decls[-1]] + p[8].decls[:-1]
+    create_object(p[0],p[3],p[4],p[8],get_lineno(p,3),p[7])
+
+def p_top_subclass_symbol_eq_lcb_top_rcb(p):
+    'top : top SUBCLASS objsym OF atype EQ LCB optdotdotdot top RCB objectend'
+    p[0] = p[1]
+    scnst = Atom(This())
+    scnst.lineno = get_lineno(p,2)
+    tdfn = TypeDef(scnst,UninterpretedSort())
+    tdfn.lineno = get_lineno(p,2)
+    p[9].declare(TypeDecl(tdfn))
+    vdfn = VariantDef(scnst,Atom(p[5]))
+    p[9].declare(VariantDecl(vdfn))
+    p[9].decls = p[9].decls[-2:] + p[9].decls[:-2]
+    create_object(p[0],p[3],[],p[9],get_lineno(p,3),p[8])
 
 def p_optsemi(p):
     'optsemi : '
@@ -569,8 +693,11 @@ if iu.get_numeric_version() <= [1,6]:
 else:
 
     def p_schdecl_propdecl(p):
-        'schdecl : PROPERTY lgprop'
-        p[0] = [check_non_temporal(addlabel(p[2],'prop'))]
+        'schdecl : optexplicit PROPERTY lgprop'
+        lf = addlabel(p[3],'prop')
+        if p[1]:
+            lf.explicit = True
+        p[0] = [check_non_temporal(lf)]
 
     def p_schdecl_theorem_lgprop(p):
         'schdecl : THEOREM lgprop'
@@ -589,8 +716,8 @@ if iu.get_numeric_version() <= [1,6]:
 else:
 
     def p_schconc_propdecl(p):
-        'schconc : PROPERTY lgprop'
-        fmla = p[2].formula
+        'schconc : optexplicit PROPERTY lgprop'
+        fmla = p[3].formula
         if isinstance(fmla,SchemaBody):
             report_error(IvyError(fmla,"formula expected"))
         p[0] = check_non_temporal(fmla)
@@ -654,6 +781,7 @@ def p_top_proof_label_label_proofstep(p):
 def p_top_instantiate_insts(p):
     'top : top INSTANTIATE insts'
     p[0] = p[1]
+    # print p[3]
     do_insts(p[0],p[3])
 
 def p_top_autoinstance_insts(p):
@@ -729,11 +857,15 @@ def p_modinst_symbol_lp_pnames_rp(p):
 def p_inst_modinst(p):
    'inst : modinst'
    p[0] = Instantiation(None,app_to_atom(p[1]))
-
+#    print p[0]
+   p[0].lineno = get_lineno(p,1)
+   
 def p_inst_atom_colon_modinst(p):
     'inst : modinst COLON modinst'
     p[0] = Instantiation(app_to_atom(p[1]),app_to_atom(p[3]))
-
+    # print p[0]
+    p[0].lineno = get_lineno(p,2)
+    
 def p_top_symdecl(p):
     'top : top symdecl'
     p[0] = p[1]
@@ -746,19 +878,38 @@ def p_symdecl_constantdecl(p):
 def p_symdecl_destructor_tterms(p):
     'symdecl : DESTRUCTOR tterms'
     p[0] = DestructorDecl(*p[2])
+    p[0].lineno = get_lineno(p,1)
+
+def p_symdecl_field_tterms(p):
+    'symdecl : FIELD tterms'
+    arg0 = Variable('SELF',This())
+    arg0.lineno = get_lineno(p,1)
+    tterms = [x.clone([arg0]+x.args) for x in p[2]]
+    for x,y in zip(p[2],tterms):
+        y.lineno = x.lineno
+    p[0] = DestructorDecl(*tterms)
+    p[0].lineno = get_lineno(p,1)
 
 if not(iu.get_numeric_version() <= [1,6]):
     def p_symdecl_constructor_tterms(p):
         'symdecl : CONSTRUCTOR tterms'
+        for t in p[2]:
+            if not hasattr(t,'sort'):
+                this = This()
+                this.lineno = get_lineno(p,1)
+                t.sort = this
         p[0] = ConstructorDecl(*p[2])
+        p[0].lineno = get_lineno(p,1)
 
 def p_constantdecl_constant_tterms(p):
     'constantdecl : INDIV tterms'
     p[0] = ConstantDecl(*p[2])
+    p[0].lineno = get_lineno(p,1)
 
 def p_constantdecl_var_tterms(p):
     'constantdecl : VAR tterms'
     p[0] = ConstantDecl(*p[2])
+    p[0].lineno = get_lineno(p,1)
 
 def p_param_tterm(p):
     'parameter : tterm'
@@ -936,10 +1087,11 @@ else:
         p[0].lineno = get_lineno(p,1)
 
     def p_proofstep_tactic(p):
-        'proofstep : TACTIC SYMBOL opttacticwith'
+        'proofstep : TACTIC SYMBOL opttacticwith optproofgroup'
         a = Atom(p[2])
         a.lineno = get_lineno(p,2)
-        p[0] = TacticTactic(a,p[3])
+        proof = p[4] if p[4] else NoneAST()
+        p[0] = TacticTactic(a,p[3],proof)
         p[0].lineno = get_lineno(p,1)
     
     def p_proofstep_property(p):
@@ -1331,12 +1483,20 @@ def p_top_type_symbol_eq_sort(p):
     p[0] = p[1]
     scnst = Atom(p[5])
     scnst.lineno = get_lineno(p,5)
-    tdfn = (GhostTypeDef if p[3] else TypeDef)(scnst,p[7])
+    defsort = UninterpretedSort() if isinstance(p[7],Range) else p[7]
+    tdfn = (GhostTypeDef if p[3] else TypeDef)(scnst,defsort)
     if p[2]:
         tdfn.finite = True
     tdfn.lineno = get_lineno(p,6)
     p[0].declare(TypeDecl(tdfn))
+    if isinstance(p[7],Range):
+        imp = Implies(scnst,p[7])
+        imp.lineno = get_lineno(p,4)
+        thing = InterpretDecl(addlabel(mk_lf(imp),'interp'))
+        thing.lineno = get_lineno(p,4)
+        p[0].declare(thing)
 
+    
 def p_tsyms_tsym(p):
     'tsyms : var'
     p[0] = [p[1]]
@@ -1435,9 +1595,18 @@ def p_tterms_tterms_comma_tterm(p):
     p[0] = p[1]
     p[0].append(p[3])
 
+def p_sort_lcb_symbol_rcb(p):
+    'sort : LCB SYMBOL RCB'
+    p[0] = EnumeratedSort(Atom(p[2]))
+
 def p_sort_lcb_names_rcb(p):
-    'sort : LCB names RCB'
-    p[0] = EnumeratedSort(*[Atom(n) for n in p[2]])
+    'sort : LCB SYMBOL COMMA names RCB'
+    p[0] = EnumeratedSort(*([Atom(p[2])] + [Atom(n) for n in p[4]]))
+
+def p_sort_lcb_symbol_dots_symbol_rcb(p):
+    'sort : LCB SYMBOL DOTS SYMBOL RCB'
+    p[0] = Range(Atom(p[2]),Atom(p[4]))
+    p[0].lineno = get_lineno(p,2)
 
 def p_sort_struct_lcb_names_rcb(p):
     'sort : STRUCT LCB tterms RCB'
@@ -1549,15 +1718,34 @@ else:
       'optimpex : IMPORT'
       p[0] = ImportDecl
 
+  def p_actmeth_action(p):
+      'actmeth : ACTION'
+      p[0] = False
+
+  def p_actmeth_method(p):
+      'actmeth : METHOD'
+      p[0] = True
+
   def p_top_optimpex_action_symbol_optargs_optreturns_eq_action(p):
-    'top : top optimpex ACTION SYMBOL optargs optreturns optactiondef'
+    'top : top optimpex actmeth SYMBOL optargs optreturns optactiondef'
     p[0] = p[1]
     adef = p[7]
     if not hasattr(adef,'lineno'):
         adef.lineno = get_lineno(p,4)
+    formals = p[5]
+    if p[3]:
+        arg0 = App('self')
+        arg0.sort = This()
+        arg0.lineno = get_lineno(p,4)
+        formals = [arg0] + formals
     if isinstance(adef,CrashAction):
-        adef = adef.clone([Atom(This(),p[5])])
-    decl = ActionDecl(ActionDef(Atom(p[4],[]),adef,formals=p[5],returns=p[6]))
+        adef = adef.clone([Atom(This(),formals)])
+    the_atom = Atom(p[4],[])
+    the_atom.lineno = adef.lineno
+    actdef = ActionDef(the_atom,adef,formals=formals,returns=p[6])
+    actdef.lineno = adef.lineno
+    decl = ActionDecl(actdef)
+    decl.lineno = adef.lineno
     p[0].declare(decl)
     for foo in decl.args:
         if not hasattr(foo.args[1],'lineno'):
@@ -1583,6 +1771,8 @@ def handle_mixin(kind,mixer,mixee,ivy):
 def infer_action_params(actname,formals,returns):
     mixee,num_params = stack_action_lookup(actname)
     if not mixee:
+        return formals,returns
+    if ("common" in mixee.attributes) != ("common" in stack[-1].attributes):
         return formals,returns
     mformals,mreturns = mixee.formals()
     formals.extend(mformals[num_params+len(formals):])
@@ -1675,7 +1865,8 @@ if not (iu.get_numeric_version() <= [1,1]):
         ty = TrustedIsolateDef if p[2] else IsolateDef
         d = IsolateDecl(ty(*([Atom(p[4],p[5])] + p[7])))
         d.args[0].with_args = 0
-        d.lineno = get_lineno(p,2)
+        d.args[0].lineno = get_lineno(p,3)
+        d.lineno = get_lineno(p,3)
         p[0] = p[1]
         p[0].declare(d)
     def p_top_opttrusted_isolate_callatom_eq_callatoms_with_callatoms(p):
@@ -1683,7 +1874,8 @@ if not (iu.get_numeric_version() <= [1,1]):
         ty = TrustedIsolateDef if p[2] else IsolateDef
         d = IsolateDecl(ty(*([Atom(p[4],p[5])] + p[7] + p[9])))
         d.args[0].with_args = len(p[9])
-        d.lineno = get_lineno(p,2)
+        d.args[0].lineno = get_lineno(p,3)
+        d.lineno = get_lineno(p,3)
         p[0] = p[1]
         p[0].declare(d)
     def p_optwith(p):
@@ -1697,14 +1889,31 @@ if not (iu.get_numeric_version() <= [1,1]):
         p[0] = p[1]
         create_object(p[0],p[4],p[5],p[8],get_lineno(p,4))
         ty = TrustedIsolateDef if p[2] else IsolateDef
-        d = IsolateObjectDecl(ty(*([Atom(p[4],p[5]),Atom(p[4],p[5])]+p[10])))
+        df = ty(*([Atom(p[4],p[5]),Atom(p[4],p[5])]+p[10]))
+        df.is_object = True
+        d = IsolateObjectDecl(df)
         d.args[0].with_args = len(p[10])
+        d.args[0].lineno = get_lineno(p,3)
         d.lineno = get_lineno(p,3)
         p[0].declare(d)
+    def p_top_opttrusted_extract_callatom_eq_lcb_top_rcb_optwith(p):
+        'top : top EXTRACT objsym objectargs EQ LCB top RCB optwith'
+        p[0] = p[1]
+        create_object(p[0],p[3],p[4],p[7],get_lineno(p,3))
+        ty = ProcessDef
+        d = IsolateObjectDecl(ty(*([Atom(p[3],p[4]),Atom(p[3],p[4])]+p[9])))
+        d.args[0].with_args = len(p[9])+1
+        d.args[0].lineno = get_lineno(p,2)
+        d.lineno = get_lineno(p,2)
+        p[0].declare(d)
     def p_top_extract_callatom_eq_callatoms(p):
-        'top : top EXTRACT SYMBOL optargs EQ callatoms'
+        'top : top EXTRACT objsym objectargs EQ callatoms'
+        stack[-1].params = []
+        global parent_object
+        parent_object = None
         d = IsolateDecl(ExtractDef(*([Atom(p[3],p[4])] + p[6])))
         d.args[0].with_args = len(p[6])
+        d.args[0].lineno = get_lineno(p,2)
         d.lineno = get_lineno(p,2)
         p[0] = p[1]
         p[0].declare(d)
@@ -1765,12 +1974,28 @@ if not (iu.get_numeric_version() <= [1,6]):
         global special_attribute
         special_attribute =  "private"
 
+    def p_specimpl_global(p):
+        'specimpl : GLOBAL'
+        p[0] = p[1]
+        global global_attribute
+        global_attribute =  "global"
+
+    def p_specimpl_common(p):
+        'specimpl : COMMON'
+        p[0] = p[1]
+        global common_attribute
+        common_attribute =  "common"
+
     def p_top_specification_lcb_top_rcb(p):
         'top : top specimpl LCB top RCB'
         p[0] = p[1]
         stack.pop()
+        # Don't reapply the attributes in the parent
+        temp_attr = p[0].attributes
+        p[0].attributes = ()
         for decl in p[4].decls:
             p[0].declare(decl)
+        p[0].attributes = temp_attr
 
     # def p_top_delegate_callatom(p):
     #     'top : top DELEGATE callatoms ARROW callatom'
@@ -1835,7 +2060,7 @@ def p_top_interpret_symbol_arrow_symbol(p):
     p[0].declare(thing)
     
 def p_top_interpret_symbol_arrow_lcb_symbol_dots_symbol_rcb(p):
-    'top : top INTERPRET oper ARROW LCB SYMBOL DOTS SYMBOL RCB'
+    'top : top INTERPRET oper ARROW LCB term DOTS term RCB'
     p[0] = p[1]
     imp = Implies(p[3],Range(p[6],p[8]))
     imp.lineno = get_lineno(p,4)
@@ -2010,14 +2235,41 @@ def p_loc_symbol(p):
     'loc : SYMBOL'
     p[0] = p[1]
 
-def p_actseq_action(p):
-    'actseq : action'
+def p_actseqrev_simpleact(p):
+    'actseqrev : simpleact'
     p[0] = [p[1]]
 
-def p_actseq_actseq_semi_action(p):
-    'actseq : actseq SEMI action'
+def p_actseqrev_complexact(p):
+    'actseqrev : complexact'
+    p[0] = [p[1]]
+
+def p_actseqrev_simpact_semi_actseqrev(p):
+    'actseqrev : simpleact SEMI actseqrev'
+    p[0] = p[3]
+    p[0].append(p[1])
+
+def p_actseqrev_simpact_semi(p):
+    'actseqrev : simpleact SEMI'
+    p[0] = [p[1]]
+
+def p_actseqrev_complexact_actseqrev(p):
+    'actseqrev : complexact actseqrev'
+    p[0] = p[2]
+    p[0].append(p[1])
+
+def p_actseqrev_complexact_semi_actseqrev(p):
+    'actseqrev : complexact SEMI actseqrev'
+    p[0] = p[3]
+    p[0].append(p[1])
+
+def p_actseqrev_complexact_semi(p):
+    'actseqrev : complexact SEMI'
+    p[0] = [p[1]]
+
+def p_actseq_actseqrev(p):
+    'actseq : actseqrev'
     p[0] = p[1]
-    p[0].append(p[3])
+    p[1].reverse()
 
 def lower_var_stmts(stmts):
     for idx,stmt in enumerate(stmts):
@@ -2067,74 +2319,82 @@ def p_sequence_lcb_actseq_semi_rcb(p):
     p[0].lineno = get_lineno(p,1)
 
 def p_action_sequence(p):
-    'action : sequence'
+    'complexact : sequence'
+    p[0] = p[1]
+
+def p_action_simpleact(p):
+    'action : simpleact'
+    p[0] = p[1]
+    
+def p_action_complexact(p):
+    'action : complexact'
     p[0] = p[1]
 
 def p_action_assume(p):
-    'action : ASSUME fmla'
+    'simpleact : ASSUME fmla'
     p[0] = AssumeAction(check_non_temporal(p[2]))
     p[0].lineno = get_lineno(p,1)
 
 
 if iu.get_numeric_version() <= [1,6]:
     def p_action_assert(p):
-        'action : ASSERT fmla'
+        'simpleact : ASSERT fmla'
         p[0] = AssertAction(check_non_temporal(p[2]))
         p[0].lineno = get_lineno(p,1)
 
     def p_action_ensures(p):
-        'action : ENSURES fmla'
+        'simpleact : ENSURES fmla'
         p[0] = EnsuresAction(check_non_temporal(p[2]))
         p[0].lineno = get_lineno(p,1)
 else:
     def p_action_assert(p):
-         'action : ASSERT fmla'
+         'simpleact : ASSERT fmla'
          p[0] = AssertAction(check_non_temporal(p[2]))
          p[0].lineno = get_lineno(p,1)
 
     def p_action_assert_proof_proofstep(p):
-         'action : ASSERT fmla PROOF proofstep'
+         'simpleact : ASSERT fmla PROOF proofstep'
          p[0] = AssertAction(check_non_temporal(p[2]),p[4])
          p[0].lineno = get_lineno(p,1)
 
     def p_action_ensure(p):
-         'action : ENSURE fmla'
+         'simpleact : ENSURE fmla'
          p[0] = EnsuresAction(check_non_temporal(p[2]))
          p[0].lineno = get_lineno(p,1)
 
     def p_action_ensure_proof_proofstep(p):
-         'action : ENSURE fmla PROOF proofstep'
+         'simpleact : ENSURE fmla PROOF proofstep'
          p[0] = EnsuresAction(check_non_temporal(p[2]),p[4])
          p[0].lineno = get_lineno(p,1)
 
     def p_action_require(p):
-         'action : REQUIRE fmla'
+         'simpleact : REQUIRE fmla'
          p[0] = RequiresAction(check_non_temporal(p[2]))
          p[0].lineno = get_lineno(p,1)
 
     def p_action_require_proof_proofstep(p):
-         'action : REQUIRE fmla PROOF proofstep'
+         'simpleact : REQUIRE fmla PROOF proofstep'
          p[0] = RequiresAction(check_non_temporal(p[2]),p[4])
          p[0].lineno = get_lineno(p,1)
 
     # def p_action_ensure_optproof(p):
-    #     'action : ENSURE fmla optproof'
+    #     'simpleact : ENSURE fmla optproof'
     #     p[0] = EnsuresAction(*([check_non_temporal(p[2])] + ([p[3]] if p[3] is not None else [])))
     #     p[0].lineno = get_lineno(p,1)
 
     # def p_action_require_optproof(p):
-    #     'action : REQUIRE fmla optproof'
+    #     'simpleact : REQUIRE fmla optproof'
     #     p[0] = RequiresAction(*([check_non_temporal(p[2])] + ([p[3]] if p[3] is not None else [])))
     #     p[0].lineno = get_lineno(p,1)
     
 
 def p_action_set_lit(p):
-    'action : SET lit'
+    'simpleact : SET lit'
     p[0] = SetAction(p[2])
     p[0].lineno = get_lineno(p,1)
 
 def p_action_term_assign_fmla(p):
-    'action : term ASSIGN fmla'
+    'simpleact : term ASSIGN fmla'
     p[0] = AssignAction(p[1],check_non_temporal(p[3]))
     p[0].lineno = get_lineno(p,2)
 
@@ -2144,25 +2404,30 @@ def p_termtuple_lp_term_comma_terms_rp(p):
     p[0].lineno = get_lineno(p,1)
 
 def p_action_termtuple_assign_fmla(p):
-    'action : termtuple ASSIGN callatom'
+    'simpleact : termtuple ASSIGN callatom'
     p[0] = CallAction(*([p[3]]+list(p[1].args)))
     p[0].lineno = get_lineno(p,2)
 
 def p_action_term_assign_times(p):
-    'action : term ASSIGN TIMES'
+    'simpleact : term ASSIGN TIMES'
     p[0] = HavocAction(p[1])
     p[0].lineno = get_lineno(p,2)
 
-
+def p_action_term(p):
+    'simpleact : term'
+    p[0] = CallAction(p[1])
+    p[0].lineno = p[1].lineno
+       
+    
 if iu.get_numeric_version() <= [1,4]:
 
     def p_action_if_fmla_lcb_action_rcb(p):
-        'action : IF fmla sequence'
+        'complexact : IF fmla sequence'
         p[0] = IfAction(check_non_temporal(p[2]),p[3])
         p[0].lineno = get_lineno(p,1)
 
     def p_action_if_fmla_lcb_action_rcb_else_LCB_action_RCB(p):
-        'action : IF fmla sequence ELSE action'
+        'complexact : IF fmla sequence ELSE action'
         p[0] = IfAction(check_non_temporal(p[2]),p[3],p[5])
         p[0].lineno = get_lineno(p,1)
 
@@ -2171,6 +2436,19 @@ else:
     def p_somefmla_fmla(p):
         'somefmla : fmla'
         p[0] = p[1]
+
+    def p_somefmla_fmla_assign_fmla(p):
+        'somefmla : fmla ASSIGN fmla'
+        if not (isinstance(p[1],(App,Atom)) and len(p[1].args) == 0):
+            report_error(ParseError(p[2].lineno,p[2].value,"syntax error"))
+        lsyms = [p[1].prefix('loc:')]
+        lsyms[0].sort = p[1].sort
+        subst = dict((x.rep,y.rep) for x,y in zip([p[1]],lsyms))
+        fmla = App('*>',p[3],p[1])
+        fmla.lineno = get_lineno(p,2)
+        fmla = subst_prefix_atoms_ast(fmla,subst,None,None)
+        p[0] = Some(*(lsyms+[fmla]))
+        p[0].lineno = get_lineno(p,2)
 
     def p_bounds_params_dot(p):
         'bounds : params DOT'
@@ -2214,17 +2492,17 @@ else:
         return part
 
     def p_action_if_somefmla_lcb_action_rcb(p):
-        'action : IF somefmla sequence'
+        'complexact : IF somefmla sequence'
         p[2] = check_non_temporal(p[2])
         p[0] = IfAction(p[2],fix_if_part(p[2],p[3]))
         p[0].lineno = get_lineno(p,1)
 
     def p_action_if_somefmla_lcb_action_rcb_else_LCB_action_RCB(p):
-        'action : IF somefmla sequence ELSE action'
+        'complexact : IF somefmla sequence ELSE action'
         p[2] = check_non_temporal(p[2])
         p[0] = IfAction(p[2],fix_if_part(p[2],p[3]),p[5])
         p[0].lineno = get_lineno(p,1)
-
+        
     def p_invariants(p):
         'invariants : '
         p[0] = []
@@ -2234,6 +2512,14 @@ else:
         p[0] = p[1]
         inv = check_non_temporal(p[3])
         a = AssertAction(inv)
+        a.lineno = get_lineno(p,2)
+        p[0].append(a)
+
+    def p_invariant_invariant_fmla_proof(p):
+        'invariants : invariants INVARIANT fmla PROOF proofstep'
+        p[0] = p[1]
+        inv = check_non_temporal(p[3])
+        a = AssertAction(inv,p[5])
         a.lineno = get_lineno(p,2)
         p[0].append(a)
 
@@ -2248,42 +2534,61 @@ else:
         p[0] = []
 
     def p_action_while_somefmla_invariants_decreases_lcb_action_rcb(p):
-        'action : WHILE somefmla invariants decreases sequence'
+        'complexact : WHILE somefmla invariants decreases sequence'
         p[0] = WhileAction(*([check_non_temporal(p[2]), fix_if_part(p[2],p[5])] + p[3] + p[4]))
         p[0].lineno = get_lineno(p,1)
 
+    def methcall(lhs,rhs):
+        if (isinstance(lhs,App) or isinstance(lhs,Atom)) and len(lhs.args) == 0:
+            return compose_atoms(lhs,rhs)
+        return MethodCall(lhs,rhs)
+
+    def p_action_for_tterm_comma_tterm_in_expr_invariants_decreases_lcb_action_rcb(p):
+        'complexact : FOR tterm COMMA tterm IN fmla invariants decreases sequence'
+        itr,val,fmla,invars,decrs,seq = p[2],p[4],check_non_temporal(p[6]),p[7],p[8],p[9]
+        iend = itr.rename('loc:end')
+        ln = get_lineno(p,1)
+        didx = VarAction(itr,methcall(fmla,App('begin').sln(ln)).sln(ln)).sln(ln)
+        dend = VarAction(iend,methcall(fmla,App('end').sln(ln)).sln(ln)).sln(ln)
+        dval = VarAction(val,methcall(fmla,App('value',itr).sln(ln)).sln(ln)).sln(ln)
+        incr = AssignAction(itr,methcall(itr,App('next').sln(ln)).sln(ln)).sln(ln)
+        body = Sequence(*lower_var_stmts([dval,seq,incr])).sln(ln)
+        loop = WhileAction(*([App('<',itr,iend).sln(ln),body] + invars + decrs)).sln(ln)
+        p[0] = Sequence(*lower_var_stmts([didx,dend,loop])).sln(ln)
+
 def p_action_if_times_lcb_action_rcb_else_LCB_action_RCB(p):
-    'action : IF TIMES sequence ELSE action'
+    'complexact : IF TIMES sequence ELSE action'
     p[0] = ChoiceAction(p[3],p[5])
     p[0].lineno = get_lineno(p,1)
 
 
 if iu.get_numeric_version() <= [1,2]:
     def p_action_field_assign_term(p):
-        'action : term DOT SYMBOL ASSIGN term'
+        'simpleact : term DOT SYMBOL ASSIGN term'
         p[0] = AssignFieldAction(p[1],p[3],p[5])
         p[0].lineno = get_lineno(p,4)
 
 
     def p_action_field_assign_null(p):
-        'action : term DOT SYMBOL ASSIGN NULL'
+        'simpleact : term DOT SYMBOL ASSIGN NULL'
         p[0] = NullFieldAction(p[1],p[3])
         p[0].lineno = get_lineno(p,4)
 
     def p_action_field_assign_field(p):
-        'action : term DOT SYMBOL ASSIGN term DOT SYMBOL'
+        'simpleact : term DOT SYMBOL ASSIGN term DOT SYMBOL'
         p[0] = CopyFieldAction(p[1],p[3],p[5],p[7])
         p[0].lineno = get_lineno(p,4)
 
     def p_action_field_assign_false(p):
-        'action : term DOT SYMBOL ASSIGN FALSE'
+        'simpleact : term DOT SYMBOL ASSIGN FALSE'
         p[0] = NullFieldAction(p[1],p[3])
         p[0].lineno = get_lineno(p,4)
 
 def p_action_instantiate_atom(p):
-    'action : INSTANTIATE callatom'
+    'simpleact : INSTANTIATE callatom'
 #    p[0] = InstantiateAction(app_to_atom(p[2]))
     p[0] = InstantiateAction(p[2])
+    #print p[0]
     p[0].lineno = get_lineno(p,1)
 
 def p_callatom_atom(p):
@@ -2294,6 +2599,11 @@ if not (iu.get_numeric_version() <= [1,5]):
     def p_callatom_this(p):
         'callatom : THIS'
         p[0] = Atom(This())
+        p[0].lineno = get_lineno(p,1)
+        
+    def p_callatom_method(p):
+        'callatom : METHOD'
+        p[0] = Atom('method')
         p[0].lineno = get_lineno(p,1)
         
 
@@ -2322,17 +2632,36 @@ def p_callatoms_callatoms_callatom(p):
     p[0].append(p[3])
 
 def p_action_call_optreturns_callatom(p):
-    'action : CALL optactualreturns callatom'
+    'simpleact : CALL optactualreturns callatom'
     p[0] = CallAction(*([p[3]] + p[2]))
     p[0].lineno = get_lineno(p,1)
 
 def p_action_call_callatom(p):
-    'action : CALL callatom'
+    'simpleact : CALL callatom'
     p[0] = CallAction(p[2])
     p[0].lineno = get_lineno(p,1)
 
+# chris: allow instanciation in loops
+# TODO still errors
+# def p_action_instantiate_insts(p):
+#     'simpleact : INSTANTIATE insts' 
+#     # TODO /usr/local/lib/python2.7/dist-packages/ivy/include/1.7/ivy_quic_client_multiples.ivy: line 60: error: type c used where a function or individual symbol is expected
+#     # p[0] = p[2]
+#     # print p[0]
+#     print p[2]
+#     # print p[1]
+#     # print p[2]
+#     global ivy_ref
+#     # p[0] = ivy_ref
+#     # p[0] = InstantiateAction(p[2])
+#     p[0] = InstantiateDecl(*p[2])
+#     p[0].lineno = get_lineno(p,1)
+#     do_insts(ivy_ref, p[2])
+
+    
+
 # def p_action_call_callatom_assign_callatom(p):
-#     'action : CALL callatom ASSIGN callatom'
+#     'simpleact : CALL callatom ASSIGN callatom'
 #     p[0] = CallAction(p[4],p[2])
 #     p[0].lineno = get_lineno(p,1)
 
@@ -2362,7 +2691,7 @@ def p_lparams_lparams_comma_lparam(p):
 
 
 def p_action_local_params_lcb_action_rcb(p):
-    'action : LOCAL lparams sequence'
+    'complexact : LOCAL lparams sequence'
     # we rename the locals to avoid name capture
     lsyms = [s.prefix('loc:') for s in p[2]]
     subst = dict((x.rep,y.rep) for x,y in zip(p[2],lsyms))
@@ -2392,16 +2721,52 @@ if not (iu.get_numeric_version() <= [1,5]):
         p[0] = check_non_temporal(p[2])
 
     def p_action_var_opttypedsym_assign_fmla(p):
-        'action : VAR opttypedsym optinit'
+        'simpleact : VAR tterm optinit'
         p[0] = VarAction(p[2],p[3]) if p[3] is not None else VarAction(p[2])
         p[0].lineno = get_lineno(p,1)
 
 if not (iu.get_numeric_version() <= [1,6]):
     def p_action_thunk_symbol_optargs_colon_atype_assign_sequence(p):
-        'action : THUNK LABEL SYMBOL optargs COLON atype ASSIGN sequence'
+        'complexact : THUNK LABEL SYMBOL optargs COLON atype ASSIGN sequence'
         action = Atom(p[3],p[4])
         action.lineno = get_lineno(p,3)
         p[0] = ThunkAction(Atom(p[2][1:-1],[]),action,Atom(p[6]),p[8])
+        p[0].lineno = get_lineno(p,1)
+
+
+
+if not (iu.get_numeric_version() <= [1,6]):
+    def p_debugarg_symbol_equal_fmla(p):
+        'debugarg : SYMBOL EQ fmla'
+        lhs = App(p[1])
+        lhs.lineno = get_lineno(p,1)
+        p[0] = DebugItem(lhs,p[3])
+        p[0].lineno = get_lineno(p,2)
+    
+    def p_debugargs(p):
+        'debugargs : debugarg'
+        p[0] = [p[1]]
+
+    def p_debugargs_debugarg_symbol_equal_fmla(p):
+        'debugargs : debugargs COMMA debugarg'
+        p[0] = p[1]
+        p[0].append(p[3])
+
+    def p_optdebugargs(p):
+        'optdebugargs : '
+        p[0] = []
+        
+    def p_optdebugargs_with_debugargs(p):
+        'optdebugargs : WITH debugargs'
+        p[0] = p[2]
+        
+    def p_simpleact_debug_symbol_optdebugargs(p):
+        'simpleact : DEBUG SYMBOL optdebugargs'
+        action = Atom(p[2],[])
+        action.lineno = get_lineno(p,2)
+        if not p[2].startswith('"'):
+            report_error(IvyError(action,"expected string constant after 'debug'"))
+        p[0] = DebugAction(action,*p[3])
         p[0].lineno = get_lineno(p,1)
 
 
@@ -2419,7 +2784,7 @@ def p_eqns_eqns_comma_eqn(p):
     p[0].append(p[3])
 
 def p_action_let_eqns_lcb_action_rcb(p):
-    'action : LET eqns sequence'
+    'complexact : LET eqns sequence'
     p[0] = LetAction(*(p[2]+[p[3]]))
 
 def p_symbols(p):
@@ -2655,6 +3020,7 @@ from ivy_logic_parser import *
 
 def p_error(token):
     if token is not None:
+        print token
         report_error(ParseError(token.lineno,token.value,"syntax error"))
     else:
         report_error(ParseError(None,None,'unexpected end of input'));
@@ -2670,6 +3036,18 @@ parser = yacc.yacc(start='top',tabmodule='ivy_parsetab',errorlog=yacc.NullLogger
 #parser = yacc.yacc(start='top',tabmodule='ivy_parsetab')
 # formula_parser = yacc.yacc(start = 'fmla', tabmodule='ivy_formulatab')
 
+class TypeNames(object):
+    def __init__(self):
+        self.namelist = []
+        self.nameset = set()
+    def add(self,tname):
+        if tname not in self.nameset:
+            pref,refparms = iu.extract_parameters_name(tname)
+            for rp in refparms:
+                self.add(rp)
+            self.namelist.append(tname)
+            self.nameset.add(tname)
+
 def expand_autoinstances(ivy):
     autos = defaultdict(list)
     trefs = set()
@@ -2683,9 +3061,9 @@ def expand_autoinstances(ivy):
                     key = (pref,len(parms))
                     autos[key].append(inst)
         else:
-            drefs = set()
+            drefs = TypeNames()
             decl.get_type_names(drefs)
-            for tname in drefs:
+            for tname in drefs.namelist:
                 if tname not in trefs:
                     trefs.add(tname)
                     pref,refparms = iu.extract_parameters_name(tname)
@@ -2696,6 +3074,8 @@ def expand_autoinstances(ivy):
                         subst = dict(zip(parms,refparms))
                         rhs = inst.args[1].clone([Atom(subst.get(a.rep,a.rep),[]) for a in inst.args[1].args])
                         newinst = Instantiation(lhs,rhs)
+                        if hasattr(decl,"lineno"):
+                            newinst.lineno = decl.lineno
                         do_insts(ivy,[newinst])
             ivy.decls.append(decl)                    
 
@@ -2708,7 +3088,7 @@ def parse(s,nested=False):
     vernum = iu.get_numeric_version()
     with LexerVersion(vernum):
         # shallow copy the parser and lexer to try for re-entrance (!!!)
-        res = copy.copy(parser).parse(s,lexer=copy.copy(lexer))
+        res = copy.copy(parser).parse(s,lexer=copy.copy(lexer),tracking=True)
     if not nested:
         expand_autoinstances(res)
     if error_list:
@@ -2716,7 +3096,7 @@ def parse(s,nested=False):
     return res
     
 def to_formula(s):
-    return formula_parser.parse(s)
+    return formula_parser.parse(s,tracking=True)
 
 if __name__ == '__main__':
 #    while True:

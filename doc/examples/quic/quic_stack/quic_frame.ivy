@@ -822,21 +822,23 @@ object frame = { # TODO cleanup
             #     require e = quic_packet_type.one_rtt & established_1rtt_keys(scid); #  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid) 
             #     require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             # } else {
-            #     call show_enc_level(e);
+            #call show_enc_level(e);
             #     require num_queued_frames_rtt(scid) > 0 -> e = queued_level_rtt(scid); # TODO
             # };
 
             if (~zero_rtt_allowed | zero_rtt_sent) & ~(e = quic_packet_type.zero_rtt) {
-                #require tls_handshake_finished;
+            #     #require tls_handshake_finished;
                 require (connected(dcid) & connected_to(dcid) = scid); # | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); #e = quic_packet_type.zero_rtt & 
                 require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid)); # | (e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)  
             } else {
-                require e = quic_packet_type.one_rtt | e = quic_packet_type.zero_rtt;
+                #require e = quic_packet_type.one_rtt | e = quic_packet_type.zero_rtt;
+                require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid)) | (e = quic_packet_type.zero_rtt & ~established_1rtt_keys(scid));
+
                 #require dcid ~= the_cid;
-                # dcid := 2;
-                #require e = quic_packet_type.zero_rtt;
-                #require (connected(dcid) & connected_to(dcid) = scid) | (established_0rtt_keys(scid)); #e = quic_packet_type.zero_rtt & 
-                #require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid)) | (established_0rtt_keys(scid)); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)  
+            #     # dcid := 2;
+            #     #require e = quic_packet_type.zero_rtt;
+            #     #require (connected(dcid) & connected_to(dcid) = scid) | (established_0rtt_keys(scid)); #e = quic_packet_type.zero_rtt & 
+            #     #require (e = quic_packet_type.one_rtt & established_1rtt_keys(scid)) | (established_0rtt_keys(scid)); # | e = quic_packet_type.zero_rtt  | e = quic_packet_type.zero_rtt & established_0rtt_keys(scid)  
             }
             #require e = quic_packet_type.zero_rtt -> established_0rtt_keys(scid);  # [11]
             if ~zero_rtt_allowed | zero_rtt_sent {
@@ -855,7 +857,7 @@ object frame = { # TODO cleanup
             require ((offset) + (f.length)) <= stream_app_data_end(dcid,f.id);
     
             #if is_stream_limit_test = false { #For stream limit test & pico vuln| ~_generating  not working
-            require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); 
+            require f.data = stream_app_data(dcid,f.id).segment(offset,offset+f.length); # TODO
             require f.fin <-> (stream_app_data_finished(dcid,f.id) & offset+f.length = stream_app_data_end(dcid,f.id));
 
             var kind := get_stream_kind(f.id);
@@ -907,6 +909,8 @@ object frame = { # TODO cleanup
         }
     }
 }
+
+#import action show_stream(pkt:stream_data)
 
 # #### CRYPTO event
 #
@@ -1250,8 +1254,8 @@ object frame = { ...
         action handle(f:frame.application_close,scid:cid,dcid:cid,e:quic_packet_type,seq_num:pkt_num)
 	around handle{
             require connected(dcid) & connected_to(dcid) = scid;
-            require e ~= quic_packet_type.initial;
-            require e = quic_packet_type.one_rtt -> established_1rtt_keys(scid);
+            #require e ~= quic_packet_type.initial;
+            require e = quic_packet_type.one_rtt & established_1rtt_keys(scid);
             #require e = quic_packet_type.handshake -> established_handshake_keys(scid);
             require num_queued_frames(scid) > 0 -> e = queued_level(scid);
             require connected(scid) & connected_to(scid) = dcid;
@@ -1729,7 +1733,7 @@ object frame = { ...
             };
             ...
 
-            call tls_api.upper.save_token(f.data);
+            # call tls_api.upper.save_token(f.data);
             call enqueue_frame(scid,f,e,false);
         }
     }
@@ -1917,10 +1921,10 @@ action stream_id_allowed(dcid:cid,id:stream_id,e: quic_packet_type) returns (ok:
     var kind := get_stream_kind(id);
     var idhi : stream_id := id / 4;
 
-    if (zero_rtt_allowed & ~zero_rtt_sent) | e = quic_packet_type.zero_rtt { # TODO
-        ok := idhi <= 20;
-    }
-    else 
+    # if (zero_rtt_allowed & ~zero_rtt_sent) | e = quic_packet_type.zero_rtt { # TODO
+    #     ok := idhi <= 20;
+    # }
+    # else 
     if ~(is_client(dcid) <-> get_stream_role(id) = role.client) {  # if stream remotely initiated
         if kind = unidir {
             if initial_max_stream_id_uni.is_set(tp) {

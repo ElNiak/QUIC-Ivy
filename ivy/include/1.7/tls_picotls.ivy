@@ -830,6 +830,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             is_client_test = true;
 
         std::cerr << "create cid = " << c << std::endl;  
+        std::cerr << "is_server  = " << is_server << std::endl;  
 
         // We create a new picootls session, and add an entry in the cid_map
         // for it.
@@ -947,9 +948,9 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
         session = ptls_new(ctx,is_server ? 1 : 0);
         ptls_set_server_name(session, "servername", strlen("servername"));
 
-        if(const char* env_p = std::getenv("TEST_IMPL")) { 
-            std::cerr << "TEST_IMPL " << env_p << std::endl;
-            std::cerr << "is_server " << is_server << std::endl;
+        //if(const char* env_p = std::getenv("TEST_IMPL")) { 
+        //    std::cerr << "TEST_IMPL " << env_p << std::endl;
+        //    std::cerr << "is_server " << is_server << std::endl;
             // if(strncmp(env_p,"quic-go",10) == 0 
             //     || strncmp(env_p,"quiche",10) == 0 
             //        || strncmp(env_p,"lsquic",10) == 0 
@@ -961,7 +962,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
                             (const char*) handshake_properties->client.negotiated_protocols.list[0].base, 
                             handshake_properties->client.negotiated_protocols.list[0].len);
                 // } 
-        }
+        //}
 
         picotls_connection *s = new picotls_connection(c, session, ctx, *`cb`, handshake_properties, is_server);
         *ptls_get_data_ptr(session) = s;   
@@ -1877,7 +1878,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             for(int i = 0; i < 16;i++)
                 key[i] = key2[i];
         }   
-        else if(pversion == 0x00000001) {
+        else if(pversion == 0xff00001d) {
             uint8_t key2[16] = { 0xcc, 0xce, 0x18, 0x7e, 0xd0, 
                                  0x9a, 0x09, 0xd0, 0x57, 0x28, 
                                  0x15, 0x5a, 0x6c, 0xb9, 0x6b, 
@@ -1909,7 +1910,7 @@ module tls_gnutls(cid,index,bytes,extens,hextens,exten_ser,lower,upper) = {
             for(int i = 0; i < 12; i++)
                 nonce[i] = nonce2[i];
         }    
-        else if(pversion == 0x00000001) {
+        else if(pversion == 0xff00001d) {
             uint8_t nonce2[12] = { 0xe5, 0x49, 0x30, 0xf9, 0x7f,
                                    0x21, 0x36, 0xf0, 0x53, 0x0a, 
                                    0x8c, 0x1c }; //nonce[12]

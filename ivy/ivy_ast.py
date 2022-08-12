@@ -5,10 +5,21 @@
 Ivy abstract syntax trees.
 """
 
-from ivy_utils import flatten, gen_to_set, UniqueRenamer, compose_names, split_name, IvyError, base_name
+from ivy_utils import flatten, gen_to_set, UniqueRenamer, compose_names, split_name, IvyError, base_name, ivy_compose_character, LocationTuple
 import ivy_utils as iu
 import ivy_logic
 import re
+
+reference_lineno = None
+
+def set_reference_lineno(lineno):
+    global reference_lineno
+    reference_lineno = lineno
+
+def lineno_add_ref(lineno):
+    if reference_lineno is None:
+        return lineno
+    return LocationTuple([reference_lineno.filename, reference_lineno.line, lineno])
 
 class AST(object):
     """
@@ -19,15 +30,20 @@ class AST(object):
     def clone(self,args):
        res = type(self)(*args)
        if hasattr(self,'lineno'):
-           res.lineno = self.lineno
+#           if reference_lineno:
+#               print 'cloning'.format(self)
+           res.lineno = lineno_add_ref(self.lineno)
        return res
+    def sln(self,lineno):
+        self.lineno = lineno
+        return self
 
 class NoneAST(AST):
     pass
 
 def copy_attrs(ast1,ast2):
     if hasattr(ast1,'lineno'):
-        ast2.lineno = ast1.lineno
+        ast2.lineno = lineno_add_ref(ast1.lineno)
     
 class Symbol(AST):
     def __init__(self,rep,sort):
@@ -36,11 +52,24 @@ class Symbol(AST):
         self.sort = sort
     def __repr__(self):
         return self.rep
+    def __str__(self):
+        return self.rep
     def __hash__(self):
         return hash(self.rep)
     def __eq__(self,other):
         return type(self) == type(other) and self.rep == other.rep
-
+    def subst(self,subst,root):
+        if not root:
+            return self
+        thing = subst.get(self.rep,self.rep)
+        if isinstance(thing,This):
+            return thing
+        return Symbol(thing,self.sort)
+    def unparse(self):
+        return self.rep
+    def apply(self,fun,root):
+        return Symbol(fun(self.rep),self.sort) if root else self
+    
 def nary_repr(op,args):
     res = (' ' + op + ' ').join([repr(a) for a in args])
     return ('(' + res + ')') if len(args) > 1 else res
@@ -214,6 +243,8 @@ class This(AST):
     @property
     def relname(self):
         return 'this'
+    def unparse(self):
+        return self
     pass
 
 class Atom(Formula):
@@ -237,7 +268,11 @@ class Atom(Formula):
     def is_numeral(self):
         return False
     def prefix(self,s):
-        return Atom(s+self.rep,*self.args)
+        res = self.clone(self.args)
+        res.rep = s + res.rep
+        if hasattr(self,'lineno'):
+            res.lineno = self.lineno
+        return res
     def suffix(self,s):
         res = self.clone(self.args)
         res.rep = res.rep + s
@@ -249,6 +284,8 @@ class Atom(Formula):
         res.rep = s
         if hasattr(self,'lineno'):
             res.lineno = self.lineno
+        if hasattr(self,'sort'):
+            res.sort = self.sort
         return res
         
     # following for backward compat
@@ -302,9 +339,10 @@ class App(Term):
     def is_numeral(self):
         return self.rep.rep[0].isdigit() or self.rep.rep[0] == '"'
     def prefix(self,s):
-        res = type(self)(s + self.rep)
-        if hasattr(self,'sort'):
-            res.sort = self.sort
+        res = self.clone(self.args)
+        res.rep = s + res.rep
+        if hasattr(self,'lineno'):
+            res.lineno = self.lineno
         return res
     def drop_prefix(self,s):
         assert self.rep.startswith(s)
@@ -317,6 +355,8 @@ class App(Term):
         res.rep = s
         if hasattr(self,'lineno'):
             res.lineno = self.lineno
+        if hasattr(self,'sort'):
+            res.sort = self.sort
         return res
 
 
@@ -347,7 +387,7 @@ class Variable(Term):
     def resort(self,sort):
         res = Variable(self.rep,sort)
         if hasattr(self,'lineno'):
-            res.lineno = self.lineno
+            res.lineno = lineno_add_ref(self.lineno)
         return res
 
 
@@ -518,6 +558,7 @@ class Decl(AST):
     def __init__(self,*args):
         self.args = args
         self.attributes = ()
+        self.common = None
     def __repr__(self):
         res = self.name() + ' ' + ','.join([repr(a) for a in self.args])
         return res
@@ -554,6 +595,12 @@ class ObjectDecl(Decl):
 
 lf_counter = 0
 
+always_clone_with_fresh_id = False
+
+def set_always_clone_with_fresh_id(val):
+    global always_clone_with_fresh_id
+    always_clone_with_fresh_id = val
+
 class LabeledFormula(AST):
     def __init__(self,*args):
         global lf_counter
@@ -580,8 +627,10 @@ class LabeledFormula(AST):
     def clone(self,args):
         global lf_counter
         res = AST.clone(self,args)
-        lf_counter -= 1
-        res.id = self.id
+        global always_clone_with_fresh_id
+        if not always_clone_with_fresh_id:
+            lf_counter -= 1
+            res.id = self.id
         res.temporal = self.temporal
         res.explicit = self.explicit
         res.definition = self.definition
@@ -641,16 +690,18 @@ class SchemaBody(AST):
         lines = []
         def indent(ind,s):
             lines.append(ind * '    ' + s)
+        def propdecl(x):
+            return ('explicit ' if x.explicit else '') + 'property '
         def sub(thing,ind):
             indent(0,'{\n')
             for x in thing.prems():
                 if isinstance(x,LabeledFormula):
                     fmla = x.formula
                     if isinstance(fmla,SchemaBody):
-                        indent(ind+1,'property ' + ('[{}] '.format(x.label) if x.label is not None else ''))
+                        indent(ind+1,propdecl(x) + ('[{}] '.format(x.label) if x.label is not None else ''))
                         sub(fmla,ind+1)
                     else:
-                        indent(ind+1,'property ' + str(x) + '\n')
+                        indent(ind+1,propdecl(x) + str(x) + '\n')
                 elif isinstance(x,ivy_logic.UninterpretedSort):
                     indent(ind+1,'type ' + str(x) + '\n')
                 else:
@@ -826,6 +877,9 @@ class TacticTactic(Tactic):
     @property
     def tactic_decls(self):
         return self.args[1].args
+    @property
+    def tactic_proof(self):
+        return self.args[2] if len(self.args) > 2 and not isinstance(self.args[2],NoneAST) else None
     def __str__(self):
         res = 'tactic ' + str(self.args[0]) + str(self.args[1])
 
@@ -857,12 +911,21 @@ class Instantiation(AST):
     def __init__(self,*args):
         self.args = args
     def __repr__(self):
+        print  ' : '.join(repr(x) for x in self.args) if self.args[0] else repr(self.args[1])
         return ' : '.join(repr(x) for x in self.args) if self.args[0] else repr(self.args[1])
 
 class InstantiateDecl(Decl):
+    def __init__(self,*args):
+        Decl.__init__(self,*args)
+        assert all(hasattr(x,'lineno') for x in self.args)
     def name(self):
+        print self
         return 'instantiate'
-
+    def defines(self):
+        foo = [c.args[0] for c in self.args]
+        print foo
+        return [(c.relname,lineno(c)) for c in foo if c is not None]
+        
 class AutoInstanceDecl(Decl):
     def name(self):
         return 'autoinstance'
@@ -909,6 +972,8 @@ class FreshConstantDecl(ConstantDecl):
 class DestructorDecl(ConstantDecl):
     def name(self):
         return 'destructor'
+    def defines(self):
+        return [(c.rep,lineno(c),DestructorDecl) for c in self.args if c.rep not in iu.polymorphic_symbols]
 
 class ConstructorDecl(ConstantDecl):
     def name(self):
@@ -956,6 +1021,13 @@ class ActionDecl(Decl):
         for a in self.args:
             res.extend(a.iter_internal_defines())
         return res
+    def get_type_names(self,names):
+        for c in self.args:
+            for tt in c.formal_params:
+                tterm_type_names(tt,names)
+            for tt in c.formal_returns:
+                tterm_type_names(tt,names)
+            c.args[1].get_type_names(names)
 
 class StateDecl(Decl):
     def name(self):
@@ -999,7 +1071,17 @@ class AssertDecl(Decl):
 class InterpretDecl(LabeledDecl):
     def name(self):
         return 'interpret'
-
+    def defines(self):
+        res = []
+        if not(iu.get_numeric_version() <= [1,6]):
+            res = [(self.args[0].label.rep,self.lineno)]
+        rhs = self.args[0].formula.args[1]
+        if isinstance(rhs,Range):
+            for arg in rhs.args:
+                if not arg.rep.isdigit():
+                    res.append((arg.rep,self.lineno))
+        return res
+    
 class MixinDecl(Decl):    
     def name(self):
         return 'mixin'
@@ -1031,7 +1113,7 @@ class IsolateDecl(Decl):
     def name(self):
         return 'isolate'
     def defines(self):
-        return [(c.name(),lineno(c)) for c in self.args]
+        return [(c.name(),lineno(c)) for c in self.args if not isinstance(c.args[0],This)]
     
 class IsolateObjectDecl(IsolateDecl):    
     def defines(self):
@@ -1058,12 +1140,17 @@ class IsolateDef(AST):
     def clone(self,args):
         res = AST.clone(self,args)
         res.with_args = self.with_args
+        if hasattr(self,'is_object'):
+            res.is_object = self.is_object
         return res
         
 class TrustedIsolateDef(IsolateDef):
     pass
 
 class ExtractDef(IsolateDef):
+    pass
+
+class ProcessDef(ExtractDef):
     pass
 
 class ExportDecl(Decl):    
@@ -1111,6 +1198,9 @@ class AliasDecl(Decl):
         return 'alias'
     def defines(self):
         return [(c.defines(),lineno(c)) for c in self.args]
+    def get_type_names(self,names):
+        for c in self.args:
+            names.add(c.args[1].rep)
     
 
 class DelegateDecl(Decl):    
@@ -1346,6 +1436,11 @@ class ScenarioDef(AST):
                 res.append((mixer,tr.args[2].args[0].lineno))
         res.extend(self.places())
         return res
+
+
+class DebugItem(AST):
+    def __str__(self):
+        return str(self.args[0]) + '=' + str(self.args[1])
     
 # predefined things
 
@@ -1377,53 +1472,107 @@ def app_to_atom(app):
 def apps_to_atoms(apps):
     return [app_to_atom(app) for app in apps]
 
+
+class Dot(AST):
+    def unparse(self):
+        return self.args[0].unparse() + ivy_compose_character + self.args[1].unparse()
+    def subst(self,subst,root):
+        lhs,rhs = self.args[0].subst(subst,root),self.args[1].subst(subst,False)
+        return rhs if isinstance(lhs,This) else Dot(lhs,rhs)
+    def apply(self,fun,root):
+        return Dot(self.args[0].apply(fun,root),self.args[1].apply(fun,False))
+    
+    
+class Bracket(AST):
+    def unparse(self):
+        lhs = self.args[0].unparse()
+        if isinstance(lhs,This):
+            lhs = 'this'
+        return lhs + '[' + self.args[1].unparse() + ']'
+    def subst(self,subst,root):
+        return Bracket(self.args[0].subst(subst,root),self.args[1].subst(subst,True))
+    def apply(self,fun,root):
+        return Bracket(self.args[0].apply(fun,root),self.args[1].apply(fun,True))
+
+
+symbol_chars_parser = re.compile(r'[^\[\]\.]*')
+    
+    
+def parse_name(name):
+    def recur(pos):
+        match = symbol_chars_parser.match(name,pos)
+        assert match
+        pref = Symbol(match.group(0),None)
+        pos = match.end()
+        while len(name) > pos and name[pos] != ']':
+            if name[pos] == '[':
+                suff,pos = recur(pos+1)
+                pref = Bracket(pref,suff)
+                pos = pos + 1;
+            elif name[pos] == ivy_compose_character:
+                suff,pos = recur(pos+1)
+                pref = Dot(pref,suff)
+        return pref,pos
+    res,pos = recur(0)
+    return res
+    
+
 # AST rewriting
 
-name_parser = re.compile(r'[^\[\]]+|\[[^\[\]]*\]')
+# name_parser = re.compile(r'[^\[\]]+|\[[^\[\]]*\]')
 
 
-def str_subst(s,subst):
-    names = split_name(s)
-    it = subst.get(names[0],names[0])
-    if isinstance(it,This):
-        if len(names) > 1:
-            return compose_names(*names[1:])
-        return it
-    return compose_names(it,*names[1:])
-#    return subst.get(s,s)
+# def str_subst(s,subst):
+#     names = split_name(s)
+#     it = subst.get(names[0],names[0])
+#     if isinstance(it,This):
+#         if len(names) > 1:
+#             return compose_names(*names[1:])
+#         return it
+#     return compose_names(it,*names[1:])
+# #    return subst.get(s,s)
 
-def str_subst_str(s,subst):
-    if s == 'this':
-        return subst.get(s,s)
-    return str_subst(s,subst)
+# def str_subst_str(s,subst):
+#     if s == 'this':
+#         return subst.get(s,s)
+#     return str_subst(s,subst)
 
-def subst_subscripts_comp(s,subst):
-    if isinstance(s,This) or s.startswith('"') :
-        return s
-    assert s!=None
-#    print 's: {} subst: {}'.format(s,subst)
-    try:
-        g = name_parser.findall(s)
-    except:
-        assert False, s
-#    print 'g: {}'.format(g)
-    if not g:
-        return s
-    pref = str_subst(g[0],subst)
-    if isinstance(pref,This):
-        if len(g) > 1:
-            raise iu.IvyError(None,'cannot substitute "this" for {} in {}'.format(g[0],s))
-        return pref
-    try:
-        res =  pref + ''.join(('[' + str_subst_str(x[1:-1],subst) + ']' if x.startswith('[') else x) for x in g[1:])
-    except:
-        print "s: {} subst : {}".format(s,subst)
-#    print "res: {}".format(res)
-    return res
+# def subst_subscripts_comp(s,subst):
+#     if isinstance(s,This) or s.startswith('"') :
+#         return s
+#     assert s!=None
+# #    print 's: {} subst: {}'.format(s,subst)
+#     try:
+#         g = name_parser.findall(s)
+#     except:
+#         assert False, s
+# #    print 'g: {}'.format(g)
+#     if not g:
+#         return s
+#     pref = str_subst(g[0],subst)
+#     if isinstance(pref,This):
+#         if len(g) > 1:
+#             raise iu.IvyError(None,'cannot substitute "this" for {} in {}'.format(g[0],s))
+#         return pref
+#     try:
+#         res =  pref + ''.join(('[' + str_subst_str(x[1:-1],subst) + ']' if x.startswith('[') else x) for x in g[1:])
+#     except:
+#         print "s: {} subst : {}".format(s,subst)
+# #    print "res: {}".format(res)
+#     return res
+
+# def subst_subscripts(s,subst):
+# #    return compose_names(*[subst_subscripts_comp(t,subst) for t in split_name(s)])
+#     return subst_subscripts_comp(s,subst)
 
 def subst_subscripts(s,subst):
-#    return compose_names(*[subst_subscripts_comp(t,subst) for t in split_name(s)])
-    return subst_subscripts_comp(s,subst)
+    if isinstance(s,This) or s.startswith('"') :
+        return s
+    ast = parse_name(s)
+    res = ast.subst(subst,True).unparse()
+    assert not isinstance(res,Dot), s
+    return res
+        
 
 def my_base_name(x):
     return x if isinstance(x,This) else base_name(x)
@@ -1459,15 +1608,16 @@ class AstRewriteSubstPrefix(object):
     def prefix_str(self,name,always):
         if name == 'this' and self.pref:
             return self.pref.rep
-        if not (self.pref and (always or self.to_pref == None or split_name(name)[0] in self.to_pref)):
+        if not (self.pref and (always or self.to_pref == None or name in self.to_pref)):
             return name
         return iu.compose_names(self.pref.rep,name)
     def rewrite_atom(self,atom,always=False):
         if not(isinstance(atom.rep,This) or atom.rep.startswith('"')):
-            g = name_parser.findall(atom.rep)
-            if len(g) > 1:
-                n = g[0] + ''.join(('[' + self.prefix_str(x[1:-1],always) + ']' if x.startswith('[') else x) for x in g[1:])
-                atom = atom.rename(n)
+            atom = atom.rename(parse_name(atom.rep).apply(lambda x: self.prefix_str(x,always),False).unparse())
+            # g = name_parser.findall(atom.rep)
+            # if len(g) > 1:
+            #     n = g[0] + ''.join(('[' + self.prefix_str(x[1:-1],always) + ']' if x.startswith('[') else x) for x in g[1:])
+            #     atom = atom.rename(n)
         if not (self.pref and (always or self.to_pref == None or isinstance(atom.rep,This) or 
                 split_name(atom.rep)[0] in self.to_pref)):
             return atom
@@ -1514,7 +1664,7 @@ def ast_rewrite(x,rewrite):
             atom = type(x)(ast_rewrite(x.rep,rewrite),ast_rewrite(x.args,rewrite))
         else:
             atom = type(x)(rewrite.rewrite_name(x.rep),ast_rewrite(x.args,rewrite))
-        copy_attributes_ast(x,atom)
+        copy_attributes_ast_ref(x,atom)
         if hasattr(x,'sort'):
             atom.sort = rewrite_sort(rewrite,x.sort)
         if isinstance(x.rep, NamedBinder) or base_name_differs(x.rep,atom.rep):
@@ -1550,8 +1700,12 @@ def ast_rewrite(x,rewrite):
         x = x.clone(ast_rewrite(x.args,rewrite))
         rewrite.local = old_local
         return x
+    if isinstance(x,DebugItem):
+        return x.clone([x.args[0],ast_rewrite(x.args[1],rewrite)])
     if hasattr(x,'args'):
         return x.clone(ast_rewrite(x.args,rewrite)) # yikes!
+    if x is None:
+        return None
     print "wtf: {} {}".format(x,type(x))
     assert False
 
@@ -1572,6 +1726,13 @@ def copy_attributes_ast(x,y):
     if hasattr(x,'sort'):
         y.sort = x.sort
     
+def copy_attributes_ast_ref(x,y):
+    if hasattr(x,'lineno'):
+#        print 'ast: {} {}'.format(y,reference_lineno)
+        y.lineno = lineno_add_ref(x.lineno)
+    if hasattr(x,'sort'):
+        y.sort = x.sort
+    
 def substitute_ast(ast,subs):
     """
     Substitute terms for variables in an ast. Here, subs is
@@ -1583,6 +1744,24 @@ def substitute_ast(ast,subs):
         res = ast.clone([substitute_ast(x,subs) for x in ast.args])
         copy_attributes_ast(ast,res)
         return res
+
+def set_variable_sorts(ast,subs):
+    """
+    Add sorts to unsorted free variables in ast. Here, subs maps
+    variable names to sort names.
+    """
+    if isinstance(ast, Variable):
+        if ast.rep in subs and (not hasattr(ast,'sort') or ast.sort == 'S'):
+            return ast.resort(subs[ast.rep])
+        return ast
+    if isinstance(ast, (Quantifier,NamedBinder)):
+        subs = subs.copy()
+        for v in ast.bounds:
+            if v.rep in subs:
+                del subs[v.rep]
+    res = ast.clone([set_variable_sorts(x,subs) for x in ast.args])
+    copy_attributes_ast(ast,res)
+    return res
 
 def substitute_constants_ast(ast,subs):
     """
@@ -1616,7 +1795,7 @@ def substitute_constants_ast2(ast,subs):
             return res
         return ast
     else:
-        if isinstance(ast,str):
+        if isinstance(ast,str) or ast is None:
             return ast
         new_args = [substitute_constants_ast2(x,subs) for x in ast.args]
         res = ast.clone(new_args)
@@ -1683,19 +1862,24 @@ def is_false(ast):
 
 class Range(AST):
     def __init__(self,lo,hi):
-        self.args = []
-        self.lo, self.hi = lo,hi
+        self.args = [lo,hi]
     def __str__(self):
         return '{' + str(self.lo) + '..' + str(self.hi) + '}'
-    def clone(self,args):
-        return Range(self.lo,self.hi)
+    def __repr__(self):
+        return '{' + str(self.lo) + '..' + str(self.hi) + '}'
     @property
     def rep(self):
         return self
     @property
     def card(self):
         return int(self.hi) - int(self.lo) + 1
-
+    @property
+    def lo(self):
+        return self.args[0]
+    @property
+    def hi(self):
+        return self.args[1]
+    
 class ASTContext(object):
     """ ast compiling context, handles line numbers """
     def __init__(self,ast):
@@ -1724,3 +1908,22 @@ class Labeler(object):
 class KeyArg(App):
     def __repr__(self):
         return '^' + App.__repr__(self)
+
+class TemporalModels(AST):    
+    """ A predicate of the form M |= phi where M is a NormalProgram
+    and phi is a temporal formula """
+    def __init__(self,model,fmla):
+        self.model,self.fmla = model,fmla
+    @property
+    def args(self):
+        """ The fmla is the only subterm """
+        return [self.fmla]
+    def clone(self,args):
+        """ clone just copies this node """
+        res = TemporalModels(self.model,args[0])
+        copy_attrs(self,res)
+        return res
+    def __str__(self):
+        return str(self.model) + ' |= ' + str(self.fmla)
+
+    

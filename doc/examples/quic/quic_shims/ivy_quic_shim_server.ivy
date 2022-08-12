@@ -2,9 +2,10 @@
 
 include quic_shim
 
-# The QUIC test shim
-# ------------------
+# TODO import show_stream for debug
 
+# The QUIC test shim for client
+# -----------------------------
 
 # Packet event shim
 # -----------------
@@ -34,54 +35,25 @@ include quic_shim
 # mapped to an open socket. This map is provided by `endpoint_to_socket`.
 #
 
+
 after packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
-    if _generating {  # & ~conn_closed(pkt.the_cid)
+   # if src = server.ep  {
+    if dst_is_generated(src) { # _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid)
         var spkt := pkt_serdes.to_bytes(pkt);
         var rnum := reference_pkt_num(spkt,false);
-        var tls_id := src_tls_id(src);
-        var ppkt := prot.encrypt(tls_id,rnum,spkt);
+        call clear_packet(src,dst,rnum,spkt);
+        var ppkt := prot.encrypt(server.tls_id,rnum,spkt);
+        call cipher_packet(ppkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
         call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
     }
 }
 
-
-action make_transport_parameters2 returns (tp:quic_transport_parameters) = {
-    var imsdbl : initial_max_stream_data_bidi_local;
-    imsdbl.stream_pos_32 := max_stream_data;
-    var imd : initial_max_data;
-    imd.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
-    var it : max_idle_timeout;
-    it.seconds_16 := random_microsecs(0,0xFFFFFFF);
-    var imsdbr : initial_max_stream_data_bidi_remote;
-    imsdbr.stream_pos_32 := max_stream_data;
-    var imsdu : initial_max_stream_data_uni;
-    imsdu.stream_pos_32 := random_stream_pos(1,0xFFFFFFF);
-    tp.transport_parameters := tp.transport_parameters.append(imsdbl);
-    tp.transport_parameters := tp.transport_parameters.append(imd);
-    tp.transport_parameters := tp.transport_parameters.append(it);
-    tp.transport_parameters := tp.transport_parameters.append(imsdbr);
-    tp.transport_parameters := tp.transport_parameters.append(imsdu);
-
-    var icid : initial_source_connection_id; #TODO update v29
-    icid.scid := 0x42;
-    tp.transport_parameters := tp.transport_parameters.append(icid);
-
-    var no_migration : disable_active_migration; #TODO update v29
-    tp.transport_parameters := tp.transport_parameters.append(no_migration);
-
-    var max_streams_bidi : initial_max_stream_id_bidi; #TODO update v29
-    max_streams_bidi.stream_id_16 := random_stream_id(4,0xFFFFFFF);
-    tp.transport_parameters := tp.transport_parameters.append(max_streams_bidi);
-}
-
 after packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
-    if _generating {  # & ~conn_closed(pkt.the_cid)
+   # if src = server.ep  {
+    if dst_is_generated(src) { # (| is_mim TODO) _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid) TODO
         var spkt := pkt_serdes_vn.to_bytes(pkt);
-        # var rnum := reference_pkt_num(spkt,false);
-        # var tls_id := dst_tls_id(dst);
-        # var ppkt := prot.encrypt(tls_id,rnum,spkt); # no encryption ?
         var pkts := prot.arr.empty;
         pkts := pkts.append(spkt);
         call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
@@ -89,7 +61,8 @@ after packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
 }
 
 after packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) {
-    if _generating {  # & ~conn_closed(pkt.the_cid)
+   # if src = server.ep  {
+    if dst_is_generated(src) { # _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid)
         var spkt := pkt_serdes_retry.to_bytes(pkt);
         var pkts := prot.arr.empty;
         pkts := pkts.append(spkt);
@@ -98,29 +71,61 @@ after packet_event_retry(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_retry) 
 }
 
 after packet_event_coal_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_coal_0rtt) {
-    if _generating {  # & ~conn_closed(pkt.the_cid)
+   # if src = server.ep  {
+    if dst_is_generated(src) { # _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid)
         var spkt := pkt_serdes_0rtt_coal.to_bytes(pkt);
-        var pkts := prot.arr.empty;
-        var tls_id := src_tls_id(src);
         var rnum := reference_pkt_num(spkt,false);
-        var ppkt := prot.encrypt_rtt(tls_id,rnum,spkt);
+        call clear_packet(src,dst,rnum,spkt);
+        var ppkt := prot.encrypt(server.tls_id,rnum,spkt);
+        call cipher_packet(ppkt);
+        var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
         call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
         zero_rtt_sent := true;
     }
 }
-
 
 after packet_event_0rtt(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_0rtt) {
-    if _generating {  # & ~conn_closed(pkt.the_cid)
+   # if src = server.ep  {
+    if dst_is_generated(src) { # _generating & ~conn_closed(pkt.the_cid) {  & ~conn_closed(pkt.the_cid)
         var spkt := pkt_serdes_0rtt.to_bytes(pkt);
-        var pkts := prot.arr.empty;
-        var tls_id := src_tls_id(src);
         var rnum := reference_pkt_num(spkt,false);
-        var ppkt := prot.encrypt_rtt(tls_id,rnum,spkt);
+        call clear_packet(src,dst,rnum,spkt);
+        var ppkt := prot.encrypt(server.tls_id,rnum,spkt);
+        call cipher_packet(ppkt);
+        var pkts := prot.arr.empty;
         pkts := pkts.append(ppkt);
         call net.send(endpoint_to_pid(src),endpoint_to_socket(src),dst,pkts);
         zero_rtt_sent := true;
     }
 }
+
+# TLS receive event handling
+#
+# When TLS data is received, at the server, we route it to the server's instance of TLS.
+#
+# Also, we require that all of the received data (from stream_pos up
+# to stream_length) is transferred to TLS, otherwise, the data will be
+# dribbled one byte at a time, which gets boring.
+#
+
+# around tls_recv_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, e:quic_packet_type, lo : stream_pos, hi : stream_pos ) {
+#     require src = client.ep & dst = server.ep;
+#     require hi = crypto_length(scid,e);
+#     require e = quic_packet_type.handshake -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
+#     require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.initial) = crypto_length(scid,quic_packet_type.initial);
+#     require e = quic_packet_type.zero_rtt -> crypto_pos(dcid,quic_packet_type.handshake) = crypto_length(scid,quic_packet_type.handshake);
+#     require dcid = the_cid;
+#     ...
+#     var tls_id := server.tls_id;
+#     var data := stream_data.empty;
+#    # Fill in the message bytes
+#     var idx := lo;
+#     while idx < hi {
+# 	data := data.append(crypto_data(scid,e).value(idx));
+# 	idx := idx.next
+#     };
+#     #call tls_api.lower.recv(tls_id,data,0)
+# }
+
 

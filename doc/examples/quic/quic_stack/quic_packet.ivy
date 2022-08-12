@@ -339,7 +339,7 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
     };
     require pkt.token.end ~= 0 -> (retry_sent(client_initial_rcid) | retry_recv(scid) | pkt.token = tls_api.upper.get_old_new_token);
 
-    if (src = client_alt | dst = client_alt) & ~multiple_client {
+    if (src = client_alt | dst = client_alt) & nclients = 1 {
 	    migration_done := true;
 	    #call net.close(endpoint_id.client,sock);	# destroy connection ?
     };
@@ -477,8 +477,8 @@ around packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet) {
         initial_token := pkt.token;
         # An initial packet with an unseen destination cid is a connection request.
         if ~conn_seen(dcid)  {
-            call show_initial_request_initial;
             if ~zero_rtt_sent {
+                call show_initial_request_initial;
                 call tls_client_initial_request(src,dst,dcid,pkt.pversion,src_tls_id(src));
             };
             conn_requested(src,dst,scid) := true;
@@ -598,11 +598,11 @@ action handle_tls_handshake(
 #        call map_cids(dst,dcid,scid);
         call handle_tls_extensions(src,dst,scid,sh.extensions,false);
     }
-    else if some(fh:tls.finished) hs *> fh {
-        tls_handshake_finished := true;
-    }
     else if some(ee:tls.encrypted_extensions) hs *> ee {
         call handle_tls_extensions(src,dst,scid,ee.extensions,false);
+    }
+    if some(fh:tls.finished) hs *> fh {
+        tls_handshake_finished := true;
     }
 }
 

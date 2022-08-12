@@ -1,6 +1,7 @@
 #lang ivy1.7
 
 include quic_connection
+include attack_connection
 include tls_msg
 include serdes
 include quic_deser
@@ -11,9 +12,10 @@ include quic_deser_retry
 include quic_ser_retry
 include quic_deser_zerortt
 include quic_ser_zerortt
+include quic_deser_forged
+include quic_ser_forged
 include quic_protection
 include random_value
-include quic_endpoint
 
 # TODO import _stream for debug
 
@@ -43,7 +45,16 @@ include quic_endpoint
 
 instance prot : quic_protection(tls_api.id,tls_api.upper)
 
+include quic_endpoint
 include quic_locale
+
+
+include ivy_quic_server
+include ivy_quic_client 
+include ivy_quic_client_server
+include ivy_quic_attacker
+include ivy_quic_victim
+include ivy_quic_mim
 
 # UDP receive event shim
 # ----------------------
@@ -89,7 +100,22 @@ relation zero_rtt_client_test
 relation zero_rtt_server_test # TODO should be parameters
 
 # for server tests
-relation multiple_client # only to indicate if multiple client are present
+function nclients : stream_pos
+instance cids : array(index,cid)
+function the_cids : cids
+function server_cids : cids
+# var clients : quic_endpoint.arr
+
+# PS: for modelisation purpose, for each differents client, we associate one virtual server
+# Should only instanciate one server TODO
+instance clients : quic_endpoint.clients_ep(client_addr,client_port,2)
+instance servers : quic_endpoint.servers_ep(server_addr,server_port,2)
+
+var the_cid_alt : cid
+var server_cid_alt : cid
+
+instance ip_endpoints : array(index,ip.endpoint)
+# instance quic_endpoints : array(index,quic_endpoint)
 relation allowed_migration 
 relation allowed_multiple_migration
 
@@ -103,7 +129,6 @@ relation negocation_of_version(E:ip.endpoint)
 relation negocation_of_version_initiated(E:ip.endpoint)
 
 after init {
-    multiple_client      := false;
     zero_rtt_client_test := false;
     zero_rtt_server_test := false;
     allowed_migration          := true;
@@ -115,6 +140,9 @@ after init {
 
     first_datagram_received := false;
     last_datagram_received_size := 0;
+
+    nclients := 1;
+    # the_cids := 
 }
 
 #### RTT config 
@@ -142,7 +170,10 @@ after init {
 
 #### Version (negociation) config
 
+parameter iversion : stream_pos = 0x1
+parameter vnversion : stream_pos = 0x1 # TODO
 relation version_not_found(E:ip.endpoint)
+
 var supported_versions : versions
 var final_version : version # TODO test function
 var supported_versions_bv : versions_bv
@@ -150,117 +181,86 @@ var supported_versions_bv : versions_bv
 after init {
     supported_versions := versions.empty;
     var v1 := stream_data.empty;
-    v1 := v1.append(0x0);
-    v1 := v1.append(0x0);
-    v1 := v1.append(0x0);
-    v1 := v1.append(0x01); # TODO stop bv and non-bv conversion
-    supported_versions := supported_versions.append(v1);
-
     supported_versions_bv := versions_bv.empty;
-    supported_versions_bv := supported_versions_bv.append(0x00000001);
-
-    final_version := 0x00000000; # This is init value, meaning that VN is proceed or not
-
+    # TODO change properties according to version, for now only last version specification is used !!
+    if iversion = 1 {
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x01); # TODO stop bv and non-bv conversion
+        supported_versions_bv := supported_versions_bv.append(0x00000001);
+        initial_version := 0x00000001;
+    } else if iversion = 34 {
+        v1 := v1.append(0xff);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x22); # TODO
+        supported_versions_bv := supported_versions_bv.append(0xff000022);
+        initial_version := 0xff000022; 
+    } else if iversion = 29 {
+        v1 := v1.append(0xff);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x1d); # TODO
+        supported_versions_bv := supported_versions_bv.append(0xff00001d);
+        initial_version := 0xff00001d; 
+    } else if iversion = 28 {
+        v1 := v1.append(0xff);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x1c); # TODO
+        supported_versions_bv := supported_versions_bv.append(0xff00001c);
+        initial_version := 0xff00001c;
+    } else if iversion = 27 {
+        v1 := v1.append(0xff);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x0);
+        v1 := v1.append(0x1b); # TODO
+        supported_versions_bv := supported_versions_bv.append(0xff00001b);
+        initial_version := 0xff00001b;
+    };
+    supported_versions := supported_versions.append(v1);
+    final_version := 0x0000000; # This is init value, meaning that VN is proceed or not
     version_not_found(E) := false;
 }
 
 
 implement net.recv(host:endpoint_id, s:net.socket, src:ip.endpoint, pkts:prot.arr) {
-    var dst := socket_endpoint(host,s);  # because net API doesn't tell us the dst
-    var idx := pkts.begin;
-    var past_data : stream_data := stream_data.empty;
-    while idx < pkts.end {
-        var ppkt := pkts.value(idx);
-        var tls_id := src_tls_id(dst); # todo multiple
-        var header := ppkt.value(0);
-        var hdr_type : type_bits := bfe[0][6](ppkt.value(0));
-        var tt := bvand(hdr_type,0x30);
-        var is_long : bool := bvand(0x80,header) ~= 0;
-        
-        var version := ppkt.segment(1,1+4);
-        var bversion := bytes_to_version(version);
-        
-        var ptype : byte := bvand(0x30,header);
-        
-        if zrtt_pkt_set & ~zrtt_pkt_process {
-            zrtt_pkt_process := true;
-            var rnum := reference_pkt_num(last_zrtt_pkt,true);
-            var res := prot.decrypt(tls_id,rnum,last_zrtt_pkt);
-            if res.ok {
-                if host = endpoint_id.server & ~(bversion = 0) {
-                    #for client test, 0rtt packet
-                    call tls_client_0rtt_response(src,dst,res.data);
-                };
-            } else {
-                call undecryptable_packet_event(src,dst,last_zrtt_pkt);
-            };
-        };
-        if host = endpoint_id.server 
-                & bvand(ppkt.value(0),0xf0) = 0xc0   {
-            # for client test
-            call tls_client_initial_response(src,dst,ppkt)
-        };
-        if ~ host = endpoint_id.server  
-                & (bversion = 0 & is_long) | version_not_found(src) { 
-            # for server test, for version_negociation
-            # 1000 0000 == version_negociation
-            past_data := past_data.extend(ppkt);
-            call tls_client_version_response(src,dst,past_data);
-        } 
-        else if tt = 0x30 
-            & ~host = endpoint_id.server & ~(bversion = 0)  {
-            #for server test, Retry packet
-            call tls_client_retry_response(src,dst,ppkt);
-        } 
-        # else if is_pad { #is_pad | is_rand_pad
-        #     call padding_packet_event(src,dst,ppkt); # For quic-go and quand  client
-        # } 
-        else { 
-            var rnum := reference_pkt_num(ppkt,true);
-            var res := prot.decrypt(tls_id,rnum,ppkt);
-            if res.ok {
-                var is_pad := is_padding_packet(res.payload); # For picoquic  client
-                if is_pad { #is_pad | is_rand_pad
-                    call padding_packet_event(src,dst,ppkt);
-                } else if tt = 0x10 
-                    & host = endpoint_id.server & ~(bversion = 0) {
-                    #for client test, 0rtt packet
-                    call tls_client_0rtt_response(src,dst,res.data);
-                } else {
-                    var pkt := pkt_serdes.from_bytes(res.data);
-                    pkt.seq_num := prot.correct_pnum(rnum,pkt.seq_num,prot.get_pnum_len(res.data));
-                    call recv_packet(src,dst,pkt);
-                    call infer_tls_events(src,dst,pkt);   # infer any TLS events on server side
-                    call packet_event(src,dst,pkt);       # also an inferred event
-                    if host = endpoint_id.server & bvand(ppkt.value(0),0xf0) = 0xc0 & ~connected(the_cid) { 
-                        # for client test
-                        call app_server_open_event(dst,src,the_cid,pkt.src_cid);  # [1]
-                    };
-                };
-            } else {
-                call undecryptable_packet_event(src,dst,ppkt);
-            };
-        };
-        idx := idx.next;
+    call show_socket(s);
+    if host = endpoint_id.server {        # for client test (tested implem = client <-> ivy implem = server)
+        call server.behavior(host,s,src,pkts);
+    } else if host = endpoint_id.client { # for server test (tested implem = server <-> ivy implem = client)
+        call client.behavior(host,s,src,pkts);
+    } else if host = endpoint_id.mim {
+        call mim_agent.behavior(host,s,src,pkts);
+    } else if host = endpoint_id.victim {
+        call victim_agent.behavior(host,s,src,pkts);
+    } else if host = endpoint_id.attacker {
+        call attacker.behavior(host,s,src,pkts);
+    } else {
+        # ERROR
+        call undefined_host_error(host,s,src);
     };
-    version_not_found(src) := false;
-    call show_last_datagram_size(last_datagram_received_size);
-    if ~first_datagram_received & host = endpoint_id.server { # for client tests
-        require last_datagram_received_size + 8 > 1200; # 8 is for UDP datagram header
-        first_datagram_received := true;
-    };
-    last_datagram_received_size := 0;
 }
 
 # For logging purposes. This logs the decoded packets received from the network, before
 # event inference. 
 
-import action app_server_open_event_show(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet,cid1 : cid, cid2: cid)
-import action recv_packet(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
-import action padding_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
-import action show_last_datagram_size(size:stream_pos)
+import action recv_packet(host:endpoint_id,src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet)
+import action recv_packet_mim(host:endpoint_id,src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
+import action recv_protected_packet_mim(host:endpoint_id,src:ip.endpoint,dst:ip.endpoint,pkt:forged_protected_quic_packet)
+
+import action recv_packet_victim(host:endpoint_id,src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
+import action padding_packet_event(host:endpoint_id,src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
+
 # This received packets that are undecryptable
-import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
+import action undecryptable_packet_event(host:endpoint_id,src:ip.endpoint,dst:ip.endpoint,pkt:stream_data)
+
+import action undefined_host_error(host:endpoint_id, s:net.socket, src:ip.endpoint)
+
+import action show_last_datagram_size(size:stream_pos)
+
+import action show_socket(n:net.socket)
 
 # Security event shims
 # --------------------
@@ -285,28 +285,37 @@ import action undecryptable_packet_event(src:ip.endpoint,dst:ip.endpoint,pkt:str
 #TODO merge shim for client
 
 implement tls_api.lower.send(tls_id:tls_api.id, bytes:stream_data, lev:tls_api.lower.level) {
-    var early_data_end := stream_data.empty; # TODO global -> quic-go crash if not global
-    early_data_end := early_data_end.append(0xff);
-    early_data_end := early_data_end.append(0xff);
-    early_data_end := early_data_end.append(0xff);
-    early_data_end := early_data_end.append(0xff);
-    var e := quic_packet_type.initial if lev = 0
-             else (quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt);
-    if(bytes.value(0) = 0x4 & bytes.segment(bytes.end-4,bytes.end) = early_data_end) {
-        e := quic_packet_type.one_rtt; # TODO 
-    };
-    var scid := tls_id_to_cid(tls_id);
-    call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
-                        0, bytes,crypto_data_end(scid,e),e);
+    #if dst_is_generated_tls(tls_id_to_src(tls_id)) { # For MiM agent, we dont wont for now TLS events
+        var early_data_end := stream_data.empty; # TODO global -> quic-go crash if not global
+        call show_biatch(tls_id_to_dst(tls_id));
+        early_data_end := early_data_end.append(0xff);
+        early_data_end := early_data_end.append(0xff);
+        early_data_end := early_data_end.append(0xff);
+        early_data_end := early_data_end.append(0xff);
+        # var e := quic_packet_type.initial if lev = 0
+        #          else (quic_packet_type.handshake if lev = 2 else quic_packet_type.one_rtt);
+        # if zero_rtt_allowed {
+        var e := quic_packet_type.initial if lev = 0
+                else (quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt);
+        if(bytes.value(0) = 0x4 & bytes.segment(bytes.end-4,bytes.end) = early_data_end) {
+            e := quic_packet_type.one_rtt; # TODO 
+        };
+        # };
+
+        var scid := tls_id_to_cid(tls_id);
+        call tls_send_event(tls_id_to_src(tls_id), tls_id_to_dst(tls_id), scid,
+                            0, bytes,crypto_data_end(scid,e),e, tls_id);
+    #}
 }
 
+import action show_biatch(src:ip.endpoint)
 import action show_tls_lower_send(bytes:stream_data)
 
 # The following is just for debugging purposes.
 
 after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data : stream_data,
-                     pos:stream_pos, e:quic_packet_type) {
-    call show_tls_send_event(src,dst,scid,dcid,data,pos,e);
+                     pos:stream_pos, e:quic_packet_type, tls_id:tls_api.id) {
+    call show_tls_send_event(src,dst,scid,dcid,data,pos,e, tls_id);
 }
 
 # TLS keys established event shim
@@ -316,7 +325,10 @@ after tls_send_event(src:ip.endpoint, dst:ip.endpoint, scid:cid, dcid:cid, data 
 # level. This is translated into a `tls_keys_established_event` at the security layer.
 
 implement tls_api.upper.keys_established(tls_id:tls_api.id,lev:tls_api.upper.level) {
+    # var e := quic_packet_type.handshake if lev = 2 else quic_packet_type.one_rtt;
+    # if zero_rtt_allowed {
     var e := quic_packet_type.handshake if lev = 2 else quic_packet_type.zero_rtt;
+    # };
     call tls_keys_established_event(tls_id_to_cid(tls_id),e); #tls_id = server.tls_id  for client ?
 }
 
@@ -339,8 +351,7 @@ import action show_tls_id_to_cid(ver:cid)
 # were any crypto frames.
 
 after tls.handshake_data_event(src : ip.endpoint, dst : ip.endpoint, data:stream_data) {
-    if dst_is_generated(dst) {
-        # TODO add show
+    if dst_is_generated_tls(dst) {
         call tls_api.lower.recv(src_tls_id(dst),data,0); # TODO: fill in the encryption level
     }
 }
@@ -453,7 +464,26 @@ import action show_l(ver:stream_pos)
 # TLS here in the shim.
 
 after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
-    client.ep := src; # TODO: migration?
+    
+    if nclients > 1 {
+        var cdx := clients.clients.begin;
+        while cdx < clients.clients.end {
+            var cc := clients.clients.value(cdx);
+            # call cc.set_ep(src);
+            # cc.ep := src;
+            # if some(cf:endpoint) cc *> cf {
+            #     cf.set_ep(src); # TODO: migration?
+            # }
+            cdx := cdx.next;
+        }
+    } else {
+        # client.set_ep(src); # TODO: migration?
+        #if ~endpoint_to_pid(src) = endpoint_id.mim {
+        call client.set_ep(src);
+        #}
+    }
+
+    # call show_kk;
     
 	var version := bytes_to_version(spkt.segment(1,5));
     var lens := spkt.value(5);
@@ -595,6 +625,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
 import action show_set_initial_keys(ik: stream_data)
 import action show_version(ver:version)
+import action show_kk
 
 # TLS client Version Negotiation response shim
 # ============================================
@@ -641,7 +672,7 @@ after tls_client_version_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
 
     var idx := versions_vn.begin;
 
-    while ~versions_vn.value(idx) =  0xff &  version_not_found(src) {
+    while (~versions_vn.value(idx) =  0xff | ~versions_vn.value(idx) =  0x00) &  version_not_found(src) {
         idx := idx.next;
     };
 
@@ -709,7 +740,22 @@ after tls_client_retry_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_dat
 }
 
 after tls_client_0rtt_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_data) {
-    client.ep := src; # TODO: migration?
+    if nclients > 1 {
+        var cdx := clients.clients.begin;
+        while cdx < clients.clients.end {
+            var cc := clients.clients.value(cdx);
+            # call cc.set_ep(src);
+            # if some(cf:endpoint) cc *> cf {
+            #     cf.set_ep(src); # TODO: migration?
+            # }
+            cdx := cdx.next;
+        }
+    } else {
+        #client.set_ep(src); # TODO: migration?
+        #if ~endpoint_to_pid(src) = endpoint_id.mim {
+        call client.set_ep(src);
+        #}
+    }
     
 	var ver := bytes_to_version(spkt.segment(1,5));
     var lens := spkt.value(5);
@@ -761,15 +807,29 @@ import action version_not_found_event
 # This action gets the encryption level from the packet header.
 
 action packet_encryption_level(h:prot.header_info) returns (e:quic_packet_type) = {
-    e := quic_packet_type.zero_rtt if ~h.hdr_long
+    # if zero_rtt_allowed {
+        #var scid := packet_scid(h);
+        e := quic_packet_type.zero_rtt if ~h.hdr_long # & ~established_1rtt_keys(scid)
             else (quic_packet_type.initial if h.hdr_type = 0x7f 
                   else quic_packet_type.handshake);
+    # } else {
+        # e := quic_packet_type.one_rtt if ~h.hdr_long
+        #     else (quic_packet_type.initial if h.hdr_type = 0x7f 
+        #           else quic_packet_type.handshake);
+    # }
 }
 
 action packet_encryption_level_up(h:prot.header_info) returns (e:quic_packet_type) = {
-    e := quic_packet_type.zero_rtt if ~h.hdr_long
+    # if zero_rtt_allowed {
+        #var scid := packet_scid(h);
+        e := quic_packet_type.zero_rtt if ~h.hdr_long #& ~established_1rtt_keys(scid)
             else (quic_packet_type.initial if bvand(h.hdr_type,0x30) = 0x00
                   else quic_packet_type.handshake);
+    # } else {
+        # e := quic_packet_type.one_rtt if ~h.hdr_long
+        #     else (quic_packet_type.initial if bvand(h.hdr_type,0x30) = 0x00
+        #           else quic_packet_type.handshake);
+    # }
 }
 
 # To get the reference packet number for a packet, we need to know the source connection
@@ -827,6 +887,15 @@ instance pkt_serdes_vn : serdes(quic_packet_vn,stream_data,quic_ser_vn,quic_dese
 instance pkt_serdes_retry : serdes(quic_packet_retry,stream_data,quic_ser_retry,quic_deser_retry)
 instance pkt_serdes_0rtt_coal : serdes(quic_packet_coal_0rtt,stream_data,quic_ser_zerortt,quic_deser_zerortt)
 instance pkt_serdes_0rtt : serdes(quic_packet_0rtt,stream_data,quic_ser_zerortt,quic_deser_zerortt)
+
+# To send and receive packets (for MiM agent), we need to serialize and deserialize them.
+# This object allows that.
+
+instance forged_protected_pkt_serdes : serdes(forged_protected_quic_packet,stream_data,quic_ser_forged,quic_deser_forged)
+instance forged_pkt_serdes : serdes(forged_quic_packet,stream_data,quic_ser,quic_deser)
+instance forged_pkt_serdes_vn : serdes(forged_quic_packet_vn,stream_data,quic_ser_vn,quic_deser_vn)
+instance forged_pkt_serdes_retry : serdes(forged_quic_packet_retry,stream_data,quic_ser_retry,quic_deser_retry)
+instance replayed_pkt_serdes_0rtt : serdes(replayed_quic_packet_0rtt,stream_data,quic_ser_zerortt,quic_deser_zerortt)
 
 # Convert a CID to bytes. TODO: This doesn't belong here and it shouldn't
 # be written in C++!
@@ -974,6 +1043,13 @@ action export_length_cid(dcil:stream_pos,scil:stream_pos) = {
     <<<
     scid_h = scil;
     dcid_h = dcil;
+    >>>
+}
+
+action export_length_cid_mim(dcil:stream_pos,scil:stream_pos) = {
+    <<<
+    scid_mim = scil;
+    dcid_mim = dcil;
     >>>
 }
 
