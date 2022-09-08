@@ -466,7 +466,7 @@ object quic_endpoint = {
 
             if ~nat_configured {
                 #call configure_NAT_attack_out_trick(src);
-                call configure_NAT_attack_out(src.port);
+                call configure_NAT_attack_out_localhost(src.port);
                 nat_configured := true;
                 mim_client_target.set_ep(src); # Like initial connection from client 
                 mim_server_target.set_ep(dst);
@@ -704,8 +704,9 @@ object quic_endpoint = {
 
         # TODO more flexible
         action configure_NAT_attack_in(server_ep:ip.port) = {
-            <<<
-                std::string command = "sudo iptables -t nat -A OUTPUT -o lo -d 127.0.0.1 -p udp --dport " + std::to_string(server_ep) + ":" + std::to_string(server_ep) + " ! --sport 4430:4440 -j DNAT --to-destination 127.0.0.1:4440 >/dev/null 2>&1"; 
+            <<< 
+                //  -o lo
+                std::string command = "sudo iptables -t nat -A OUTPUT -d 10.0.2.1 -p udp --dport " + std::to_string(server_ep) + ":" + std::to_string(server_ep) + " ! --sport 4430:4440 -j DNAT --to-destination 10.0.3.1:4440 >/dev/null 2>&1"; 
                 int n = command.length();
             
                 // declaring character array
@@ -731,13 +732,36 @@ object quic_endpoint = {
             sock_mim_out := sock; 
         }
 
-        action configure_NAT_attack_out(dst:ip.port) = {
+        # OK for localhost but not for private adress
+        action configure_NAT_attack_out_localhost(dst:ip.port) = {
             <<<
                 /**
                     Not working in localhost but should be ok in private adress TODO
                         -> To simulate that we set: sock_mim_out = sock (from server) to simulate NAT
                 */
-                std::string command = "sudo iptables -t nat -A POSTROUTING -o lo -d 127.0.0.1 -p udp --sport 4439:4439 -j SNAT --to-source 127.0.0.1:" + std::to_string(dst); //  # error in localhost
+                // -o lo
+                std::string command = "sudo iptables -t nat -A POSTROUTING -d 10.0.3.1 -p udp --sport 4439:4439 -j SNAT --to-source 10.0.1.1:" + std::to_string(dst); //  # error in localhost
+                int n = command.length();
+
+                // declaring character array
+                char command_array[n + 1];
+            
+                // copying the contents of the
+                // string to char array
+                strcpy(command_array, command.c_str());
+
+                int cr = system(command_array);
+            >>>
+        }
+
+         action configure_NAT_attack_out(dst:ip.port) = {
+            <<<
+                /**
+                    Not working in localhost but should be ok in private adress TODO
+                        -> To simulate that we set: sock_mim_out = sock (from server) to simulate NAT
+                */
+                // -o lo
+                std::string command = "sudo iptables -t nat -A POSTROUTING -d 10.0.3.1 -p udp --sport 4439:4439 -j SNAT --to-source 10.0.1.1:" + std::to_string(dst); //  # error in localhost
                 int n = command.length();
 
                 // declaring character array

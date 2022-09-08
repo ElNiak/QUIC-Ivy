@@ -7,7 +7,7 @@ include quic_shim
 # include quic_locale
 include random_value
 
-parameter mim_addr : ip.addr = 0x7f000001
+parameter mim_addr : ip.addr = 0x0a000301
 parameter mim_port_in : ip.port  = 4440 # One socket for receving 4440
 parameter mim_port_out : ip.port = 4439 # One socket for sending
 
