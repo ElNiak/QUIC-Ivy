@@ -87,8 +87,12 @@ action socket_endpoint(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) 
     src := server.ep;
 }
     
-action socket_endpoint_mim(host:endpoint_id,s:net.socket) returns (src:ip.endpoint) = {
-    src := server.ep if (is_mim_standalone) else client.ep;
+action socket_endpoint_mim(host:endpoint_id,s:net.socket,src:ip.endpoint) returns (dst:ip.endpoint) = {
+    dst := client.ep if (is_mim_standalone | src = mim_server_target.ep) else server.ep;
+}
+
+action endpoint_to_socket_mim(src:ip.endpoint) returns (socket:net.socket) = {
+    socket := sock_mim_server if src = mim_server_target.ep else sock_mim_client; #  & ~forged_packet_send
 }
 
 # Get the socket number associated to an IP endpoint.

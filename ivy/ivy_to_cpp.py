@@ -6343,7 +6343,7 @@ def main_int(is_ivyc):
                                 paths = '-I $Z3DIR/include -L $Z3DIR/lib -Wl,-rpath=$Z3DIR/lib' 
                             else:
                                 _dir = os.path.dirname(os.path.abspath(__file__))
-                                paths = '-I {} -L {} -Wl,-rpath={}'.format(os.path.join(_dir,'include'),os.path.join(_dir,'lib'),os.path.join(_dir,'lib'))
+                                paths = '-static -I {} -L {} -Wl,-rpath={}'.format(os.path.join(_dir,'include'),os.path.join(_dir,'lib'),os.path.join(_dir,'lib'))
                         else:
                             paths = ''
                         for lib in libs:
@@ -6353,14 +6353,18 @@ def main_int(is_ivyc):
                         if emit_main:
                             cmd = "g++ {} {} -g -o {} {}.cpp".format(gpp11_spec,paths,basename,basename)
                         else:
-                            cmd = "g++ {} {} -g -c {}.cpp".format(gpp11_spec,paths,basename)
+                            cmd = "g++ {} {} -g -c {}.cpp".format(gpp11_spec,paths,basename) # -static -lrt 
                         if target.get() in ['gen','test']:
                             cmd = cmd + ' -lz3'
                         cmd += libspec
                         cmd += ' -pthread'
+                        cmd = cmd.replace("-ldl","-lrt -ldl")
                         from os import environ
                         if environ.get('IS_NOT_DOCKER') is not None:
                             cmd += ' -D IS_NOT_DOCKER'
+                            
+                        if environ.get('GPERF') is not None:
+                            cmd += ' -lprofiler -ltcmalloc' # CPU profiler
                     print cmd
                     sys.stdout.flush()
                     with iu.WorkingDir(builddir):

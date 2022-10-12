@@ -55,7 +55,7 @@ def build_z3():
 
 
     if platform.system() != 'Windows':
-        cmd = 'python scripts/mk_make.py --python --prefix {} --pypkgdir {}/'.format(cwd,ivydir)
+        cmd = 'python scripts/mk_make.py --noomp --staticlib --python --prefix {} --pypkgdir {}/'.format(cwd,ivydir)
     else:
         cmd = 'python scripts/mk_make.py -x --python --pypkgdir {}/'.format(ivydir)
 
@@ -66,7 +66,7 @@ def build_z3():
     if platform.system() == 'Windows':
         do_cmd('"{}" & nmake'.format(find_vs()))
     else:
-        do_cmd('make -j 4')
+        do_cmd('make  -j 4') # CXXFLAGS="-D_NO_OMP_" 
         do_cmd('make install')
 
     os.chdir(cwd)

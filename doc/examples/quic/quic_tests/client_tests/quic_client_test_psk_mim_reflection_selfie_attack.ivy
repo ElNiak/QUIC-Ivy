@@ -55,7 +55,7 @@ after init {
     client_port_vn := 4986;
     client_alt := endpoint_id_addr(endpoint_id.client_alt);
     client_vn := endpoint_id_addr(endpoint_id.client_vn);
-    # call mim_agent.configure_NAT_attack_in(server.ep.port);
+    # # call mim_agent.configure_NAT_attack_in(server.ep.port);
     # save_packet := true;
     # mim_agent.enc_level_ppkt_to_be_forge := quic_packet_type.initial;
 }

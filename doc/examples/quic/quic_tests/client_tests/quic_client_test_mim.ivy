@@ -9,17 +9,28 @@ include ivy_quic_shim_mim
 include quic_locale
 include random_value
 # include ivy_quic_mim
-include ivy_quic_server_behavior
-include ivy_quic_mim_behavior
 
+after init {
+    # mim_server_target.set_ep(server.ep);
+    server.ep.interface := ip.lo;
+    # client.ep.interface := ip.ivy;
+}
+
+include ivy_quic_server_behavior
 
 # NB: need bigger timeout (at least 90 sec)
+after init {
+    # mim_server_target.set_ep(server.ep);
+    server.ep.interface := ip.ivy;
+}
+
+include ivy_quic_mim_behavior
 
 after init {
     client_port_vn := 4986;
     client_alt := endpoint_id_addr(endpoint_id.client_alt);
     client_vn := endpoint_id_addr(endpoint_id.client_vn);
-    call mim_agent.configure_NAT_attack_in(server.ep.port);
+    # call mim_agent.configure_NAT_attack_in(server.ep.port);
 }
 
 # action make_transport_parameters returns (tp:quic_transport_parameters) = {
@@ -105,7 +116,7 @@ before packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:quic_packet_vn) {
 }
 
 # Event of MiM Agent -> TODO put that more clearly
-before forged_packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:forged_quic_packet_vn,inpkt:quic_packet_vn) {
+before forged_packet_event_vn(src:ip.endpoint,dst:ip.endpoint,pkt:forged_quic_packet_vn) { # ,inpkt:quic_packet_vn
     if _generating {
         #require initial_version ~= 0x00000001; 
         # require negocation_of_version(dst);
@@ -128,9 +139,9 @@ before forward_packet_to_client_event(src:ip.endpoint,dst:ip.endpoint,pkt:forged
     if _generating {
         require mim_client_target.ep.addr ~= 0;  # must have a client address to send to
         #require;
-        require src = mim_agent.ep_out;
+        require src = mim_server_target.ep;
         require dst = mim_client_target.ep;
-        require pkt = mim_agent.ppkt_to_be_forwarded_to_client;
+        require pkt = mim_agent.ppkt_to_be_forwarded_to_client(mim_agent.last_cppkt_forwarded_to_client);
         #require pkt = mim_agent.ppkt_to_be_forwarded_to_server; # TODO put relation ?
     } 
 }
@@ -139,9 +150,9 @@ before forward_packet_to_server_event(src:ip.endpoint,dst:ip.endpoint,pkt:forged
     if _generating {
         require mim_client_target.ep.addr ~= 0;  # must have a client address to send to
         #require;
-        require src = mim_agent.ep_out;
+        require src = mim_client_target.ep;
         require dst = mim_server_target.ep;
-        require pkt = mim_agent.ppkt_to_be_forwarded_to_server;        #require ;
+        require pkt = mim_agent.ppkt_to_be_forwarded_to_server(mim_agent.last_cppkt_forwarded_to_server);        #require ;
         #require ;
         #require pkt = mim_agent.ppkt_to_be_forwarded_to_server; # TODO put relation ?
     } 
@@ -190,6 +201,25 @@ export tls_recv_event
 export forward_packet_to_client_event
 export forward_packet_to_server_event
 
+# https://github.com/microsoft/ivy/blob/9f3c7ecc0b2383129fdd0953e10890d98d09a82d/doc/examples/MSV/repstore3_soln.ivy
+# TODO GUI
+# By making the "weight" of an
+# action less than one, we reduce the relative probability of the
+# tester choosing that action. We adjust the wieght so that emprically
+# failures occur in only about half the runs. That way, we know that
+# both the failure code and the non-failure code will be well tested.
+#
+# Notice another detail: when we're testing the primary, the tester
+# simulates a failure by calling the action that sends a failure
+# message `prim.fail_chan` as it simulates the environment of the
+# primary. This means we need to adjust the probability of this action
+# in addition to the exported action `sec.fail`, which the tester will
+# call when testing the secondary.
+
+# attribute packet_event.weight = "0.2"
+# attribute forward_packet_to_server_event.weight = "0.5"
+# attribute forward_packet_to_client_event.weight = "0.5"
+
 #export modify_protected_packet_event # used when forwarding packet
 
 # export frame.max_streams.handle
@@ -222,7 +252,7 @@ export forward_packet_to_server_event
 export action _finalize = {
     # chris TODO 
     require conn_total_data(the_cid) > 0; # == 
-    call mim_agent.reset_NAT;
+    #call mim_agent.reset_NAT;
 }
 
 

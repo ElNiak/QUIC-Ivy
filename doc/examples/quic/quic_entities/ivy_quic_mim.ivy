@@ -7,13 +7,14 @@ include quic_shim
 # include quic_locale
 include random_value
 
-parameter mim_addr : ip.addr = 0x0a000301
+parameter mim_addr : ip.addr = 0x0a000002
 parameter mim_port_in : ip.port  = 4440 # One socket for receving 4440
 parameter mim_port_out : ip.port = 4439 # One socket for sending
 
 parameter is_mim : bool = false
 parameter is_mim_standalone : bool = false
 parameter forward_packets : bool = true
+parameter keep_coalesed : bool = true
 parameter forward_packets_victim : bool = false
 parameter modify_packets : bool = false
 parameter replay_packets : bool = false
@@ -27,7 +28,7 @@ instance mim_agent : quic_endpoint.mim_ep(mim_addr,mim_port_in,mim_port_out)
 
 instance mim_server_target : quic_endpoint.server_ep(server_addr,server_port)
 instance mim_client_target : quic_endpoint.client_ep(0,0)
-
+instance fake_client : quic_endpoint.client_ep(0,0)
 
 # TODO update packet src port/dst port for invisible on network and host
  
@@ -35,8 +36,8 @@ instance mim_client_target : quic_endpoint.client_ep(0,0)
 
 # a socket for the server
 
-var sock_mim_in : net.socket
-var sock_mim_out : net.socket
+var sock_mim_server : net.socket
+var sock_mim_client : net.socket
 
 # Open a server socket to listen on and create an instance of TLS.
 # TODO: we should have one instance of TLS per connection

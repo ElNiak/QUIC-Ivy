@@ -425,7 +425,8 @@ around forward_packet_to_client_event(src:ip.endpoint,dst:ip.endpoint,pkt:forged
     require src ~= dst;
     require ~(src = mim_agent.ep_out & dst = mim_agent.ep_in);
     require ~(dst = mim_agent.ep_out & src = mim_agent.ep_in);
-    require mim_agent.forward_turn; # TODO more customization
+    #require mim_agent.forward_turn; # TODO more customization
+    #require mim_agent.last_cppkt_forwarded_to_client <= mim_agent.last_cppkt_forwarded_to_server;
     require ~packed_forwarded_arr(pkt);
     #require ~mim_agent.wait_forward;
     # var idx := pkt.begin;
@@ -441,7 +442,7 @@ around forward_packet_to_client_event(src:ip.endpoint,dst:ip.endpoint,pkt:forged
     #     idx := idx.next; 
     # };
     packed_forwarded_arr(pkt) := true;
-    mim_agent.ppkt_to_be_forwarded_to_client := forged_pkts.empty;  # help solver
+    mim_agent.ppkt_to_be_forwarded_to_client(mim_agent.last_cppkt_forwarded_to_client) := forged_pkts.empty;  # help solver
     mim_agent.force_server_forward := false;
     mim_agent.forward_turn := false;
 }
@@ -452,7 +453,8 @@ around forward_packet_to_server_event(src:ip.endpoint,dst:ip.endpoint,pkt:forged
     require src ~= dst;
     require ~(src = mim_agent.ep_out & dst = mim_agent.ep_in);
     require ~(dst = mim_agent.ep_out & src = mim_agent.ep_in);
-    require ~mim_agent.forward_turn;
+    #require ~mim_agent.forward_turn;
+    #require mim_agent.last_cppkt_forwarded_to_server <= mim_agent.last_cppkt_forwarded_to_client + 3;
     require ~packed_forwarded_arr(pkt); # TODO not sure it works
     # var idx := pkt.begin;
     # while idx < pkt.end {
@@ -467,7 +469,7 @@ around forward_packet_to_server_event(src:ip.endpoint,dst:ip.endpoint,pkt:forged
     #     idx := idx.next; 
     # };
     packed_forwarded_arr(pkt) := true;
-    mim_agent.ppkt_to_be_forwarded_to_server := forged_pkts.empty;
+    mim_agent.ppkt_to_be_forwarded_to_server(mim_agent.last_cppkt_forwarded_to_server) := forged_pkts.empty;
     mim_agent.force_client_forward := false;
     mim_agent.forward_turn := true;
 }

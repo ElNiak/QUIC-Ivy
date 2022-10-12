@@ -480,6 +480,7 @@ after tls_client_initial_response(src:ip.endpoint,dst:ip.endpoint,spkt: stream_d
         # client.set_ep(src); # TODO: migration?
         #if ~endpoint_to_pid(src) = endpoint_id.mim {
         call client.set_ep(src);
+        #client.ep.interface := ip.lo;
         #}
     }
 

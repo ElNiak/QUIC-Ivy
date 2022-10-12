@@ -9,12 +9,14 @@ object ip = {
     type addr
     type port
     type protocol = {udp,tcp}
+    type interface = {lo, ivy}
 
     object endpoint = {
         type this = struct {
             protocol : ip.protocol,
             addr : ip.addr,
-            port : ip.port
+            port : ip.port,
+            interface : ip.interface
         }
     }
 
